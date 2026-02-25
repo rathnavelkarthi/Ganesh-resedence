@@ -1,0 +1,42 @@
+{
+    "meta": {
+        "brand_name": "Ganesh Residency",
+        "description": "Core design tokens for UI implementation."
+    },
+    "colors": {
+        "primary": {
+            "DEFAULT": "#0c4a6e",
+            "hover": "#075985",
+            "foreground": "#ffffff"
+        },
+        "secondary": {
+            "DEFAULT": "#e7e5e4",
+            "hover": "#d6d3d1",
+            "foreground": "#1c1917"
+        },
+        "background": "#ffffff",
+        "foreground": "#0f172a",
+        "muted": "#f1f5f9",
+        "accent": "#f8fafc",
+        "destructive": "#ef4444",
+        "success": "#10b981"
+    },
+    "typography": {
+        "font_family_headings": [
+            "Playfair Display",
+            "serif"
+        ],
+        "font_family_body": [
+            "Inter",
+            "sans-serif"
+        ],
+        "font_weight_bold": "700",
+        "font_weight_semibold": "600",
+        "font_weight_normal": "400"
+    },
+    "ui": {
+        "border_radius_default": "0.5rem",
+        "border_radius_small": "0.25rem",
+        "spacing_base_unit": "4px"
+    }
+}

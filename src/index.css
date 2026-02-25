@@ -4,26 +4,73 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Playfair Display", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  
-  --color-ocean-50: #f0f7fa;
-  --color-ocean-100: #e0eff4;
-  --color-ocean-500: #2b7a9b;
-  --color-ocean-600: #21627d;
-  --color-ocean-800: #123d4f;
-  --color-ocean-900: #0a2733;
 
-  --color-sand-50: #fdfbf7;
-  --color-sand-100: #f7f3ea;
-  --color-sand-200: #efe7d5;
+  --color-primary: #0E2A38;
+  /* Deep Ocean Navy */
+  --color-primary-hover: #0a1f29;
+  --color-primary-foreground: #F7F4EF;
+
+  --color-secondary: #EDE6DC;
+  /* Sand Beige */
+  --color-secondary-hover: #e0d5c4;
+  --color-secondary-foreground: #0E2A38;
+
+  --color-background: #F7F4EF;
+  /* Warm Ivory */
+  --color-foreground: #0E2A38;
+  /* Deep Ocean Navy */
+  --color-muted: #EDE6DC;
+  /* Sand Beige */
+  --color-accent: #C9A646;
+  /* Muted Gold Accent */
+
+  /* Missing Ocean Scale */
+  --color-ocean-50: #f4f7f9;
+  --color-ocean-100: #e3ebf1;
+  --color-ocean-200: #c1d3e0;
+  --color-ocean-300: #9fbacd;
+  --color-ocean-400: #7b9eb8;
+  --color-ocean-500: #5d83a1;
+  --color-ocean-600: #426786;
+  --color-ocean-700: #35536d;
+  --color-ocean-800: #2d455b;
+  --color-ocean-900: #0E2A38;
+  --color-ocean-950: #0a1f29;
+  --color-accent-foreground: #FFFFFF;
+  --color-destructive: #ef4444;
+  --color-success: #10b981;
+
+  --radius-default: 0.5rem;
+  --radius-small: 0.25rem;
+}
+
+@layer utilities {
+  .noise-overlay {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    opacity: 0.03;
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    mix-blend-mode: multiply;
+  }
 }
 
 body {
   font-family: var(--font-sans);
-  background-color: var(--color-sand-50);
-  color: #1a1a1a;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-h1, h2, h3, h4, h5, h6, .font-serif {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.font-serif {
   font-family: var(--font-serif);
 }
 
@@ -31,6 +78,7 @@ h1, h2, h3, h4, h5, h6, .font-serif {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;

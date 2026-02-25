@@ -1,60 +1,60 @@
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
 export default function Footer() {
   return (
-    <footer className="bg-[var(--color-ocean-900)] text-white/80 py-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8">
-          
-          <div className="col-span-1 md:col-span-1">
-            <h2 className="font-serif text-2xl text-white mb-6">Ganesh Residency</h2>
-            <p className="text-sm leading-relaxed mb-6">
-              Experience beachfront comfort near Pondicherry University. Your perfect getaway for family vacations and corporate retreats.
-            </p>
-          </div>
+    <footer className="bg-foreground text-background py-24 md:py-32 relative overflow-hidden">
+      {/* Heavy noise specifically for footer to ground the page */}
+      <div className="absolute inset-0 opacity-5 mix-blend-overlay pointer-events-none z-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.8\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\'/%3E%3C/svg%3E")' }}></div>
 
-          <div>
-            <h3 className="text-white font-semibold mb-6 uppercase tracking-wider text-sm">Quick Links</h3>
-            <ul className="space-y-4 text-sm">
-              <li><Link to="/#rooms" className="hover:text-white transition-colors">Rooms</Link></li>
-              <li><Link to="/#amenities" className="hover:text-white transition-colors">Amenities</Link></li>
-              <li><Link to="/#gallery" className="hover:text-white transition-colors">Gallery</Link></li>
-              <li><Link to="/#contact" className="hover:text-white transition-colors">Contact</Link></li>
-            </ul>
-          </div>
+      <div className="max-w-[1400px] mx-auto px-6 md:px-12 flex flex-col items-center text-center relative z-10">
 
-          <div>
-            <h3 className="text-white font-semibold mb-6 uppercase tracking-wider text-sm">Information</h3>
-            <ul className="space-y-4 text-sm">
-              <li><Link to="/policies" className="hover:text-white transition-colors">Policies</Link></li>
-              <li><span className="block text-white/60 mt-4 text-xs">Check-in: 12:00 PM</span></li>
-              <li><span className="block text-white/60 text-xs">Check-out: 11:00 AM</span></li>
-            </ul>
-          </div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 1.5, ease: "easeOut" }}
+          className="mb-16"
+        >
+          <h2 className="font-serif text-3xl md:text-5xl tracking-[0.1em] uppercase font-normal text-background drop-shadow-sm mb-4">
+            Ganesh
+            <span className="block text-xl md:text-2xl tracking-[0.4em] mt-4 opacity-70 font-light">Residency</span>
+          </h2>
+        </motion.div>
 
-          <div>
-            <h3 className="text-white font-semibold mb-6 uppercase tracking-wider text-sm">Contact Us</h3>
-            <address className="not-italic text-sm space-y-4">
-              <p>No. 2, Sai Baba Koil Street<br/>Chinna Kalapet<br/>Puducherry 605014</p>
-              <p>
-                <a href="tel:04132656555" className="hover:text-white transition-colors">0413 265 6555</a><br/>
-                <a href="tel:8248981269" className="hover:text-white transition-colors">8248981269</a>
-              </p>
-              <p>
-                <a href="mailto:theganeshresidencypdy@gmail.com" className="hover:text-white transition-colors">theganeshresidencypdy@gmail.com</a>
-              </p>
-            </address>
-          </div>
+        <motion.div
+          initial={{ opacity: 0, width: 0 }}
+          whileInView={{ opacity: 1, width: "80px" }}
+          viewport={{ once: true }}
+          transition={{ duration: 1, delay: 0.2 }}
+          className="h-[1px] bg-accent opacity-60 mb-16"
+        />
 
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 1, delay: 0.4 }}
+          className="flex flex-col md:flex-row gap-8 md:gap-16 text-[10px] tracking-[0.2em] uppercase font-medium text-background/60 mb-24"
+        >
+          <Link to="/#rooms" className="hover:text-accent transition-colors duration-300">Accommodations</Link>
+          <Link to="/#gallery" className="hover:text-accent transition-colors duration-300">Experience</Link>
+          <Link to="/#contact" className="hover:text-accent transition-colors duration-300">Contact</Link>
+          <Link to="/pricing" className="hover:text-accent transition-colors duration-300">Pricing</Link>
+          <Link to="/policies" className="hover:text-accent transition-colors duration-300">Policies</Link>
+        </motion.div>
 
-        <div className="border-t border-white/10 mt-16 pt-8 text-sm text-center flex flex-col md:flex-row justify-between items-center gap-4">
-          <p>&copy; {new Date().getFullYear()} Ganesh Residency. All rights reserved.</p>
-          <div className="flex items-center gap-4">
-            <p className="text-white/50 text-xs">Designed for Direct Bookings</p>
-            <Link to="/admin/login" className="text-white/50 hover:text-white text-xs transition-colors">Staff Login</Link>
-          </div>
-        </div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 1, delay: 0.6 }}
+          className="w-full flex flex-col md:flex-row justify-between items-center text-[10px] tracking-widest text-background/30 uppercase mt-auto pt-8 border-t border-background/10"
+        >
+          <p className="mb-4 md:mb-0">&copy; {new Date().getFullYear()} Ganesh Residency. All rights reserved.</p>
+          <Link to="/admin/login" className="hover:text-accent transition-colors duration-300">Staff Portal</Link>
+        </motion.div>
+
       </div>
     </footer>
   );

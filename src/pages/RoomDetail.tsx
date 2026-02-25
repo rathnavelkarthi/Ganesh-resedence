@@ -1,5 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { Users, Wind, Wifi, Bath, CheckCircle2, ArrowLeft, Calendar } from 'lucide-react';
 import { useState } from 'react';
 
@@ -10,9 +10,9 @@ const roomsData = {
     capacity: '2 Guests',
     price: '₹2,500',
     images: [
-      'https://images.unsplash.com/photo-1611892440504-42a792e24d32?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80',
-      'https://images.unsplash.com/photo-1582719478250-c894e4dc240e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80',
-      'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80'
+      'https://images.unsplash.com/photo-1611892440504-42a792e24d32?q=80&w=1470&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?q=80&w=1470&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1584132905271-8927d5f77d7a?q=80&w=1470&auto=format&fit=crop'
     ],
     amenities: ['Air Conditioning', 'Free High-Speed WiFi', 'Attached Bathroom', 'Flat-screen TV', 'Room Service', 'Daily Housekeeping', 'Complimentary Toiletries', 'Wardrobe'],
   },
@@ -22,9 +22,9 @@ const roomsData = {
     capacity: '3 Guests',
     price: '₹3,500',
     images: [
-      'https://images.unsplash.com/photo-1590490360182-c33d57733427?ixlib=rb-4.0.3&auto=format&fit=crop&w=1374&q=80',
-      'https://images.unsplash.com/photo-1595576508898-0ad5c879a061?ixlib=rb-4.0.3&auto=format&fit=crop&w=1374&q=80',
-      'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80'
+      'https://images.unsplash.com/photo-1590490360182-c33d57733427?q=80&w=1470&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1595576508898-0ad5c879a061?q=80&w=1470&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1566665797739-1674de7a421a?q=80&w=1470&auto=format&fit=crop'
     ],
     amenities: ['Air Conditioning', 'Free High-Speed WiFi', 'Attached Bathroom', 'Flat-screen TV', 'Room Service', 'Daily Housekeeping', 'Complimentary Toiletries', 'Wardrobe', 'Seating Area'],
   },
@@ -34,9 +34,9 @@ const roomsData = {
     capacity: '4 Guests',
     price: '₹4,500',
     images: [
-      'https://images.unsplash.com/photo-1582719478250-c894e4dc240e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80',
-      'https://images.unsplash.com/photo-1598928506311-c55dd58024cb?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80',
-      'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80'
+      'https://images.unsplash.com/photo-1582719478250-c894e4dc240e?q=80&w=1470&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1598928506311-c55dd58024cb?q=80&w=1470&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1534073828943-f801091bb18c?q=80&w=1470&auto=format&fit=crop'
     ],
     amenities: ['Air Conditioning', 'Free High-Speed WiFi', 'Attached Bathroom', 'Flat-screen TV', 'Room Service', 'Daily Housekeeping', 'Complimentary Toiletries', 'Wardrobe', 'Large Seating Area'],
   },
@@ -46,9 +46,9 @@ const roomsData = {
     capacity: '6 Guests',
     price: '₹6,000',
     images: [
-      'https://images.unsplash.com/photo-1598928506311-c55dd58024cb?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80',
-      'https://images.unsplash.com/photo-1590490360182-c33d57733427?ixlib=rb-4.0.3&auto=format&fit=crop&w=1374&q=80',
-      'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80'
+      'https://images.unsplash.com/photo-1598928506311-c55dd58024cb?q=80&w=1470&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1590490360182-c33d57733427?q=80&w=1470&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1618773928121-c32242e63f39?q=80&w=1470&auto=format&fit=crop'
     ],
     amenities: ['Air Conditioning', 'Free High-Speed WiFi', 'Attached Bathroom', 'Flat-screen TV', 'Room Service', 'Daily Housekeeping', 'Complimentary Toiletries', 'Wardrobe', 'Expansive Living Area', 'Multiple Beds'],
   },
@@ -75,7 +75,7 @@ export default function RoomDetail() {
   return (
     <div className="pt-24 pb-24 bg-[var(--color-sand-50)] min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Breadcrumb */}
         <div className="mb-8">
           <Link to="/#rooms" className="inline-flex items-center gap-2 text-gray-500 hover:text-[var(--color-ocean-600)] transition-colors text-sm font-medium">
@@ -84,27 +84,27 @@ export default function RoomDetail() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-          
+
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-12">
-            
+
             {/* Image Gallery */}
             <div className="space-y-4">
-              <motion.div 
+              <motion.div
                 className="aspect-[16/9] rounded-3xl overflow-hidden shadow-md"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5 }}
               >
-                <img 
-                  src={room.images[activeImage]} 
-                  alt={room.name} 
+                <img
+                  src={room.images[activeImage]}
+                  alt={room.name}
                   className="w-full h-full object-cover"
                 />
               </motion.div>
               <div className="grid grid-cols-3 gap-4">
                 {room.images.map((img, idx) => (
-                  <button 
+                  <button
                     key={idx}
                     onClick={() => setActiveImage(idx)}
                     className={`aspect-[4/3] rounded-xl overflow-hidden border-2 transition-all ${activeImage === idx ? 'border-[var(--color-ocean-500)] shadow-md' : 'border-transparent opacity-70 hover:opacity-100'}`}
@@ -126,7 +126,7 @@ export default function RoomDetail() {
                   <span>Max Occupancy: {room.capacity}</span>
                 </div>
               </div>
-              
+
               <p className="text-gray-600 text-lg leading-relaxed mb-8">
                 {room.description}
               </p>
@@ -213,13 +213,13 @@ export default function RoomDetail() {
                   </div>
                 </div>
 
-                <Link 
+                <Link
                   to="/book"
                   className="w-full py-4 bg-[var(--color-ocean-600)] hover:bg-[var(--color-ocean-800)] text-white rounded-xl font-bold text-lg transition-colors shadow-md hover:shadow-lg mt-4 flex items-center justify-center"
                 >
                   Reserve Now
                 </Link>
-                
+
                 <p className="text-center text-sm text-gray-500 mt-4">
                   You won't be charged yet
                 </p>

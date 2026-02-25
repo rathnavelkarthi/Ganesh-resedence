@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 
 interface GuestFormProps {
   guestDetails: any;
@@ -31,12 +31,12 @@ export default function GuestForm({ guestDetails, onChange, onSubmit }: GuestFor
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
-    
+
     onChange({
       ...guestDetails,
       [name]: type === 'checkbox' ? checked : value
     });
-    
+
     // Clear error when typing
     if (errors[name]) {
       setErrors({ ...errors, [name]: '' });
@@ -46,7 +46,7 @@ export default function GuestForm({ guestDetails, onChange, onSubmit }: GuestFor
   return (
     <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
       <h2 className="font-serif text-3xl text-[var(--color-ocean-900)] font-bold mb-8">Guest Details</h2>
-      
+
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Full Name */}
@@ -149,7 +149,7 @@ export default function GuestForm({ guestDetails, onChange, onSubmit }: GuestFor
 
         {/* Submit Button (Hidden, triggered by parent or visible on mobile) */}
         <div className="pt-6 lg:hidden">
-          <button 
+          <button
             type="submit"
             className="w-full py-4 bg-[var(--color-ocean-600)] hover:bg-[var(--color-ocean-800)] text-white rounded-xl font-bold text-lg transition-colors shadow-md hover:shadow-lg"
           >

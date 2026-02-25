@@ -1,118 +1,118 @@
 import { Link } from 'react-router-dom';
-import { Users, Wind, Wifi, Bath } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 
 const rooms = [
   {
     id: 'executive-double-ac',
-    name: 'Executive Double AC',
-    description: 'Perfect for couples or solo travelers seeking comfort with modern amenities and a cozy atmosphere.',
+    name: 'Executive Double Room',
+    description: 'A serene sanctuary designed for quiet comfort, where minimal aesthetics meet premium relaxation.',
     capacity: '2 Guests',
-    image: 'https://picsum.photos/seed/room1/1470/980',
+    image: 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?q=80&w=2070&auto=format&fit=crop',
   },
   {
     id: 'triple-room-ac',
-    name: 'Triple Room AC',
-    description: 'Spacious accommodation ideal for small families or groups of three, featuring premium bedding.',
+    name: 'Triple Accommodation',
+    description: 'Spacious elegance bathed in natural light, offering generous room for shared moments of calm.',
     capacity: '3 Guests',
-    image: 'https://picsum.photos/seed/room2/1470/980',
+    image: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?q=80&w=1974&auto=format&fit=crop',
   },
   {
     id: 'four-occupancy-room',
-    name: 'Four Occupancy Room',
-    description: 'Generously sized room designed for families of four, offering ample space to relax after a beach day.',
+    name: 'Family Retreat',
+    description: 'A harmonious expanse designed for kinship, blending effortless luxury with familiar comfort.',
     capacity: '4 Guests',
-    image: 'https://picsum.photos/seed/room3/1470/980',
+    image: 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?q=80&w=2070&auto=format&fit=crop',
   },
   {
     id: 'six-bed-ac-room',
-    name: 'Six Bed AC Room',
-    description: 'The ultimate group getaway room. Comfortably sleeps six with multiple beds and expansive living area.',
+    name: 'The Grand Residence',
+    description: 'Our most expansive offering for larger parties, a private coastal haven of unmatched scale.',
     capacity: '6 Guests',
-    image: 'https://picsum.photos/seed/room4/1470/980',
+    image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=2070&auto=format&fit=crop',
   },
 ];
 
 export default function Rooms() {
   return (
-    <section id="rooms" className="py-24 bg-[var(--color-sand-50)]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <h2 className="font-serif text-4xl md:text-5xl text-[var(--color-ocean-900)] font-bold mb-6">
-            Our Accommodations
-          </h2>
-          <p className="text-gray-600 text-lg leading-relaxed">
-            Discover handpicked stays that blend luxury and practicality. From intimate double rooms to spacious family suites, find your perfect retreat.
-          </p>
+    <section id="rooms" className="py-32 md:py-48 bg-background">
+      <div className="max-w-[1400px] mx-auto px-6 md:px-12">
+        <div className="text-center max-w-3xl mx-auto mb-32 md:mb-48">
+          <motion.h2
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-10%" }}
+            transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+            className="font-serif text-4xl md:text-5xl lg:text-[64px] text-foreground font-normal mb-8 leading-tight drop-shadow-sm"
+          >
+            A Place to Rest
+          </motion.h2>
+          <motion.div
+            initial={{ opacity: 0, scaleX: 0 }}
+            whileInView={{ opacity: 1, scaleX: 1 }}
+            viewport={{ once: true, margin: "-10%" }}
+            transition={{ delay: 0.3, duration: 1, ease: "easeOut" }}
+            className="w-16 h-[1px] bg-accent mx-auto origin-center"
+          />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
-          {rooms.map((room, index) => (
-            <motion.div 
-              key={room.id}
-              className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group flex flex-col"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: index * 0.1, duration: 0.5 }}
-            >
-              {/* Image Container */}
-              <div className="relative h-64 sm:h-72 overflow-hidden">
-                <img 
-                  src={room.image} 
-                  alt={room.name} 
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm">
-                  <Users size={16} className="text-[var(--color-ocean-600)]" />
-                  <span className="text-sm font-medium text-gray-800">{room.capacity}</span>
-                </div>
-              </div>
+        <div className="flex flex-col gap-32 md:gap-56">
+          {rooms.map((room, index) => {
+            const isEven = index % 2 === 0;
+            return (
+              <div
+                key={room.id}
+                className={`flex flex-col ${isEven ? 'lg:flex-row' : 'lg:flex-row-reverse'} items-center gap-16 lg:gap-32 group`}
+              >
+                {/* Image Side */}
+                <motion.div
+                  initial={{ opacity: 0, x: isEven ? -50 : 50 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true, margin: "-20%" }}
+                  transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+                  className="w-full lg:w-[55%] overflow-hidden relative shadow-2xl"
+                >
+                  <div className="aspect-[4/3] w-full overflow-hidden bg-muted relative">
+                    <img
+                      src={room.image}
+                      alt={room.name}
+                      className="w-full h-full object-cover transition-transform duration-[2s] ease-out group-hover:scale-110"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-foreground/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+                  </div>
+                </motion.div>
 
-              {/* Content */}
-              <div className="p-6 sm:p-8 flex flex-col flex-grow">
-                <h3 className="font-serif text-2xl font-bold text-gray-900 mb-3">{room.name}</h3>
-                <p className="text-gray-600 mb-6 flex-grow line-clamp-2">{room.description}</p>
-                
-                {/* Amenities Icons */}
-                <div className="flex items-center gap-6 mb-8 text-gray-500">
-                  <div className="flex items-center gap-2" title="Air Conditioning">
-                    <Wind size={20} className="text-[var(--color-ocean-500)]" />
-                    <span className="text-sm hidden sm:inline">AC</span>
-                  </div>
-                  <div className="flex items-center gap-2" title="Free WiFi">
-                    <Wifi size={20} className="text-[var(--color-ocean-500)]" />
-                    <span className="text-sm hidden sm:inline">WiFi</span>
-                  </div>
-                  <div className="flex items-center gap-2" title="Attached Bathroom">
-                    <Bath size={20} className="text-[var(--color-ocean-500)]" />
-                    <span className="text-sm hidden sm:inline">Bath</span>
-                  </div>
-                </div>
+                {/* Text Side */}
+                <motion.div
+                  initial={{ opacity: 0, y: 40 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-20%" }}
+                  transition={{ duration: 1.2, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                  className="w-full lg:w-[45%] flex flex-col justify-center text-center lg:text-left"
+                >
+                  <span className="text-[11px] tracking-[0.25em] text-foreground/50 uppercase mb-6 block font-medium">
+                    {room.capacity}
+                  </span>
+                  <h3 className="font-serif text-3xl md:text-4xl lg:text-[44px] leading-tight text-foreground mb-8">
+                    {room.name}
+                  </h3>
+                  <p className="text-foreground/70 text-base md:text-lg font-light leading-relaxed mb-12 max-w-md mx-auto lg:mx-0">
+                    {room.description}
+                  </p>
 
-                {/* Actions */}
-                <div className="flex flex-col sm:flex-row gap-4 mt-auto">
-                  <Link 
-                    to={`/rooms/${room.id}`}
-                    className="flex-1 py-3 px-4 border border-[var(--color-ocean-200)] text-[var(--color-ocean-600)] hover:bg-[var(--color-ocean-50)] text-center rounded-xl font-medium transition-colors"
-                  >
-                    View Room
-                  </Link>
-                  <Link 
-                    to="/book"
-                    className="flex-1 py-3 px-4 bg-[var(--color-ocean-600)] hover:bg-[var(--color-ocean-800)] text-white text-center rounded-xl font-medium transition-colors shadow-sm"
-                  >
-                    Check Availability
-                  </Link>
-                </div>
+                  <div className="pt-4">
+                    <Link
+                      to={`/rooms/${room.id}`}
+                      className="inline-block px-12 py-4 border border-accent text-foreground font-serif text-[13px] tracking-widest uppercase hover:bg-accent hover:text-accent-foreground transition-colors duration-500 rounded-sm"
+                    >
+                      View Room
+                    </Link>
+                  </div>
+                </motion.div>
               </div>
-            </motion.div>
-          ))}
+            );
+          })}
         </div>
-
       </div>
     </section>
   );

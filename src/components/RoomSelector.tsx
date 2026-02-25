@@ -1,5 +1,5 @@
 import { Users, Maximize, Wind, Wifi, Bath } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 
 const rooms = [
   {
@@ -8,7 +8,7 @@ const rooms = [
     capacity: '2 Guests',
     size: '250 sq.ft',
     price: 2500,
-    image: 'https://picsum.photos/seed/room1/800/600',
+    image: 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?q=80&w=2070&auto=format&fit=crop',
   },
   {
     id: 'triple-room-ac',
@@ -16,7 +16,7 @@ const rooms = [
     capacity: '3 Guests',
     size: '320 sq.ft',
     price: 3500,
-    image: 'https://picsum.photos/seed/room2/800/600',
+    image: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?q=80&w=1974&auto=format&fit=crop',
   },
   {
     id: 'four-occupancy-room',
@@ -24,7 +24,7 @@ const rooms = [
     capacity: '4 Guests',
     size: '400 sq.ft',
     price: 4500,
-    image: 'https://picsum.photos/seed/room3/800/600',
+    image: 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?q=80&w=2070&auto=format&fit=crop',
   },
   {
     id: 'six-bed-ac-room',
@@ -32,7 +32,7 @@ const rooms = [
     capacity: '6 Guests',
     size: '600 sq.ft',
     price: 6000,
-    image: 'https://picsum.photos/seed/room4/800/600',
+    image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=2070&auto=format&fit=crop',
   },
 ];
 
@@ -46,13 +46,13 @@ export default function RoomSelector({ selectedRoomId, onSelectRoom, nights }: R
   return (
     <div className="space-y-6">
       <h2 className="font-serif text-3xl text-[var(--color-ocean-900)] font-bold mb-6">Select Your Room</h2>
-      
+
       <div className="grid grid-cols-1 gap-6">
         {rooms.map((room, index) => {
           const isSelected = selectedRoomId === room.id;
-          
+
           return (
-            <motion.div 
+            <motion.div
               key={room.id}
               className={`bg-white rounded-2xl overflow-hidden shadow-sm border-2 transition-all duration-300 flex flex-col sm:flex-row group cursor-pointer
                 ${isSelected ? 'border-[var(--color-ocean-500)] ring-4 ring-[var(--color-ocean-50)]' : 'border-transparent hover:border-gray-200 hover:shadow-md'}`}
@@ -63,9 +63,9 @@ export default function RoomSelector({ selectedRoomId, onSelectRoom, nights }: R
             >
               {/* Image */}
               <div className="w-full sm:w-1/3 h-48 sm:h-auto relative overflow-hidden">
-                <img 
-                  src={room.image} 
-                  alt={room.name} 
+                <img
+                  src={room.image}
+                  alt={room.name}
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   referrerPolicy="no-referrer"
                 />
@@ -77,7 +77,7 @@ export default function RoomSelector({ selectedRoomId, onSelectRoom, nights }: R
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="font-serif text-2xl font-bold text-gray-900">{room.name}</h3>
                   </div>
-                  
+
                   <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-4">
                     <div className="flex items-center gap-1.5">
                       <Users size={16} className="text-[var(--color-ocean-500)]" />
@@ -106,11 +106,11 @@ export default function RoomSelector({ selectedRoomId, onSelectRoom, nights }: R
                       </div>
                     )}
                   </div>
-                  
-                  <button 
+
+                  <button
                     className={`px-6 py-2.5 rounded-xl font-medium transition-colors
-                      ${isSelected 
-                        ? 'bg-[var(--color-ocean-50)] text-[var(--color-ocean-700)] border border-[var(--color-ocean-200)]' 
+                      ${isSelected
+                        ? 'bg-[var(--color-ocean-50)] text-[var(--color-ocean-700)] border border-[var(--color-ocean-200)]'
                         : 'bg-[var(--color-ocean-600)] hover:bg-[var(--color-ocean-800)] text-white shadow-sm'}`}
                   >
                     {isSelected ? 'Selected' : 'Select'}
