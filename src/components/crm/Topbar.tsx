@@ -1,4 +1,5 @@
 import { Search, Bell, Plus, Menu, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
 
@@ -8,6 +9,7 @@ interface TopbarProps {
 
 export default function Topbar({ onMenuClick }: TopbarProps) {
   const { user, hasPermission } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <header className="h-20 bg-white/60 backdrop-blur-2xl border-b border-gray-200/50 flex items-center justify-between px-6 lg:px-10 sticky top-0 z-30 shadow-[0_4px_30px_rgba(0,0,0,0.02)]">
@@ -37,7 +39,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
         {hasPermission(['SUPER_ADMIN', 'MANAGER', 'RECEPTION']) && (
           <div className="hidden sm:flex items-center gap-3">
             <motion.button
-              onClick={() => alert('Quick Check Out flow coming soon. Will integrate with POS and folio management.')}
+              onClick={() => navigate('/admin/reservations')}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="flex items-center gap-2 bg-white hover:bg-gray-50 text-[#0E2A38] px-5 py-2.5 rounded-full text-xs uppercase tracking-widest font-bold transition-all shadow-sm border border-gray-200"
@@ -46,7 +48,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
               Quick Check Out
             </motion.button>
             <motion.button
-              onClick={() => alert('Quick Booking flow coming soon. Will open new reservation wizard.')}
+              onClick={() => navigate('/admin/reservations?action=new')}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="flex items-center gap-2 bg-[#0E2A38] hover:bg-[#091b24] text-[#C9A646] px-5 py-2.5 rounded-full text-xs uppercase tracking-widest font-bold transition-all shadow-md hover:shadow-lg border border-[#0E2A38]"
@@ -60,13 +62,13 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
         {hasPermission(['SUPER_ADMIN', 'MANAGER', 'RECEPTION']) && (
           <div className="sm:hidden flex items-center gap-2">
             <button
-              onClick={() => alert('Quick Check Out flow coming soon.')}
+              onClick={() => navigate('/admin/reservations')}
               className="flex items-center justify-center bg-white text-[#0E2A38] p-2.5 rounded-full font-semibold transition-all shadow-sm border border-gray-200"
             >
               <LogOut size={18} className="text-[#C9A646]" />
             </button>
             <button
-              onClick={() => alert('Quick Booking flow coming soon.')}
+              onClick={() => navigate('/admin/reservations?action=new')}
               className="flex items-center justify-center bg-[#0E2A38] text-[#C9A646] p-2.5 rounded-full font-semibold transition-all shadow-md"
             >
               <Plus size={18} />

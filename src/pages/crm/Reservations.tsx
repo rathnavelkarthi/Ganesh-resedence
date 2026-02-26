@@ -1,13 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Filter, Plus, ChevronDown, MoreVertical, X } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { useCRM, Reservation } from '../../context/CRMDataContext';
 
 export default function Reservations() {
   const { reservations, addReservation, updateReservation, deleteReservation } = useCRM();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [editingReservationId, setEditingReservationId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get('action') === 'new') {
+      setIsModalOpen(true);
+      // Remove the param so it doesn't trigger again on refresh
+      searchParams.delete('action');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // Form State
   const [formData, setFormData] = useState({
