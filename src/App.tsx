@@ -17,7 +17,7 @@ export default function App() {
   return (
     <AuthProvider>
       <CRMProvider>
-        <Router>
+        <Router basename="/">
           <ScrollToTop />
           <Toaster position="top-right" richColors closeButton />
           <div className="noise-overlay"></div>
