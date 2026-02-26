@@ -1,10 +1,21 @@
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { useRef } from 'react';
+import { useCRM } from '../context/CRMDataContext';
 // @ts-ignore
-import heroImage from '../../herobanner.jpg';
+import fallbackHeroImage from '../../herobanner.jpg';
 
 export default function CinematicHero() {
+    const { pageContent } = useCRM();
     const containerRef = useRef<HTMLDivElement>(null);
+
+    const getContent = (key: string, field: 'content_text' | 'image_url' = 'content_text') => {
+        const block = pageContent.find(p => p.section === 'hero' && p.block_key === key);
+        return block ? block[field] : null;
+    };
+
+    const title = getContent('title') || 'A Private Sanctuary';
+    const subtitle = getContent('subtitle') || 'Where the Ocean Meets Stillness';
+    const heroImage = getContent('bgImage', 'image_url') || fallbackHeroImage;
 
     const { scrollYProgress } = useScroll({
         target: containerRef,
@@ -40,8 +51,8 @@ export default function CinematicHero() {
                     transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
                     className="font-serif text-4xl md:text-6xl lg:text-[80px] leading-[1.1] text-background max-w-5xl tracking-normal drop-shadow-lg"
                 >
-                    <span className="block mb-4">A Private Sanctuary</span>
-                    <span className="block text-accent">Where the Ocean Meets Stillness</span>
+                    <span className="block mb-4">{title}</span>
+                    <span className="block text-accent">{subtitle}</span>
                 </motion.h1>
 
                 <motion.p

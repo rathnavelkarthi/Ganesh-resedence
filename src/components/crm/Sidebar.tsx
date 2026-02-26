@@ -14,7 +14,9 @@ import {
   UserCog,
   LogOut,
   ListTodo,
-  X
+  X,
+  Image,
+  Layers
 } from 'lucide-react';
 
 interface NavItem {
@@ -33,6 +35,8 @@ const navItems: NavItem[] = [
   { name: 'Payments', path: '/admin/payments', icon: CreditCard, roles: ['SUPER_ADMIN', 'ACCOUNTANT'] },
   { name: 'Invoices', path: '/admin/invoices', icon: FileText, roles: ['SUPER_ADMIN', 'RECEPTION', 'ACCOUNTANT'] },
   { name: 'Reports', path: '/admin/reports', icon: BarChart3, roles: ['SUPER_ADMIN', 'ACCOUNTANT'] },
+  { name: 'Rooms CMS', path: '/admin/rooms-cms', icon: Layers, roles: ['SUPER_ADMIN', 'MANAGER'] },
+  { name: 'Landing CMS', path: '/admin/landing-cms', icon: Image, roles: ['SUPER_ADMIN', 'MANAGER'] },
   { name: 'Staff Management', path: '/admin/staff', icon: UserCog, roles: ['SUPER_ADMIN'] },
   { name: 'Settings', path: '/admin/settings', icon: Settings, roles: ['SUPER_ADMIN', 'MANAGER'] },
 ];

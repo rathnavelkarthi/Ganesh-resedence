@@ -16,6 +16,8 @@ import Invoices from '../../pages/crm/Invoices';
 import Reports from '../../pages/crm/Reports';
 import Staff from '../../pages/crm/Staff';
 import Settings from '../../pages/crm/Settings';
+import RoomsCMS from '../../pages/crm/RoomsCMS';
+import LandingCMS from '../../pages/crm/LandingCMS';
 
 export default function CRMApp() {
   const { user } = useAuth();
@@ -108,6 +110,18 @@ export default function CRMApp() {
             <Route path="settings" element={
               <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
                 <Settings />
+              </RoleGuard>
+            } />
+
+            <Route path="rooms-cms" element={
+              <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
+                <RoomsCMS />
+              </RoleGuard>
+            } />
+
+            <Route path="landing-cms" element={
+              <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
+                <LandingCMS />
               </RoleGuard>
             } />
 

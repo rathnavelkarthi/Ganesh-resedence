@@ -22,6 +22,28 @@ export type Reservation = {
     payment: 'Paid' | 'Unpaid' | 'Partial' | 'Refunded';
 };
 
+export type Room = {
+    id: number;
+    name: string;
+    type: string;
+    description: string;
+    price_per_night: number;
+    max_occupancy: number;
+    amenities: string[];
+    images: string[];
+    is_available: boolean;
+};
+
+export type PageContent = {
+    id: number;
+    section: string;
+    block_key: string;
+    content_text: string;
+    image_url: string | null;
+    is_active: boolean;
+    order_index: number;
+};
+
 export type CMSSettings = {
     heroTitle: string;
     heroSubtitle: string;
@@ -64,6 +86,8 @@ interface CRMContextType {
     staff: StaffMember[];
     reservations: Reservation[];
     cmsSettings: CMSSettings;
+    rooms: Room[];
+    pageContent: PageContent[];
     addStaff: (member: Omit<StaffMember, 'id'>) => void;
     deleteStaff: (id: string) => void;
     addReservation: (reservation: Omit<Reservation, 'id'>) => void;
@@ -71,6 +95,13 @@ interface CRMContextType {
     updateStaff: (id: string, updatedData: Partial<StaffMember>) => void;
     updateReservation: (id: string, updatedData: Partial<Reservation>) => void;
     updateCMSSetting: (key: keyof CMSSettings, value: string) => void;
+
+    // Phase 3 CMS
+    addRoom: (room: Omit<Room, 'id'>) => void;
+    updateRoom: (id: number, room: Partial<Room>) => void;
+    deleteRoom: (id: number) => void;
+
+    updatePageContent: (section: string, blockKey: string, content: Partial<PageContent>) => void;
 }
 
 const CRMContext = createContext<CRMContextType | undefined>(undefined);
@@ -85,6 +116,8 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     const [staff, setStaff] = useState<StaffMember[]>(initialStaff);
     const [reservations, setReservations] = useState<Reservation[]>(initialReservations);
     const [cmsSettings, setCmsSettings] = useState<CMSSettings>(initialCMS);
+    const [rooms, setRooms] = useState<Room[]>([]);
+    const [pageContent, setPageContent] = useState<PageContent[]>([]);
 
     // Initial Data Fetch
     useEffect(() => {
@@ -117,6 +150,37 @@ export function CRMProvider({ children }: { children: ReactNode }) {
                 }
             })
             .catch(err => console.error("Failed to load reservations:", err));
+
+        // Fetch Rooms
+        fetch(`${API_BASE_URL}/rooms.php`)
+            .then(res => res.json())
+            .then(data => {
+                if (!data.error && Array.isArray(data)) {
+                    // Parse JSON strings back to arrays
+                    const parsedData = data.map((room: any) => ({
+                        ...room,
+                        amenities: typeof room.amenities === 'string' ? JSON.parse(room.amenities) : (room.amenities || []),
+                        images: typeof room.images === 'string' ? JSON.parse(room.images) : (room.images || []),
+                        is_available: room.is_available === 1 || room.is_available === true
+                    }));
+                    setRooms(parsedData);
+                }
+            })
+            .catch(err => console.error("Failed to load rooms:", err));
+
+        // Fetch Page Content
+        fetch(`${API_BASE_URL}/content.php`)
+            .then(res => res.json())
+            .then(data => {
+                if (!data.error && Array.isArray(data)) {
+                    const parsedData = data.map((item: any) => ({
+                        ...item,
+                        is_active: item.is_active === 1 || item.is_active === true
+                    }));
+                    setPageContent(parsedData);
+                }
+            })
+            .catch(err => console.error("Failed to load page content:", err));
     }, []);
 
     // Actions
@@ -244,18 +308,89 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    // --- Phase 3 CMS Actions ---
+
+    const addRoom = async (roomData: Omit<Room, 'id'>) => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/rooms.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(roomData)
+            });
+            const data = await res.json();
+            if (data.success) {
+                setRooms([...rooms, { ...roomData, id: data.id }]);
+            }
+        } catch (err) {
+            console.error("Failed to add room:", err);
+        }
+    };
+
+    const updateRoom = async (id: number, updatedData: Partial<Room>) => {
+        try {
+            await fetch(`${API_BASE_URL}/rooms.php`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, ...updatedData })
+            });
+            setRooms(prev => prev.map(r => r.id === id ? { ...r, ...updatedData } : r));
+        } catch (err) {
+            console.error("Failed to update room:", err);
+            setRooms(prev => prev.map(r => r.id === id ? { ...r, ...updatedData } : r));
+        }
+    };
+
+    const deleteRoom = async (id: number) => {
+        try {
+            await fetch(`${API_BASE_URL}/rooms.php?id=${id}`, {
+                method: 'DELETE'
+            });
+            setRooms(rooms.filter(r => r.id !== id));
+        } catch (err) {
+            console.error("Failed to delete room:", err);
+        }
+    };
+
+    const updatePageContent = async (section: string, blockKey: string, content: Partial<PageContent>) => {
+        try {
+            await fetch(`${API_BASE_URL}/content.php`, {
+                method: 'POST', // The PHP script handles UPSERT on POST
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ section, block_key: blockKey, ...content })
+            });
+
+            setPageContent(prev => {
+                const exists = prev.find(p => p.section === section && p.block_key === blockKey);
+                if (exists) {
+                    return prev.map(p => (p.section === section && p.block_key === blockKey) ? { ...p, ...content } : p);
+                } else {
+                    return [...prev, { section, block_key: blockKey, ...content } as PageContent];
+                }
+            });
+
+        } catch (err) {
+            console.error("Failed to update page content:", err);
+        }
+    };
+
     return (
         <CRMContext.Provider value={{
             staff,
             reservations,
             cmsSettings,
+            rooms,
+            pageContent,
             addStaff,
             deleteStaff,
             addReservation,
             deleteReservation,
             updateStaff,
             updateReservation,
-            updateCMSSetting
+            updateCMSSetting,
+            addRoom,
+            updateRoom,
+            deleteRoom,
+            updatePageContent
         }}>
             {children}
         </CRMContext.Provider>

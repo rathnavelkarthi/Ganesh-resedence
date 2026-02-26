@@ -1,38 +1,12 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-
-const rooms = [
-  {
-    id: 'executive-double-ac',
-    name: 'Executive Double Room',
-    description: 'A serene sanctuary designed for quiet comfort, where minimal aesthetics meet premium relaxation.',
-    capacity: '2 Guests',
-    image: 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?q=80&w=2070&auto=format&fit=crop',
-  },
-  {
-    id: 'triple-room-ac',
-    name: 'Triple Accommodation',
-    description: 'Spacious elegance bathed in natural light, offering generous room for shared moments of calm.',
-    capacity: '3 Guests',
-    image: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?q=80&w=1974&auto=format&fit=crop',
-  },
-  {
-    id: 'four-occupancy-room',
-    name: 'Family Retreat',
-    description: 'A harmonious expanse designed for kinship, blending effortless luxury with familiar comfort.',
-    capacity: '4 Guests',
-    image: 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?q=80&w=2070&auto=format&fit=crop',
-  },
-  {
-    id: 'six-bed-ac-room',
-    name: 'The Grand Residence',
-    description: 'Our most expansive offering for larger parties, a private coastal haven of unmatched scale.',
-    capacity: '6 Guests',
-    image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=2070&auto=format&fit=crop',
-  },
-];
+import { useCRM } from '../context/CRMDataContext';
 
 export default function Rooms() {
+  const { rooms: backendRooms } = useCRM();
+  // Filter available rooms and limit to 4 for the homepage layout
+  const availableRooms = backendRooms.filter(r => r.is_available).slice(0, 4);
+
   return (
     <section id="rooms" className="py-32 md:py-48 bg-background">
       <div className="max-w-[1400px] mx-auto px-6 md:px-12">
@@ -56,8 +30,9 @@ export default function Rooms() {
         </div>
 
         <div className="flex flex-col gap-32 md:gap-56">
-          {rooms.map((room, index) => {
+          {availableRooms.map((room, index) => {
             const isEven = index % 2 === 0;
+            const bgImage = room.images && room.images.length > 0 ? room.images[0] : 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?q=80&w=2070&auto=format&fit=crop';
             return (
               <div
                 key={room.id}
@@ -73,7 +48,7 @@ export default function Rooms() {
                 >
                   <div className="aspect-[4/3] w-full overflow-hidden bg-muted relative">
                     <img
-                      src={room.image}
+                      src={bgImage}
                       alt={room.name}
                       className="w-full h-full object-cover transition-transform duration-[2s] ease-out group-hover:scale-110"
                       loading="lazy"
@@ -91,18 +66,18 @@ export default function Rooms() {
                   className="w-full lg:w-[45%] flex flex-col justify-center text-center lg:text-left"
                 >
                   <span className="text-[11px] tracking-[0.25em] text-foreground/50 uppercase mb-6 block font-medium">
-                    {room.capacity}
+                    {room.max_occupancy} Guests
                   </span>
                   <h3 className="font-serif text-3xl md:text-4xl lg:text-[44px] leading-tight text-foreground mb-8">
                     {room.name}
                   </h3>
                   <p className="text-foreground/70 text-base md:text-lg font-light leading-relaxed mb-12 max-w-md mx-auto lg:mx-0">
-                    {room.description}
+                    {room.description || 'A serene sanctuary designed for quiet comfort.'}
                   </p>
 
-                  <div className="pt-4">
+                  <div className="pt-4 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
                     <Link
-                      to={`/rooms/${room.id}`}
+                      to={`/room/${room.id}`}
                       className="inline-block px-12 py-4 border border-accent text-foreground font-serif text-[13px] tracking-widest uppercase hover:bg-accent hover:text-accent-foreground transition-colors duration-500 rounded-sm"
                     >
                       View Room
