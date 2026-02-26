@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Filter, Plus, User
 import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { useCRM } from '../../context/CRMDataContext';
 
 const rooms = [
   { id: '101', type: 'Executive Double AC', status: 'Clean' },
@@ -14,14 +15,25 @@ const rooms = [
   { id: '202', type: 'Triple Room AC', status: 'Dirty' },
 ];
 
-const bookings = [
-  { id: 'B1', roomId: '101', guest: 'Rahul Sharma', phone: '+91 98765 43210', email: 'rahul@example.com', amount: 8400, source: 'Direct', start: new Date(), end: addDays(new Date(), 2), status: 'Confirmed', payment: 'Paid', notes: 'Late check-in requested' },
-  { id: 'B2', roomId: '103', guest: 'Priya Patel', phone: '+91 87654 32109', email: 'priya@example.com', amount: 15120, source: 'Booking.com', start: addDays(new Date(), -1), end: addDays(new Date(), 1), status: 'Checked In', payment: 'Unpaid', notes: 'Extra bed requested' },
-  { id: 'B3', roomId: '105', guest: 'Amit Kumar', phone: '+91 76543 21098', email: 'amit@example.com', amount: 5600, source: 'Agoda', start: addDays(new Date(), 1), end: addDays(new Date(), 4), status: 'Confirmed', payment: 'Partial', notes: '' },
-  { id: 'B4', roomId: '201', guest: 'Sneha Gupta', phone: '+91 65432 10987', email: 'sneha@example.com', amount: 4500, source: 'MakeMyTrip', start: addDays(new Date(), 0), end: addDays(new Date(), 3), status: 'Checked In', payment: 'Paid', notes: 'VIP Guest' },
-];
-
 export default function Calendar() {
+  const { reservations: rawReservations } = useCRM();
+
+  // Transform context reservations to Calendar format
+  const bookings = rawReservations.map(res => ({
+    id: res.id,
+    roomId: '101', // TODO: Add real room assignment to Reservations
+    guest: res.guest,
+    phone: '', // TODO: Add to Reservations
+    email: '', // TODO: Add to Reservations
+    amount: 0, // TODO: Add to Reservations
+    source: res.source,
+    start: new Date(res.checkIn),
+    end: new Date(res.checkOut),
+    status: res.status,
+    payment: res.payment,
+    notes: ''
+  }));
+
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
 
