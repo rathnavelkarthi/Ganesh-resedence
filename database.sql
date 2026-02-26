@@ -1,9 +1,7 @@
 -- Database Schema for Ganesh Residency CRM & CMS
 
-CREATE DATABASE IF NOT EXISTS `ganesh_crm` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE `ganesh_crm`;
-
--- --------------------------------------------------------
+-- On shared hosting like Hostinger, the database is already created via cPanel.
+-- We just need to create the tables inside it.
 -- Table `staff`
 -- --------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `staff` (
