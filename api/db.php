@@ -21,9 +21,9 @@ header("Content-Type: application/json; charset=UTF-8");
 
 // Database configuration
 $host = 'localhost';
-$dbname = 'ganesh_crm';
-$username = 'root'; // default XAMPP/WAMP username
-$password = '';     // default XAMPP/WAMP password
+$dbname = 'u238225043_database';
+$username = 'u238225043_rathnavel';
+$password = 'Desmond@rathnavel1997';
 
 try {
     $dsn = "mysql:host=$host;dbname=$dbname;charset=utf8mb4";
