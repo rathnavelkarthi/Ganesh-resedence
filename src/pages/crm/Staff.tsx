@@ -3,10 +3,11 @@ import { Search, Plus, MoreVertical, Shield, Mail, Phone, X } from 'lucide-react
 import { useCRM, StaffMember } from '../../context/CRMDataContext';
 
 export default function Staff() {
-  const { staff, addStaff, deleteStaff } = useCRM();
+  const { staff, addStaff, updateStaff, deleteStaff } = useCRM();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -30,9 +31,28 @@ export default function Staff() {
       return;
     }
 
-    addStaff(formData);
+    if (editingStaffId) {
+      updateStaff(editingStaffId, formData);
+    } else {
+      addStaff(formData);
+    }
+
     setIsModalOpen(false);
+    setEditingStaffId(null);
     setFormData({ name: '', email: '', phone: '', role: 'RECEPTION', status: 'Active' });
+  };
+
+  const openEditModal = (member: StaffMember) => {
+    setEditingStaffId(member.id);
+    setFormData({
+      name: member.name,
+      email: member.email,
+      phone: member.phone,
+      role: member.role,
+      status: member.status,
+    });
+    setIsModalOpen(true);
+    setActiveMenuId(null);
   };
 
   return (
@@ -128,7 +148,10 @@ export default function Staff() {
 
                       {activeMenuId === member.id && (
                         <div className="absolute right-8 top-10 w-40 bg-white rounded-xl shadow-lg border border-gray-100 z-10 overflow-hidden animate-in fade-in slide-in-from-top-2">
-                          <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                          <button
+                            onClick={() => openEditModal(member)}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                          >
                             Edit Staff
                           </button>
                           <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
@@ -163,14 +186,20 @@ export default function Staff() {
         </div>
       </div>
 
-      {/* Add Staff Modal */}
+      {/* Add/Edit Staff Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center p-6 border-b border-gray-100">
-              <h2 className="font-serif text-2xl font-bold text-gray-900">Add New Staff</h2>
+              <h2 className="font-serif text-2xl font-bold text-gray-900">
+                {editingStaffId ? 'Edit Staff Member' : 'Add New Staff'}
+              </h2>
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setEditingStaffId(null);
+                  setFormData({ name: '', email: '', phone: '', role: 'RECEPTION', status: 'Active' });
+                }}
                 className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-100 rounded-full"
               >
                 <X size={20} />
@@ -246,7 +275,11 @@ export default function Staff() {
               <div className="pt-6 border-t border-gray-100 flex justify-end gap-3 mt-8">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setEditingStaffId(null);
+                    setFormData({ name: '', email: '', phone: '', role: 'RECEPTION', status: 'Active' });
+                  }}
                   className="px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
                 >
                   Cancel
@@ -255,7 +288,7 @@ export default function Staff() {
                   type="submit"
                   className="px-6 py-2.5 text-sm font-semibold text-white bg-[var(--color-ocean-600)] hover:bg-[var(--color-ocean-800)] rounded-xl transition-colors shadow-sm"
                 >
-                  Create Staff Account
+                  {editingStaffId ? 'Update Staff Member' : 'Create Staff Account'}
                 </button>
               </div>
             </form>

@@ -68,6 +68,8 @@ interface CRMContextType {
     deleteStaff: (id: string) => void;
     addReservation: (reservation: Omit<Reservation, 'id'>) => void;
     deleteReservation: (id: string) => void;
+    updateStaff: (id: string, updatedData: Partial<StaffMember>) => void;
+    updateReservation: (id: string, updatedData: Partial<Reservation>) => void;
     updateCMSSetting: (key: keyof CMSSettings, value: string) => void;
 }
 
@@ -189,6 +191,42 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    const updateStaff = async (id: string, updatedData: Partial<StaffMember>) => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/staff.php`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, ...updatedData })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setStaff(prev => prev.map(s => s.id === id ? { ...s, ...updatedData } : s));
+            }
+        } catch (err) {
+            console.error("Failed to update staff:", err);
+            // Fallback for UI responsiveness
+            setStaff(prev => prev.map(s => s.id === id ? { ...s, ...updatedData } : s));
+        }
+    };
+
+    const updateReservation = async (id: string, updatedData: Partial<Reservation>) => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/reservations.php`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, ...updatedData })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setReservations(prev => prev.map(r => r.id === id ? { ...r, ...updatedData } : r));
+            }
+        } catch (err) {
+            console.error("Failed to update reservation:", err);
+            // Fallback for UI responsiveness
+            setReservations(prev => prev.map(r => r.id === id ? { ...r, ...updatedData } : r));
+        }
+    };
+
     const updateCMSSetting = async (key: keyof CMSSettings, value: string) => {
         try {
             const res = await fetch(`${API_BASE_URL}/settings.php`, {
@@ -215,6 +253,8 @@ export function CRMProvider({ children }: { children: ReactNode }) {
             deleteStaff,
             addReservation,
             deleteReservation,
+            updateStaff,
+            updateReservation,
             updateCMSSetting
         }}>
             {children}

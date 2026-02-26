@@ -54,6 +54,50 @@ switch ($method) {
         }
         break;
 
+    case 'PUT':
+        // Update an existing reservation
+        $data = json_decode(file_get_contents("php://input"), true);
+        
+        if (!isset($data['id'])) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Missing reservation ID for update']);
+            exit;
+        }
+
+        try {
+            // Build dynamic update query based on provided fields
+            $updateFields = [];
+            $params = ['id' => $data['id']];
+            
+            $allowedFields = ['guestName', 'roomType', 'checkIn', 'checkOut', 'status', 'paymentStatus', 'amount', 'source'];
+            foreach ($allowedFields as $field) {
+                if (isset($data[$field])) {
+                    $updateFields[] = "$field = :$field";
+                    $params[$field] = $data[$field];
+                }
+            }
+            
+            if (empty($updateFields)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'No fields provided to update']);
+                exit;
+            }
+
+            $query = "UPDATE reservations SET " . implode(', ', $updateFields) . " WHERE id = :id";
+            $stmt = $pdo->prepare($query);
+            $stmt->execute($params);
+            
+            if ($stmt->rowCount() > 0) {
+                echo json_encode(['success' => true, 'message' => 'Reservation updated successfully']);
+            } else {
+                echo json_encode(['success' => true, 'message' => 'No changes made or reservation not found', 'rowCount' => 0]);
+            }
+        } catch (PDOException $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to update reservation', 'message' => $e->getMessage()]);
+        }
+        break;
+
     case 'DELETE':
         // Delete a reservation
         $id = $_GET['id'] ?? null;

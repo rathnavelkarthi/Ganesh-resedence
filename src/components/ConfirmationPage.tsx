@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { CheckCircle, Calendar, Users, MapPin, Download, MessageCircle, Phone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
+import { toPng } from 'html-to-image';
 
 interface ConfirmationPageProps {
   bookingData: any;
@@ -59,39 +59,28 @@ export default function ConfirmationPage({ bookingData }: ConfirmationPageProps)
     if (!element) return;
 
     try {
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: true,
-        onclone: (clonedDoc) => {
-          // Fix for html2canvas not supporting oklch colors (common in Tailwind v4)
-          const allElements = clonedDoc.getElementsByTagName('*');
-          for (let i = 0; i < allElements.length; i++) {
-            const el = allElements[i] as HTMLElement;
-            if (el.style) {
-              // Replace oklch background/text colors if they exist (rough check)
-              // Better: force specific non-oklch colors for the invoice capture
-              if (el.classList.contains('bg-[var(--color-ocean-900)]')) {
-                el.style.backgroundColor = '#0E2A38';
-              }
-              if (el.classList.contains('text-[var(--color-ocean-900)]')) {
-                el.style.color = '#0E2A38';
-              }
-              // Generic fallback for any oklch remaining
-              const computed = window.getComputedStyle(el);
-              if (computed.backgroundColor && computed.backgroundColor.includes('oklch')) {
-                el.style.backgroundColor = '#ffffff';
-              }
-            }
+      const dataUrl = await toPng(element, {
+        quality: 1.0,
+        pixelRatio: 2,
+        backgroundColor: '#ffffff',
+        filter: (node) => {
+          // Ignore elements with data-html2canvas-ignore="true" (for buttons)
+          if (node.tagName && (node as HTMLElement).dataset?.html2canvasIgnore === 'true') {
+            return false;
           }
+          if (node.tagName && (node as HTMLElement).getAttribute?.('data-html2canvas-ignore') === 'true') {
+            return false;
+          }
+          return true;
         }
       });
-      const imgData = canvas.toDataURL('image/png');
+
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      // We don't have canvas directly, so we use element dimensions for aspect ratio
+      const pdfHeight = (element.offsetHeight * pdfWidth) / element.offsetWidth;
 
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`Ganesh_Residency_Invoice_${bookingId}.pdf`);
     } catch (error) {
       console.error("Failed to generate PDF", error);

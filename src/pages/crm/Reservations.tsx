@@ -3,9 +3,11 @@ import { Search, Filter, Plus, ChevronDown, MoreVertical, X } from 'lucide-react
 import { useCRM, Reservation } from '../../context/CRMDataContext';
 
 export default function Reservations() {
-  const { reservations, addReservation } = useCRM();
+  const { reservations, addReservation, updateReservation, deleteReservation } = useCRM();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [editingReservationId, setEditingReservationId] = useState<string | null>(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -31,8 +33,14 @@ export default function Reservations() {
       return;
     }
 
-    addReservation(formData);
+    if (editingReservationId) {
+      updateReservation(editingReservationId, formData);
+    } else {
+      addReservation(formData);
+    }
+
     setIsModalOpen(false);
+    setEditingReservationId(null);
 
     // Reset form
     setFormData({
@@ -44,6 +52,21 @@ export default function Reservations() {
       status: 'Pending',
       payment: 'Unpaid',
     });
+  };
+
+  const openEditModal = (res: Reservation) => {
+    setEditingReservationId(res.id);
+    setFormData({
+      guest: res.guest,
+      room: res.room,
+      checkIn: res.checkIn,
+      checkOut: res.checkOut,
+      source: res.source,
+      status: res.status,
+      payment: res.payment,
+    });
+    setIsModalOpen(true);
+    setActiveMenuId(null);
   };
 
   return (
@@ -124,25 +147,51 @@ export default function Reservations() {
                     </td>
                     <td className="p-4">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${res.status === 'Confirmed' ? 'bg-green-100 text-green-800' :
-                          res.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
+                        res.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
                         }`}>
                         {res.status}
                       </span>
                     </td>
                     <td className="p-4">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${res.payment === 'Paid' ? 'bg-green-100 text-green-800' :
-                          res.payment === 'Partial' ? 'bg-orange-100 text-orange-800' :
-                            res.payment === 'Refunded' ? 'bg-gray-100 text-gray-800' :
-                              'bg-red-100 text-red-800'
+                        res.payment === 'Partial' ? 'bg-orange-100 text-orange-800' :
+                          res.payment === 'Refunded' ? 'bg-gray-100 text-gray-800' :
+                            'bg-red-100 text-red-800'
                         }`}>
                         {res.payment}
                       </span>
                     </td>
-                    <td className="p-4 text-right">
-                      <button className="p-1.5 text-gray-400 hover:text-[var(--color-ocean-600)] hover:bg-[var(--color-ocean-50)] rounded-lg transition-colors">
+                    <td className="p-4 text-right relative">
+                      <button
+                        onClick={() => setActiveMenuId(activeMenuId === res.id ? null : res.id)}
+                        className="p-1.5 text-gray-400 hover:text-[var(--color-ocean-600)] hover:bg-[var(--color-ocean-50)] rounded-lg transition-colors"
+                      >
                         <MoreVertical size={18} />
                       </button>
+
+                      {activeMenuId === res.id && (
+                        <div className="absolute right-8 top-10 w-40 bg-white rounded-xl shadow-lg border border-gray-100 z-10 overflow-hidden animate-in fade-in slide-in-from-top-2 text-left">
+                          <button
+                            onClick={() => openEditModal(res)}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                          >
+                            Edit Booking
+                          </button>
+                          <div className="border-t border-gray-100 my-1"></div>
+                          <button
+                            onClick={() => {
+                              if (window.confirm('Are you sure you want to completely remove this booking?')) {
+                                deleteReservation(res.id);
+                              }
+                              setActiveMenuId(null);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors font-medium"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -168,9 +217,23 @@ export default function Reservations() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center p-6 border-b border-gray-100">
-              <h2 className="font-serif text-2xl font-bold text-gray-900">Add New Booking</h2>
+              <h2 className="font-serif text-2xl font-bold text-gray-900">
+                {editingReservationId ? 'Edit Booking' : 'Add New Booking'}
+              </h2>
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setEditingReservationId(null);
+                  setFormData({
+                    guest: '',
+                    room: 'Executive Double AC',
+                    checkIn: '',
+                    checkOut: '',
+                    source: 'Direct',
+                    status: 'Pending',
+                    payment: 'Unpaid',
+                  });
+                }}
                 className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-100 rounded-full"
               >
                 <X size={20} />
@@ -273,7 +336,19 @@ export default function Reservations() {
               <div className="pt-6 border-t border-gray-100 flex justify-end gap-3 mt-8">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setEditingReservationId(null);
+                    setFormData({
+                      guest: '',
+                      room: 'Executive Double AC',
+                      checkIn: '',
+                      checkOut: '',
+                      source: 'Direct',
+                      status: 'Pending',
+                      payment: 'Unpaid',
+                    });
+                  }}
                   className="px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
                 >
                   Cancel
@@ -282,7 +357,7 @@ export default function Reservations() {
                   type="submit"
                   className="px-6 py-2.5 text-sm font-semibold text-white bg-[var(--color-ocean-600)] hover:bg-[var(--color-ocean-800)] rounded-xl transition-colors shadow-sm"
                 >
-                  Confirm Booking
+                  {editingReservationId ? 'Update Booking' : 'Confirm Booking'}
                 </button>
               </div>
             </form>
