@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Filter, Plus, Users, LogIn, LogOut, CheckCircle, Wrench, X, Phone, Mail, Home, CreditCard, Clock, CheckCircle2 } from 'lucide-react';
 import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useCRM } from '../../context/CRMDataContext';
 
@@ -17,6 +18,7 @@ const rooms = [
 
 export default function Calendar() {
   const { reservations: rawReservations } = useCRM();
+  const navigate = useNavigate();
 
   // Transform context reservations to Calendar format
   const bookings = rawReservations.map(res => ({
@@ -92,7 +94,7 @@ export default function Calendar() {
             <Filter size={16} /> Filters
           </button>
           <motion.button
-            onClick={() => toast.success('New Booking widget opening...')}
+            onClick={() => navigate('/admin/reservations?action=new')}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="flex items-center gap-2 bg-[#0E2A38] hover:bg-[#091b24] text-[#C9A646] px-5 py-2.5 rounded-xl text-sm uppercase tracking-widest font-bold transition-all shadow-md hover:shadow-lg border border-[#0E2A38]"

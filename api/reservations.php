@@ -25,7 +25,7 @@ switch ($method) {
         // Add a new reservation
         $data = json_decode(file_get_contents("php://input"), true);
         
-        if (!isset($data['id']) || !isset($data['guestName']) || !isset($data['roomType']) || !isset($data['checkIn']) || !isset($data['checkOut']) || !isset($data['amount'])) {
+        if (!isset($data['id']) || !isset($data['guest']) || !isset($data['room']) || !isset($data['checkIn']) || !isset($data['checkOut'])) {
             http_response_code(400);
             echo json_encode(['error' => 'Missing required reservation fields']);
             exit;
@@ -36,13 +36,13 @@ switch ($method) {
             
             $stmt->execute([
                 'id' => $data['id'],
-                'guestName' => $data['guestName'],
-                'roomType' => $data['roomType'],
+                'guestName' => $data['guest'],
+                'roomType' => $data['room'],
                 'checkIn' => $data['checkIn'],
                 'checkOut' => $data['checkOut'],
                 'status' => $data['status'] ?? 'PENDING',
-                'paymentStatus' => $data['paymentStatus'] ?? 'PENDING',
-                'amount' => $data['amount'],
+                'paymentStatus' => $data['payment'] ?? 'PENDING',
+                'amount' => $data['amount'] ?? 0,
                 'source' => $data['source'] ?? 'DIRECT'
             ]);
             
@@ -69,10 +69,16 @@ switch ($method) {
             $updateFields = [];
             $params = ['id' => $data['id']];
             
-            $allowedFields = ['guestName', 'roomType', 'checkIn', 'checkOut', 'status', 'paymentStatus', 'amount', 'source'];
+            $allowedFields = ['guest', 'room', 'checkIn', 'checkOut', 'status', 'payment', 'amount', 'source'];
             foreach ($allowedFields as $field) {
                 if (isset($data[$field])) {
-                    $updateFields[] = "$field = :$field";
+                    // Map frontend fields to DB columns
+                    $dbField = $field;
+                    if ($field === 'guest') $dbField = 'guestName';
+                    if ($field === 'room') $dbField = 'roomType';
+                    if ($field === 'payment') $dbField = 'paymentStatus';
+                    
+                    $updateFields[] = "$dbField = :$field";
                     $params[$field] = $data[$field];
                 }
             }
