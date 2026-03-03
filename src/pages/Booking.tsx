@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useCRM } from '../context/CRMDataContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import BookingProgress from '../components/BookingProgress';
@@ -11,7 +12,7 @@ import ConfirmationPage from '../components/ConfirmationPage';
 export default function Booking() {
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   // State
   const [step, setStep] = useState(1);
   const [bookingData, setBookingData] = useState({
@@ -59,6 +60,8 @@ export default function Booking() {
 
   const nights = calculateNights();
 
+  const { addReservation } = useCRM();
+
   // Handlers
   const handleNextStep = () => {
     if (step < 4) {
@@ -84,11 +87,25 @@ export default function Booking() {
     setBookingData(prev => ({ ...prev, guestDetails: details }));
   };
 
-  const handlePaymentConfirm = () => {
-    // Simulate API call
-    setTimeout(() => {
+  const handlePaymentConfirm = async () => {
+    // Save to Supabase
+    try {
+      await addReservation({
+        guest: bookingData.guestDetails.fullName,
+        room: bookingData.room?.name || 'Standard Room',
+        checkIn: bookingData.checkIn,
+        checkOut: bookingData.checkOut,
+        source: 'Website',
+        status: 'Confirmed',
+        payment: 'Paid',
+      });
+
       handleNextStep();
-    }, 1500);
+    } catch (err) {
+      console.error("Failed to save reservation:", err);
+      // Still move to confirmation for UX, but log error
+      handleNextStep();
+    }
   };
 
   // Render Step Content
@@ -102,25 +119,25 @@ export default function Booking() {
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-8 flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
                   <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Check-in</label>
-                  <input 
-                    type="date" 
+                  <input
+                    type="date"
                     value={bookingData.checkIn}
                     onChange={(e) => setBookingData(prev => ({ ...prev, checkIn: e.target.value }))}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[var(--color-ocean-500)] outline-none" 
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[var(--color-ocean-500)] outline-none"
                   />
                 </div>
                 <div className="flex-1">
                   <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Check-out</label>
-                  <input 
-                    type="date" 
+                  <input
+                    type="date"
                     value={bookingData.checkOut}
                     onChange={(e) => setBookingData(prev => ({ ...prev, checkOut: e.target.value }))}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[var(--color-ocean-500)] outline-none" 
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[var(--color-ocean-500)] outline-none"
                   />
                 </div>
                 <div className="w-full sm:w-32">
                   <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Guests</label>
-                  <select 
+                  <select
                     value={bookingData.guests}
                     onChange={(e) => setBookingData(prev => ({ ...prev, guests: parseInt(e.target.value, 10) }))}
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[var(--color-ocean-500)] outline-none appearance-none bg-white"
@@ -132,26 +149,26 @@ export default function Booking() {
                 </div>
               </div>
 
-              <RoomSelector 
-                selectedRoomId={bookingData.room?.id || null} 
-                onSelectRoom={handleRoomSelect} 
+              <RoomSelector
+                selectedRoomId={bookingData.room?.id || null}
+                onSelectRoom={handleRoomSelect}
                 nights={nights}
               />
             </div>
             <div className="hidden lg:block lg:col-span-1">
-              <BookingSummary 
-                {...bookingData} 
-                nights={nights} 
-                onContinue={handleNextStep} 
+              <BookingSummary
+                {...bookingData}
+                nights={nights}
+                onContinue={handleNextStep}
                 buttonText="Continue to Guest Details"
               />
             </div>
-            
+
             {/* Mobile Drawer Summary */}
-            <BookingSummary 
-              {...bookingData} 
-              nights={nights} 
-              onContinue={handleNextStep} 
+            <BookingSummary
+              {...bookingData}
+              nights={nights}
+              onContinue={handleNextStep}
               buttonText="Continue"
               isMobileDrawer={true}
             />
@@ -161,27 +178,27 @@ export default function Booking() {
         return (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
             <div className="lg:col-span-2">
-              <button 
+              <button
                 onClick={handlePrevStep}
                 className="mb-6 text-[var(--color-ocean-600)] font-medium hover:underline flex items-center gap-2"
               >
                 &larr; Back to Room Selection
               </button>
-              <GuestForm 
-                guestDetails={bookingData.guestDetails} 
-                onChange={handleGuestDetailsChange} 
-                onSubmit={handleNextStep} 
+              <GuestForm
+                guestDetails={bookingData.guestDetails}
+                onChange={handleGuestDetailsChange}
+                onSubmit={handleNextStep}
               />
             </div>
             <div className="hidden lg:block lg:col-span-1">
-              <BookingSummary 
-                {...bookingData} 
-                nights={nights} 
+              <BookingSummary
+                {...bookingData}
+                nights={nights}
                 onContinue={() => {
                   // Trigger form submission programmatically
                   const form = document.querySelector('form');
                   if (form) form.requestSubmit();
-                }} 
+                }}
                 buttonText="Continue to Payment"
               />
             </div>
@@ -191,22 +208,22 @@ export default function Booking() {
         return (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
             <div className="lg:col-span-2">
-              <button 
+              <button
                 onClick={handlePrevStep}
                 className="mb-6 text-[var(--color-ocean-600)] font-medium hover:underline flex items-center gap-2"
               >
                 &larr; Back to Guest Details
               </button>
-              <PaymentSection 
-                onConfirm={handlePaymentConfirm} 
+              <PaymentSection
+                onConfirm={handlePaymentConfirm}
                 totalAmount={(bookingData.room?.price || 0) * nights * 1.12} // Including 12% GST
               />
             </div>
             <div className="hidden lg:block lg:col-span-1">
-              <BookingSummary 
-                {...bookingData} 
-                nights={nights} 
-                onContinue={handlePaymentConfirm} 
+              <BookingSummary
+                {...bookingData}
+                nights={nights}
+                onContinue={handlePaymentConfirm}
                 buttonText={`Pay ₹${((bookingData.room?.price || 0) * nights * 1.12).toLocaleString('en-IN')}`}
               />
             </div>
@@ -224,7 +241,7 @@ export default function Booking() {
   return (
     <div className="min-h-screen bg-[var(--color-sand-50)] pt-20 pb-24">
       {step < 4 && <BookingProgress currentStep={step} />}
-      
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 sm:mt-12">
         <AnimatePresence mode="wait">
           <motion.div

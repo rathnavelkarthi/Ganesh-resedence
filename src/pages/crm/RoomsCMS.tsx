@@ -2,10 +2,13 @@ import React, { useState } from 'react';
 import { Plus, Edit2, Trash2, Image as ImageIcon, X, Check, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCRM, Room } from '../../context/CRMDataContext';
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabaseClient';
 import { toast } from 'sonner';
 
 export default function RoomsCMS() {
     const { rooms, addRoom, updateRoom, deleteRoom } = useCRM();
+    const { tenant } = useAuth();
 
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -13,6 +16,7 @@ export default function RoomsCMS() {
     const [isUploading, setIsUploading] = useState(false);
 
     const initialFormState: Omit<Room, 'id'> = {
+        room_number: '',
         name: '',
         type: 'Standard',
         description: '',
@@ -20,6 +24,8 @@ export default function RoomsCMS() {
         max_occupancy: 2,
         amenities: [],
         images: [],
+        status: 'Available',
+        cleaning_status: 'Clean',
         is_available: true
     };
 
@@ -28,13 +34,15 @@ export default function RoomsCMS() {
 
     const filteredRooms = rooms.filter(room =>
         room.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        room.type.toLowerCase().includes(searchTerm.toLowerCase())
+        room.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        room.room_number?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const handleOpenModal = (room?: Room) => {
         if (room) {
             setEditingRoomId(room.id);
             setFormData({
+                room_number: room.room_number || '',
                 name: room.name,
                 type: room.type,
                 description: room.description,
@@ -42,6 +50,8 @@ export default function RoomsCMS() {
                 max_occupancy: room.max_occupancy,
                 amenities: [...room.amenities],
                 images: [...room.images],
+                status: room.status,
+                cleaning_status: room.cleaning_status,
                 is_available: room.is_available
             });
         } else {
@@ -53,34 +63,24 @@ export default function RoomsCMS() {
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file) return;
-
-        // We fetch the API_BASE_URL dynamically to support Hostinger production vs Localhost
-        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        const API_BASE_URL = isLocalhost ? 'http://localhost/Ganesh-resedence/api' : '/api';
-
-        const formDataToUpload = new FormData();
-        formDataToUpload.append('image', file);
+        if (!file || !tenant?.id) return;
 
         setIsUploading(true);
         const toastId = toast.loading('Uploading image...');
 
         try {
-            const response = await fetch(`${API_BASE_URL}/upload.php`, {
-                method: 'POST',
-                body: formDataToUpload,
-            });
+            const ext = file.name.split('.').pop();
+            const filePath = `${tenant.id}/rooms/room-${Date.now()}.${ext}`;
 
-            const data = await response.json();
-            if (data.success) {
-                setFormData(prev => ({
-                    ...prev,
-                    images: [...prev.images, data.url]
-                }));
-                toast.success('Image uploaded successfully', { id: toastId });
-            } else {
-                toast.error(data.error || 'Upload failed', { id: toastId });
-            }
+            const { error } = await supabase.storage.from('site-assets').upload(filePath, file, { upsert: true });
+            if (error) { toast.error('Upload failed: ' + error.message, { id: toastId }); return; }
+
+            const { data: urlData } = supabase.storage.from('site-assets').getPublicUrl(filePath);
+            setFormData(prev => ({
+                ...prev,
+                images: [...prev.images, urlData.publicUrl]
+            }));
+            toast.success('Image uploaded', { id: toastId });
         } catch (error) {
             console.error('Upload Error:', error);
             toast.error('Network error during upload', { id: toastId });
@@ -248,7 +248,18 @@ export default function RoomsCMS() {
                                     {/* Basic Info */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Room Name</label>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Room Number</label>
+                                            <input
+                                                type="text"
+                                                required
+                                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C9A646] focus:border-transparent outline-none transition-all"
+                                                value={formData.room_number}
+                                                onChange={(e) => setFormData({ ...formData, room_number: e.target.value })}
+                                                placeholder="e.g. 101"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Room Name / Label</label>
                                             <input
                                                 type="text"
                                                 required

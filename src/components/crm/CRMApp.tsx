@@ -7,6 +7,7 @@ import RoleGuard from './RoleGuard';
 
 // Pages
 import Dashboard from '../../pages/crm/Dashboard';
+import ChannelManager from '../../pages/crm/ChannelManager';
 import Reservations from '../../pages/crm/Reservations';
 import Calendar from '../../pages/crm/Calendar';
 import Guests from '../../pages/crm/Guests';
@@ -18,9 +19,12 @@ import Staff from '../../pages/crm/Staff';
 import Settings from '../../pages/crm/Settings';
 import RoomsCMS from '../../pages/crm/RoomsCMS';
 import LandingCMS from '../../pages/crm/LandingCMS';
+import WebsiteEditor from '../../pages/crm/WebsiteEditor';
+import PricingRules from '../../pages/crm/PricingRules';
+import BookingSettings from '../../pages/crm/BookingSettings';
 
 export default function CRMApp() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
 
@@ -28,6 +32,18 @@ export default function CRMApp() {
   useEffect(() => {
     setIsSidebarOpen(false);
   }, [location.pathname]);
+
+  // Show loading while session initializes
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gradient-to-b from-[#F8F9FB] to-[#EEF1F5]">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-[#0E2A38]/20 border-t-[#0E2A38] rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-gray-500">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return <Navigate to="/admin/login" replace />;
@@ -58,6 +74,12 @@ export default function CRMApp() {
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <Routes>
             <Route path="dashboard" element={<Dashboard />} />
+
+            <Route path="channels" element={
+              <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
+                <ChannelManager />
+              </RoleGuard>
+            } />
 
             <Route path="reservations" element={
               <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER', 'RECEPTION']}>
@@ -122,6 +144,24 @@ export default function CRMApp() {
             <Route path="landing-cms" element={
               <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
                 <LandingCMS />
+              </RoleGuard>
+            } />
+
+            <Route path="website-editor" element={
+              <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
+                <WebsiteEditor />
+              </RoleGuard>
+            } />
+
+            <Route path="pricing" element={
+              <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
+                <PricingRules />
+              </RoleGuard>
+            } />
+
+            <Route path="booking-settings" element={
+              <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
+                <BookingSettings />
               </RoleGuard>
             } />
 

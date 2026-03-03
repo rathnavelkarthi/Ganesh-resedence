@@ -20,7 +20,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 header("Content-Type: application/json; charset=UTF-8");
 
 // Database configuration
-$host = 'localhost';
+$isLocal = ($_SERVER['HTTP_HOST'] === 'localhost' || $_SERVER['HTTP_HOST'] === '127.0.0.1' || strpos($_SERVER['HTTP_HOST'], 'localhost:') === 0);
+
+$host = $isLocal ? 'srv2049.hstgr.io' : 'localhost';
 $dbname = 'u238225043_database';
 $username = 'u238225043_rathnavel';
 $password = 'Desmond@rathnavel1997';

@@ -1,16 +1,15 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Home from './pages/Home';
-import RoomDetail from './pages/RoomDetail';
-import Booking from './pages/Booking';
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
-import FloatingWhatsApp from './components/FloatingWhatsApp';
-import ScrollToTop from './components/ScrollToTop';
+import SaaSHome from './pages/SaaSHome';
+import SaaSNavbar from './components/saas/SaaSNavbar';
+import SaaSFooter from './components/saas/SaaSFooter';
 import { AuthProvider } from './context/AuthContext';
 import { CRMProvider } from './context/CRMDataContext';
 import CRMApp from './components/crm/CRMApp';
 import Login from './pages/crm/Login';
-import PricingPage from './pages/PricingPage';
+import Signup from './pages/Signup';
+import TenantSite from './pages/TenantSite';
+import RoomDetail from './pages/RoomDetail';
+import ScrollToTop from './components/ScrollToTop';
 import { Toaster } from 'sonner';
 
 export default function App() {
@@ -22,49 +21,25 @@ export default function App() {
           <Toaster position="top-right" richColors closeButton />
           <div className="noise-overlay"></div>
           <Routes>
-            {/* Public Website Routes */}
+            {/* SaaS landing page */}
             <Route path="/" element={
               <div className="min-h-screen flex flex-col font-sans text-foreground bg-background">
-                <Navbar />
+                <SaaSNavbar />
                 <main className="flex-grow">
-                  <Home />
+                  <SaaSHome />
                 </main>
-                <Footer />
-                <FloatingWhatsApp />
-              </div>
-            } />
-            <Route path="/rooms/:slug" element={
-              <div className="min-h-screen flex flex-col font-sans text-foreground bg-background">
-                <Navbar />
-                <main className="flex-grow">
-                  <RoomDetail />
-                </main>
-                <Footer />
-                <FloatingWhatsApp />
-              </div>
-            } />
-            <Route path="/pricing" element={
-              <div className="min-h-screen flex flex-col font-sans text-foreground bg-background">
-                <Navbar />
-                <main className="flex-grow">
-                  <PricingPage />
-                </main>
-                <Footer />
-                <FloatingWhatsApp />
-              </div>
-            } />
-            <Route path="/book" element={
-              <div className="min-h-screen flex flex-col font-sans text-foreground bg-background">
-                <Navbar />
-                <main className="flex-grow">
-                  <Booking />
-                </main>
-                <Footer />
-                <FloatingWhatsApp />
+                <SaaSFooter />
               </div>
             } />
 
-            {/* CRM Admin Routes */}
+            {/* Tenant websites */}
+            <Route path="/site/:subdomain" element={<TenantSite />} />
+            <Route path="/site/:subdomain/room/:roomId" element={<RoomDetail />} />
+
+            {/* Signup */}
+            <Route path="/signup" element={<Signup />} />
+
+            {/* CRM admin routes */}
             <Route path="/admin/login" element={<Login />} />
             <Route path="/admin/*" element={<CRMApp />} />
 

@@ -145,9 +145,9 @@ export default function Calendar() {
           <div className="min-w-[1200px] h-full flex flex-col">
 
             {/* Date Header Row */}
-            <div className="flex border-b border-gray-100 sticky top-0 bg-white/95 backdrop-blur-sm z-20 shadow-sm">
-              <div className="w-64 shrink-0 p-4 font-bold uppercase tracking-widest text-xs text-[#0E2A38] border-r border-gray-100 bg-gray-50/80 flex items-center gap-2">
-                <CalendarIcon size={16} className="text-[#C9A646]" /> Room Inventory
+            <div className="flex border-b border-gray-100 sticky top-0 bg-white/95 backdrop-blur-sm z-30 shadow-sm w-max min-w-full">
+              <div className="w-[140px] sm:w-64 shrink-0 p-3 sm:p-4 font-bold uppercase tracking-widest text-[10px] sm:text-xs text-[#0E2A38] border-r border-gray-100 bg-gray-50/95 flex items-center gap-2 sticky left-0 z-40 shadow-[2px_0_10px_rgba(0,0,0,0.02)]">
+                <CalendarIcon size={16} className="text-[#C9A646] hidden sm:block" /> <span className="truncate">Inventory</span>
               </div>
               <div className="flex-1 flex">
                 {days.map((day, i) => {
@@ -173,20 +173,20 @@ export default function Calendar() {
             {/* Room Rows */}
             <div className="divide-y divide-gray-100/50 flex-1 relative z-10">
               {rooms.map((room) => (
-                <div key={room.id} className="flex group relative h-[72px]">
+                <div key={room.id} className="flex group relative h-[72px] w-max min-w-full">
                   {/* Sticky Room Info Sidebar */}
-                  <div className="w-64 shrink-0 p-3 px-4 border-r border-gray-100 bg-white group-hover:bg-gray-50/80 transition-colors flex items-center gap-4 sticky left-0 z-10 shadow-[2px_0_10px_rgba(0,0,0,0.02)]">
-                    <div className="w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center flex-col shrink-0">
-                      <span className="font-serif font-bold text-lg text-[#0E2A38] leading-none">{room.id}</span>
+                  <div className="w-[140px] sm:w-64 shrink-0 p-2 sm:p-3 px-3 sm:px-4 border-r border-gray-100 bg-white group-hover:bg-gray-50/80 transition-colors flex items-center gap-2 sm:gap-4 sticky left-0 z-20 shadow-[2px_0_10px_rgba(0,0,0,0.02)]">
+                    <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center flex-col shrink-0">
+                      <span className="font-serif font-bold text-sm sm:text-lg text-[#0E2A38] leading-none">{room.id}</span>
                     </div>
                     <div className="overflow-hidden">
-                      <p className="text-xs font-bold text-gray-900 uppercase tracking-wide truncate" title={room.type}>{room.type}</p>
+                      <p className="text-[10px] sm:text-xs font-bold text-gray-900 uppercase tracking-wide truncate" title={room.type}>{room.type}</p>
                       <div className="mt-1 flex items-center gap-1.5">
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1
+                        <span className={`px-1.5 sm:px-2 py-0.5 rounded-full text-[8px] sm:text-[9px] font-bold uppercase tracking-widest flex items-center gap-1
                           ${room.status === 'Clean' ? 'bg-emerald-50 text-emerald-700' : room.status === 'Dirty' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}
                         `}>
                           <span className={`w-1.5 h-1.5 rounded-full ${room.status === 'Clean' ? 'bg-emerald-500' : room.status === 'Dirty' ? 'bg-amber-500' : 'bg-red-500'}`} />
-                          {room.status}
+                          <span className="hidden sm:inline">{room.status}</span>
                         </span>
                       </div>
                     </div>

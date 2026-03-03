@@ -1,16 +1,33 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Search, Filter, Download, CheckCircle, RotateCcw } from 'lucide-react';
-
-const mockPayments = [
-  { id: 'PAY-1001', bookingId: 'RES-001', guest: 'Rahul Sharma', amount: 7500, method: 'UPI', status: 'Paid', date: '2023-10-25 10:30 AM' },
-  { id: 'PAY-1002', bookingId: 'RES-002', guest: 'Priya Patel', amount: 10500, method: 'Credit Card', status: 'Pending', date: '2023-10-26 02:15 PM' },
-  { id: 'PAY-1003', bookingId: 'RES-003', guest: 'Amit Kumar', amount: 13500, method: 'Debit Card', status: 'Paid', date: '2023-10-27 09:45 AM' },
-  { id: 'PAY-1004', bookingId: 'RES-004', guest: 'Sneha Gupta', amount: 18000, method: 'UPI', status: 'Refunded', date: '2023-10-28 11:20 AM' },
-  { id: 'PAY-1005', bookingId: 'RES-005', guest: 'Vikram Singh', amount: 5000, method: 'Cash', status: 'Paid', date: '2023-10-29 04:00 PM' },
-];
+import { useCRM } from '../../context/CRMDataContext';
 
 export default function Payments() {
+  const { reservations } = useCRM();
   const [searchTerm, setSearchTerm] = useState('');
+
+  const derivedPayments = useMemo(() => {
+    return reservations.map(res => ({
+      id: `PAY-${res.id.split('-')[1] || res.id}`,
+      bookingId: res.id,
+      guest: res.guest,
+      amount: res.amount || 0,
+      method: res.payment_method || 'UPI',
+      status: res.payment,
+      date: res.payment_date ? new Date(res.payment_date).toLocaleString('en-IN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      }) : res.checkIn
+    })).filter(pay =>
+      pay.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      pay.guest.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      pay.bookingId.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [reservations, searchTerm]);
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -22,14 +39,12 @@ export default function Payments() {
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        
-        {/* Toolbar */}
         <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row gap-4 justify-between items-center bg-gray-50">
           <div className="relative w-full sm:w-96">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input 
-              type="text" 
-              placeholder="Search by Payment ID, Guest, or Booking ID..." 
+            <input
+              type="text"
+              placeholder="Search by Payment ID, Guest, or Booking ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:border-[var(--color-ocean-500)] focus:ring-2 focus:ring-[var(--color-ocean-100)] outline-none transition-all"
@@ -41,7 +56,6 @@ export default function Payments() {
           </button>
         </div>
 
-        {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -57,7 +71,7 @@ export default function Payments() {
               </tr>
             </thead>
             <tbody className="text-sm divide-y divide-gray-50">
-              {mockPayments.map((payment) => (
+              {derivedPayments.map((payment) => (
                 <tr key={payment.id} className="hover:bg-gray-50 transition-colors group">
                   <td className="p-4 font-medium text-gray-900">{payment.id}</td>
                   <td className="p-4 text-[var(--color-ocean-600)] font-medium hover:underline cursor-pointer">{payment.bookingId}</td>
@@ -66,11 +80,10 @@ export default function Payments() {
                   <td className="p-4 text-gray-600">{payment.method}</td>
                   <td className="p-4 text-gray-600">{payment.date}</td>
                   <td className="p-4">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                      payment.status === 'Paid' ? 'bg-green-100 text-green-800' : 
-                      payment.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : 
-                      'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${payment.status === 'Paid' ? 'bg-green-100 text-green-800' :
+                      payment.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
                       {payment.status}
                     </span>
                   </td>
@@ -93,11 +106,18 @@ export default function Payments() {
                   </td>
                 </tr>
               ))}
+              {derivedPayments.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="p-12 text-center text-gray-400">
+                    No payments found.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
-
       </div>
+
     </div>
   );
 }

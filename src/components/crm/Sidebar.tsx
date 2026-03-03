@@ -16,7 +16,11 @@ import {
   ListTodo,
   X,
   Image,
-  Layers
+  Layers,
+  Globe,
+  Tag,
+  CalendarCheck,
+  Waypoints
 } from 'lucide-react';
 
 interface NavItem {
@@ -28,6 +32,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard, roles: ['SUPER_ADMIN', 'MANAGER', 'RECEPTION', 'HOUSEKEEPING', 'ACCOUNTANT'] },
+  { name: 'Channel Manager', path: '/admin/channels', icon: Waypoints, roles: ['SUPER_ADMIN', 'MANAGER'] },
   { name: 'Reservations', path: '/admin/reservations', icon: ListTodo, roles: ['SUPER_ADMIN', 'MANAGER', 'RECEPTION'] },
   { name: 'Calendar View', path: '/admin/calendar', icon: CalendarDays, roles: ['SUPER_ADMIN', 'MANAGER', 'RECEPTION'] },
   { name: 'Guests', path: '/admin/guests', icon: Users, roles: ['SUPER_ADMIN', 'MANAGER', 'RECEPTION'] },
@@ -36,7 +41,9 @@ const navItems: NavItem[] = [
   { name: 'Invoices', path: '/admin/invoices', icon: FileText, roles: ['SUPER_ADMIN', 'RECEPTION', 'ACCOUNTANT'] },
   { name: 'Reports', path: '/admin/reports', icon: BarChart3, roles: ['SUPER_ADMIN', 'ACCOUNTANT'] },
   { name: 'Rooms CMS', path: '/admin/rooms-cms', icon: Layers, roles: ['SUPER_ADMIN', 'MANAGER'] },
-  { name: 'Landing CMS', path: '/admin/landing-cms', icon: Image, roles: ['SUPER_ADMIN', 'MANAGER'] },
+  { name: 'Website Editor', path: '/admin/website-editor', icon: Globe, roles: ['SUPER_ADMIN', 'MANAGER'] },
+  { name: 'Pricing Rules', path: '/admin/pricing', icon: Tag, roles: ['SUPER_ADMIN', 'MANAGER'] },
+  { name: 'Booking Settings', path: '/admin/booking-settings', icon: CalendarCheck, roles: ['SUPER_ADMIN', 'MANAGER'] },
   { name: 'Staff Management', path: '/admin/staff', icon: UserCog, roles: ['SUPER_ADMIN'] },
   { name: 'Settings', path: '/admin/settings', icon: Settings, roles: ['SUPER_ADMIN', 'MANAGER'] },
 ];
@@ -46,7 +53,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ onClose }: SidebarProps) {
-  const { user, logout, hasPermission } = useAuth();
+  const { user, tenant, logout, hasPermission } = useAuth();
 
   if (!user) return null;
 
@@ -56,8 +63,8 @@ export default function Sidebar({ onClose }: SidebarProps) {
     <aside className="w-64 bg-[#0E2A38] border-r border-[#0E2A38]/50 flex flex-col h-full lg:h-screen sticky top-0 shadow-[4px_0_24px_rgba(0,0,0,0.1)] lg:shadow-[4px_0_40px_rgba(14,42,56,0.15)] z-40 relative backdrop-blur-xl">
       <div className="p-8 pb-6 flex justify-between items-center relative z-10">
         <div>
-          <h1 className="font-serif text-2xl font-bold text-white leading-tight tracking-wide">Ganesh <br /> Residency</h1>
-          <p className="text-[10px] text-[#C9A646] uppercase tracking-[0.25em] mt-2 font-semibold">Workspace</p>
+          <h1 className="font-sans text-xl font-bold text-white leading-tight tracking-tight">{tenant?.business_name || 'HospitalityOS'}</h1>
+          <p className="text-[10px] text-[#C9A646] uppercase tracking-[0.25em] mt-2 font-semibold">{tenant?.business_type || 'Workspace'}</p>
         </div>
         {onClose && (
           <button onClick={onClose} className="lg:hidden p-2 text-white/50 hover:text-white rounded-lg transition-colors">

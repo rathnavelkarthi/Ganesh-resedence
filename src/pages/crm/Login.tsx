@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth, Role } from '../../context/AuthContext';
-import { motion } from 'framer-motion';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { motion } from 'motion/react';
 
 // --- Reusable Input Component ---
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -61,50 +61,34 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
 );
 Input.displayName = "Input";
 
-// --- Reusable Button Component ---
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  isLoading?: boolean;
-}
-
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className = "", children, ...props }, ref) => {
-    return (
-      <motion.button
-        ref={ref}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        className={`relative w-full overflow-hidden bg-gradient-to-b from-[#0E2A38] to-[#071A24] text-[#F7F4EF] font-semibold tracking-wide py-3.5 px-6 rounded-lg transition-all duration-200 border border-transparent shadow-[0_4px_14px_rgba(0,0,0,0.3)] hover:border-[#C9A646]/30 hover:shadow-[0_8px_30px_rgba(201,166,70,0.15)] ${className}`}
-        {...(props as any)}
-      >
-        <span className="relative z-10">{children}</span>
-      </motion.button>
-    );
-  }
-);
-Button.displayName = "Button";
-
 // --- Main Login Page Component ---
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { login } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const { user, login } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  // Auto-redirect if already logged in
+  React.useEffect(() => {
+    if (user) {
+      navigate('/admin/dashboard', { replace: true });
+    }
+  }, [user, navigate]);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    setIsLoading(true);
 
-    let role: Role = 'RECEPTION';
-    if (email.startsWith('admin')) role = 'SUPER_ADMIN';
-    else if (email.startsWith('manager')) role = 'MANAGER';
-    else if (email.startsWith('house')) role = 'HOUSEKEEPING';
-    else if (email.startsWith('account')) role = 'ACCOUNTANT';
+    const result = await login(email, password);
 
-    if (password === 'password') {
-      login(email, role);
-      navigate('/admin/dashboard');
+    if (result.error) {
+      setError(result.error);
+      setIsLoading(false);
     } else {
-      setError('Invalid credentials. Use password: password');
+      navigate('/admin/dashboard');
     }
   };
 
@@ -115,23 +99,15 @@ export default function Login() {
       transition={{ duration: 0.8, ease: "easeOut" }}
       className="min-h-screen w-full flex flex-col md:flex-row bg-[#0C2230] relative overflow-hidden font-sans selection:bg-[#2E7D5B]/30"
     >
-      {/* Background Gradient & Noise */}
+      {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#0E2A38] to-[#071A24] z-0" />
       <div
         className="absolute inset-0 opacity-[0.03] mix-blend-overlay pointer-events-none z-0"
         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
       />
-      {/* Subtle animated ocean wave texture at 3% opacity */}
-      <motion.div
-        className="absolute inset-0 z-0 opacity-[0.03] mix-blend-screen pointer-events-none"
-        animate={{ backgroundPosition: ['0% 0%', '100% 100%'] }}
-        transition={{ repeat: Infinity, duration: 60, ease: 'linear' }}
-        style={{ backgroundImage: `radial-gradient(circle at center, #AAB8C5 1px, transparent 1px)`, backgroundSize: '24px 24px' }}
-      />
-      {/* Radial soft light behind login card */}
       <div className="absolute right-0 md:right-[5%] top-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#0E2A38] rounded-full blur-[100px] opacity-40 pointer-events-none z-0" />
 
-      {/* LEFT SIDE (BRAND PANEL) - 45% */}
+      {/* LEFT SIDE (BRAND PANEL) */}
       <div className="relative z-10 w-full md:w-[45%] p-8 md:p-16 lg:px-24 flex flex-col justify-center border-b md:border-b-0 md:border-r border-[#AAB8C5]/5 h-auto md:h-full order-2 md:order-1 min-h-[50vh] md:min-h-screen">
         <div className="flex-1 flex flex-col justify-center">
           <motion.div
@@ -139,26 +115,23 @@ export default function Login() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
           >
-            <h1
-              className="text-[36px] md:text-[48px] font-normal text-[#F7F4EF] leading-tight mb-2 tracking-tight"
-              style={{ fontFamily: "'Playfair Display', serif" }}
-            >
-              Ganesh Hospitality OS
+            <h1 className="text-[36px] md:text-[48px] font-extrabold text-[#F7F4EF] leading-tight mb-2 tracking-tight">
+              Hospitality<span className="text-[#C9A646]">OS</span>
             </h1>
             <h2 className="text-[#AAB8C5] font-light text-[18px] md:text-[22px] tracking-wide mb-8">
-              Enterprise Hotel Operations Platform
+              Hotel & Restaurant Management Platform
             </h2>
 
             <p className="text-[#AAB8C5] text-[15px] max-w-[400px] leading-relaxed mb-12 font-light">
-              Powering seamless guest experiences, real-time reservations, and intelligent revenue management.
+              Manage your property, bookings, inventory, billing, and team from one system.
             </p>
 
             <ul className="space-y-6 text-[#F7F4EF]">
               {[
-                "Real-Time Reservation Sync",
-                "Multi-Role Access Control",
-                "Revenue Intelligence",
-                "Smart Room Automation"
+                "Real-time reservation sync",
+                "Multi-role access control",
+                "Direct billing and invoicing",
+                "Your own website and subdomain"
               ].map((feature, i) => (
                 <motion.li
                   key={feature}
@@ -181,47 +154,38 @@ export default function Login() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8, duration: 1 }}
         >
-          <button
-            onClick={() => navigate('/pricing')}
+          <Link
+            to="/"
             className="text-[12px] md:text-[13px] font-medium text-[#C9A646] hover:text-[#F7F4EF] tracking-wide text-left transition-colors self-start"
           >
-            Explore Enterprise Pricing →
-          </button>
+            ← Back to HospitalityOS.com
+          </Link>
 
           <div className="pt-6 border-t border-[#AAB8C5]/10">
-            <p className="text-[10px] md:text-[11px] font-semibold text-[#AAB8C5] tracking-[0.2em] uppercase leading-relaxed text-left opacity-60 m-0" style={{ fontVariant: 'small-caps' }}>
-              © 2026 Ganesh Residency<br />
-              Secure Hotel Infrastructure System
+            <p className="text-[10px] md:text-[11px] font-semibold text-[#AAB8C5] tracking-[0.2em] uppercase leading-relaxed text-left opacity-60 m-0">
+              &copy; 2026 HospitalityOS<br />
+              Secure hotel and restaurant infrastructure
             </p>
           </div>
         </motion.div>
       </div>
 
-      {/* RIGHT SIDE (LOGIN PANEL) - 55% */}
+      {/* RIGHT SIDE (LOGIN PANEL) */}
       <div className="relative z-10 w-full md:w-[55%] flex items-center justify-center p-6 sm:p-12 md:p-24 min-h-[60vh] md:min-h-screen order-1 md:order-2">
-
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="w-full max-w-[420px] p-8 sm:p-12 rounded-2xl bg-[#0E2A38]/20 backdrop-blur-xl border border-[#AAB8C5]/10 shadow-[0_40px_120px_rgba(0,0,0,0.25)] relative overflow-hidden group"
+          className="w-full max-w-[420px] p-8 sm:p-12 rounded-2xl bg-[#0E2A38]/20 backdrop-blur-xl border border-[#AAB8C5]/10 shadow-[0_40px_120px_rgba(0,0,0,0.25)] relative overflow-hidden"
         >
-          {/* Glass shimmer effect on panel */}
-          <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12 group-hover:animate-[shimmer_2s_ease-in-out_infinite]" />
-          <style>{`@keyframes shimmer { 100% { transform: translateX(200%); } }`}</style>
-
-          {/* Soft inner glow */}
           <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/5 pointer-events-none" />
 
           <div className="mb-10">
-            <h2
-              className="text-[28px] font-normal text-[#F7F4EF] tracking-tight m-0"
-              style={{ fontFamily: "'Playfair Display', serif" }}
-            >
-              Welcome Back
+            <h2 className="text-[28px] font-bold text-[#F7F4EF] tracking-tight m-0">
+              Welcome back
             </h2>
             <p className="text-[#AAB8C5] mt-2 text-[14px] font-light tracking-wide m-0">
-              Sign in to access your operations dashboard.
+              Sign in to your dashboard.
             </p>
           </div>
 
@@ -237,8 +201,8 @@ export default function Login() {
             )}
 
             <Input
-              label="Email Address"
-              type="text"
+              label="Email address"
+              type="email"
               id="email"
               required
               value={email}
@@ -255,30 +219,33 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
               />
               <div className="flex justify-start px-1">
-                <a href="#" className="text-[12px] font-medium text-[#AAB8C5] hover:text-[#F7F4EF] transition-colors duration-200 relative after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-[1px] after:bottom-0 after:left-0 after:bg-[#F7F4EF] after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left">
+                <a href="#" className="text-[12px] font-medium text-[#AAB8C5] hover:text-[#F7F4EF] transition-colors duration-200">
                   Forgot password?
                 </a>
               </div>
             </div>
 
             <div className="pt-6">
-              <Button type="submit">
-                Access Dashboard
-              </Button>
+              <motion.button
+                type="submit"
+                disabled={isLoading}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="relative w-full overflow-hidden bg-gradient-to-b from-[#0E2A38] to-[#071A24] text-[#F7F4EF] font-semibold tracking-wide py-3.5 px-6 rounded-lg transition-all duration-200 border border-transparent shadow-[0_4px_14px_rgba(0,0,0,0.3)] hover:border-[#C9A646]/30 hover:shadow-[0_8px_30px_rgba(201,166,70,0.15)] disabled:opacity-50"
+              >
+                {isLoading ? 'Signing in...' : 'Sign in'}
+              </motion.button>
             </div>
           </form>
 
-          <motion.div
-            className="mt-8 text-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.6, duration: 0.8 }}
-          >
-            <p className="space-y-1">
-              <span className="block text-[11px] text-[#AAB8C5]/70 font-medium tracking-wide">256-bit encrypted session</span>
-              <span className="block text-[11px] text-[#AAB8C5]/70 font-medium tracking-wide">Role-based access control enabled</span>
+          <div className="mt-8 text-center">
+            <p className="text-[13px] text-[#AAB8C5]/70">
+              Don't have an account?{' '}
+              <Link to="/signup" className="text-[#C9A646] hover:text-[#F7F4EF] font-medium transition-colors">
+                Sign up free
+              </Link>
             </p>
-          </motion.div>
+          </div>
         </motion.div>
       </div>
     </motion.div>

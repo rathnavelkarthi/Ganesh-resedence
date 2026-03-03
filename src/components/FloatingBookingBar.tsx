@@ -15,11 +15,35 @@ export default function FloatingBookingBar() {
     const checkOutRef = useRef<HTMLInputElement>(null);
 
     const handleReserve = () => {
+        // Simple date validation before navigating
+        if (!checkIn || !checkOut) {
+            alert('Please select check-in and check-out dates');
+            return;
+        }
+
+        const start = new Date(checkIn);
+        const end = new Date(checkOut);
+
+        if (end <= start) {
+            alert('Check-out date must be after check-in date');
+            return;
+        }
+
         const params = new URLSearchParams();
-        if (checkIn) params.append('checkIn', checkIn);
-        if (checkOut) params.append('checkOut', checkOut);
+        params.append('checkIn', checkIn);
+        params.append('checkOut', checkOut);
         params.append('guests', (guests.adults + guests.children).toString());
         navigate(`/book?${params.toString()}`);
+    };
+
+    // Auto-adjust checkout if check-in changes
+    const handleCheckInChange = (val: string) => {
+        setCheckIn(val);
+        if (checkOut && new Date(val) >= new Date(checkOut)) {
+            const nextDay = new Date(val);
+            nextDay.setDate(nextDay.getDate() + 1);
+            setCheckOut(nextDay.toISOString().split('T')[0]);
+        }
     };
 
     const formatDate = (dateStr: string) => {
@@ -37,9 +61,9 @@ export default function FloatingBookingBar() {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.8 }}
-                className="w-full max-w-5xl backdrop-blur-3xl bg-background/60 border border-accent/30 rounded-xl shadow-2xl flex flex-col"
+                className="w-full max-w-5xl backdrop-blur-3xl bg-background/80 border border-white/20 rounded-xl shadow-2xl flex flex-col"
             >
-                <div className="flex flex-col md:flex-row items-center divide-y md:divide-y-0 md:divide-x divide-accent/20 p-2 md:p-4">
+                <div className="flex flex-col md:flex-row items-center divide-y md:divide-y-0 md:divide-x divide-accent/10 p-2 md:p-4">
 
                     {/* Check-in */}
                     <div
@@ -54,8 +78,9 @@ export default function FloatingBookingBar() {
                         <input
                             ref={checkInRef}
                             type="date"
+                            min={new Date().toISOString().split('T')[0]}
                             className="absolute opacity-0 pointer-events-none inset-0"
-                            onChange={(e) => setCheckIn(e.target.value)}
+                            onChange={(e) => handleCheckInChange(e.target.value)}
                         />
                     </div>
 
@@ -72,6 +97,7 @@ export default function FloatingBookingBar() {
                         <input
                             ref={checkOutRef}
                             type="date"
+                            min={checkIn || new Date().toISOString().split('T')[0]}
                             className="absolute opacity-0 pointer-events-none inset-0"
                             onChange={(e) => setCheckOut(e.target.value)}
                         />
@@ -89,7 +115,7 @@ export default function FloatingBookingBar() {
                                     <Users className="w-4 h-4 mr-3 text-accent" />
                                     <span>{guests.adults} Adults, {guests.children} Children</span>
                                 </div>
-                                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isGuestDropdownOpen ? 'rotate-180' : ''}`} />
+                                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isGuestDropdownOpen ? 'rotate-180 text-accent' : ''}`} />
                             </div>
                         </div>
 
@@ -99,40 +125,40 @@ export default function FloatingBookingBar() {
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, y: 10 }}
-                                    className="absolute top-full left-0 right-0 mt-2 bg-white/95 backdrop-blur-md border border-accent/20 rounded-xl shadow-2xl p-6 z-50 space-y-4"
+                                    className="absolute top-full left-0 md:left-auto md:right-0 w-full md:w-80 mt-2 bg-white/95 backdrop-blur-md border border-accent/20 rounded-xl shadow-2xl p-6 z-50 space-y-4"
                                     onClick={(e) => e.stopPropagation()}
                                 >
-                                    <div className="flex items-center justify-between">
+                                    <div className="flex items-center justify-between gap-4">
                                         <span className="font-medium text-foreground">Adults</span>
-                                        <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-3">
                                             <button
                                                 onClick={() => setGuests(prev => ({ ...prev, adults: Math.max(1, prev.adults - 1) }))}
-                                                className="w-8 h-8 rounded-full border border-accent/20 flex items-center justify-center hover:bg-accent/10 transition-colors"
+                                                className="w-8 h-8 rounded-full border border-accent/20 flex items-center justify-center hover:bg-accent/10 transition-colors text-foreground"
                                             >
                                                 <Minus size={14} />
                                             </button>
-                                            <span className="font-serif w-4 text-center">{guests.adults}</span>
+                                            <span className="font-serif w-6 text-center text-foreground">{guests.adults}</span>
                                             <button
                                                 onClick={() => setGuests(prev => ({ ...prev, adults: prev.adults + 1 }))}
-                                                className="w-8 h-8 rounded-full border border-accent/20 flex items-center justify-center hover:bg-accent/10 transition-colors"
+                                                className="w-8 h-8 rounded-full border border-accent/20 flex items-center justify-center hover:bg-accent/10 transition-colors text-foreground"
                                             >
                                                 <Plus size={14} />
                                             </button>
                                         </div>
                                     </div>
-                                    <div className="flex items-center justify-between">
+                                    <div className="flex items-center justify-between gap-4">
                                         <span className="font-medium text-foreground">Children</span>
-                                        <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-3">
                                             <button
                                                 onClick={() => setGuests(prev => ({ ...prev, children: Math.max(0, prev.children - 1) }))}
-                                                className="w-8 h-8 rounded-full border border-accent/20 flex items-center justify-center hover:bg-accent/10 transition-colors"
+                                                className="w-8 h-8 rounded-full border border-accent/20 flex items-center justify-center hover:bg-accent/10 transition-colors text-foreground"
                                             >
                                                 <Minus size={14} />
                                             </button>
-                                            <span className="font-serif w-4 text-center">{guests.children}</span>
+                                            <span className="font-serif w-6 text-center text-foreground">{guests.children}</span>
                                             <button
                                                 onClick={() => setGuests(prev => ({ ...prev, children: prev.children + 1 }))}
-                                                className="w-8 h-8 rounded-full border border-accent/20 flex items-center justify-center hover:bg-accent/10 transition-colors"
+                                                className="w-8 h-8 rounded-full border border-accent/20 flex items-center justify-center hover:bg-accent/10 transition-colors text-foreground"
                                             >
                                                 <Plus size={14} />
                                             </button>
@@ -140,7 +166,7 @@ export default function FloatingBookingBar() {
                                     </div>
                                     <button
                                         onClick={() => setIsGuestDropdownOpen(false)}
-                                        className="w-full bg-accent text-accent-foreground py-2 rounded-lg font-semibold text-sm mt-2"
+                                        className="w-full bg-primary text-primary-foreground py-2.5 rounded-lg font-semibold text-sm mt-4 hover:bg-primary-hover transition-colors"
                                     >
                                         Apply
                                     </button>
@@ -154,7 +180,7 @@ export default function FloatingBookingBar() {
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={handleReserve}
-                            className="bg-accent text-accent-foreground px-8 py-4 rounded-lg font-serif tracking-widest uppercase text-sm shadow-[0_0_15px_rgba(201,166,70,0.4)] hover:shadow-[0_0_25px_rgba(201,166,70,0.6)] transition-shadow duration-300 w-full md:w-auto"
+                            className="bg-accent text-accent-foreground px-10 py-4 rounded-lg font-serif tracking-widest uppercase text-sm shadow-[0_0_15px_rgba(201,166,70,0.4)] hover:shadow-[0_0_25px_rgba(201,166,70,0.6)] transition-all duration-300 w-full md:w-auto"
                         >
                             Reserve
                         </motion.button>
@@ -163,8 +189,8 @@ export default function FloatingBookingBar() {
                 </div>
 
                 <div className="bg-foreground/5 py-3 text-center border-t border-accent/10">
-                    <p className="text-xs tracking-widest text-foreground/70 uppercase font-medium">
-                        Best Rate Guarantee <span className="text-accent mx-2">•</span> Direct Booking Privilege
+                    <p className="text-[10px] tracking-[0.2em] text-foreground/50 uppercase font-medium">
+                        Best Rate Guarantee <span className="text-accent mx-3">•</span> Direct Booking Privilege
                     </p>
                 </div>
 
