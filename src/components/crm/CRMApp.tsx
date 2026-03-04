@@ -16,12 +16,12 @@ import Payments from '../../pages/crm/Payments';
 import Invoices from '../../pages/crm/Invoices';
 import Reports from '../../pages/crm/Reports';
 import Staff from '../../pages/crm/Staff';
-import Settings from '../../pages/crm/Settings';
 import RoomsCMS from '../../pages/crm/RoomsCMS';
 import LandingCMS from '../../pages/crm/LandingCMS';
 import WebsiteEditor from '../../pages/crm/WebsiteEditor';
 import PricingRules from '../../pages/crm/PricingRules';
 import BookingSettings from '../../pages/crm/BookingSettings';
+import WhatsAppSettingsPage from '../../pages/crm/WhatsAppSettingsPage';
 
 export default function CRMApp() {
   const { user, loading } = useAuth();
@@ -129,12 +129,6 @@ export default function CRMApp() {
               </RoleGuard>
             } />
 
-            <Route path="settings" element={
-              <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
-                <Settings />
-              </RoleGuard>
-            } />
-
             <Route path="rooms-cms" element={
               <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
                 <RoomsCMS />
@@ -162,6 +156,12 @@ export default function CRMApp() {
             <Route path="booking-settings" element={
               <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
                 <BookingSettings />
+              </RoleGuard>
+            } />
+
+            <Route path="whatsapp" element={
+              <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
+                <WhatsAppSettingsPage />
               </RoleGuard>
             } />
 

@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)",
+      "Bash(npx vitest:*)",
+      "Bash(npx vite:*)",
+      "Bash(read f:*)",
+      "Bash(sed:*)",
+      "WebSearch",
+      "WebFetch(domain:www.bookingmaster.in)",
+      "WebFetch(domain:www.getmonetizely.com)",
+      "Bash(claude mcp:*)"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "supabase"
+  ],
+  "enableAllProjectMcpServers": true
+}

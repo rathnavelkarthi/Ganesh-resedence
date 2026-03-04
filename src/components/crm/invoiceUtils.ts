@@ -1,4 +1,5 @@
 import { InvoiceData } from './InvoicePrintTemplate';
+import { formatINR } from '../../lib/booking';
 
 /**
  * Generates a self-contained HTML string for an invoice.
@@ -141,10 +142,6 @@ function buildInvoiceHTML(data: InvoiceData): string {
     </body>
     </html>
   `;
-}
-
-function formatINR(amount: number): string {
-    return `&#8377;${amount.toLocaleString('en-IN')}`;
 }
 
 /**

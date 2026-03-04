@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Search, Filter, Edit, Wrench, CheckCircle, LogIn, LogOut } from 'lucide-react';
 import { useCRM } from '../../context/CRMDataContext';
+import type { Room } from '../../context/CRMDataContext';
 import { toast } from 'sonner';
 
 export default function Rooms() {
@@ -12,18 +13,23 @@ export default function Rooms() {
     room.type.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Helper to find current guest for a room
-  // Note: This is a simplified lookup. In a real app, we'd check current check-in status.
+  // Find the current guest for a room by checking active reservations
+  // whose dates overlap today and have a relevant status
   const getRoomGuest = (roomId: number) => {
-    const activeRes = reservations.find(r =>
-      (r as any).room_id === roomId && r.status === 'Confirmed'
-    );
+    const today = new Date();
+    const activeRes = reservations.find(r => {
+      if (r.room_id !== roomId) return false;
+      if (r.status !== 'Confirmed' && r.status !== 'Pending') return false;
+      const checkIn = new Date(r.checkIn);
+      const checkOut = new Date(r.checkOut);
+      return today >= checkIn && today <= checkOut;
+    });
     return activeRes ? activeRes.guest : null;
   };
 
   const handleUpdateStatus = async (id: number, status: string) => {
     try {
-      await updateRoom(id, { status: status as any });
+      await updateRoom(id, { status: status as Room['status'] });
       toast.success(`Room status updated to ${status}`);
     } catch (error) {
       toast.error('Failed to update status');

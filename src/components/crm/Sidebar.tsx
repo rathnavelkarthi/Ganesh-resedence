@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth, Role } from '../../context/AuthContext';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import {
   LayoutDashboard,
   CalendarDays,
@@ -10,7 +10,6 @@ import {
   CreditCard,
   FileText,
   BarChart3,
-  Settings,
   UserCog,
   LogOut,
   ListTodo,
@@ -20,7 +19,8 @@ import {
   Globe,
   Tag,
   CalendarCheck,
-  Waypoints
+  Waypoints,
+  MessageSquare
 } from 'lucide-react';
 
 interface NavItem {
@@ -44,8 +44,8 @@ const navItems: NavItem[] = [
   { name: 'Website Editor', path: '/admin/website-editor', icon: Globe, roles: ['SUPER_ADMIN', 'MANAGER'] },
   { name: 'Pricing Rules', path: '/admin/pricing', icon: Tag, roles: ['SUPER_ADMIN', 'MANAGER'] },
   { name: 'Booking Settings', path: '/admin/booking-settings', icon: CalendarCheck, roles: ['SUPER_ADMIN', 'MANAGER'] },
+  { name: 'WhatsApp', path: '/admin/whatsapp', icon: MessageSquare, roles: ['SUPER_ADMIN', 'MANAGER'] },
   { name: 'Staff Management', path: '/admin/staff', icon: UserCog, roles: ['SUPER_ADMIN'] },
-  { name: 'Settings', path: '/admin/settings', icon: Settings, roles: ['SUPER_ADMIN', 'MANAGER'] },
 ];
 
 interface SidebarProps {

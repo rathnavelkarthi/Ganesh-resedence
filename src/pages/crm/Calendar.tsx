@@ -1,46 +1,109 @@
-import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Filter, Plus, Users, LogIn, LogOut, CheckCircle, Wrench, X, Phone, Mail, Home, CreditCard, Clock, CheckCircle2 } from 'lucide-react';
-import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Filter, Plus, LogIn, LogOut, CheckCircle, Wrench, X, Phone, Mail, Home, CreditCard, CheckCircle2 } from 'lucide-react';
+import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useCRM } from '../../context/CRMDataContext';
+import type { Reservation, Room } from '../../context/CRMDataContext';
 
-const rooms = [
-  { id: '101', type: 'Executive Double AC', status: 'Clean' },
-  { id: '102', type: 'Executive Double AC', status: 'Dirty' },
-  { id: '103', type: 'Triple Room AC', status: 'Clean' },
-  { id: '104', type: 'Four Occupancy Room', status: 'Maintenance' },
-  { id: '105', type: 'Six Bed AC Room', status: 'Clean' },
-  { id: '201', type: 'Executive Double AC', status: 'Clean' },
-  { id: '202', type: 'Triple Room AC', status: 'Dirty' },
-];
+type CalendarBooking = {
+  id: string;
+  roomId: string;
+  roomNumber: string;
+  guest: string;
+  phone: string;
+  email: string;
+  amount: number;
+  source: string;
+  start: Date;
+  end: Date;
+  status: Reservation['status'];
+  payment: Reservation['payment'];
+};
+
+type FilterState = {
+  roomStatus: string;
+  cleaningStatus: string;
+  bookingStatus: string;
+};
 
 export default function Calendar() {
-  const { reservations: rawReservations } = useCRM();
+  const { reservations: rawReservations, rooms: crmRooms } = useCRM();
   const navigate = useNavigate();
 
-  // Transform context reservations to Calendar format
-  const bookings = rawReservations.map(res => ({
-    id: res.id,
-    roomId: '101', // TODO: Add real room assignment to Reservations
-    guest: res.guest,
-    phone: '', // TODO: Add to Reservations
-    email: '', // TODO: Add to Reservations
-    amount: 0, // TODO: Add to Reservations
-    source: res.source,
-    start: new Date(res.checkIn),
-    end: new Date(res.checkOut),
-    status: res.status,
-    payment: res.payment,
-    notes: ''
-  }));
-
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  const [selectedBooking, setSelectedBooking] = useState<CalendarBooking | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<FilterState>({ roomStatus: 'All', cleaningStatus: 'All', bookingStatus: 'All' });
+  const filterRef = useRef<HTMLDivElement>(null);
+
+  // Close filter dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setShowFilters(false);
+      }
+    };
+    if (showFilters) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showFilters]);
+
+  // Build a lookup from room id to room_number
+  const roomIdToNumber = useMemo(() => {
+    const map = new Map<number, string>();
+    crmRooms.forEach(r => map.set(r.id, r.room_number || String(r.id)));
+    return map;
+  }, [crmRooms]);
+
+  // Map CRM rooms to calendar format
+  const calendarRooms = useMemo(() => {
+    return crmRooms.map(r => ({
+      id: r.room_number || String(r.id),
+      numericId: r.id,
+      type: r.type,
+      status: r.status,
+      cleaningStatus: r.cleaning_status,
+    }));
+  }, [crmRooms]);
+
+  // Apply room filters
+  const filteredRooms = useMemo(() => {
+    return calendarRooms.filter(room => {
+      if (filters.roomStatus !== 'All' && room.status !== filters.roomStatus) return false;
+      if (filters.cleaningStatus !== 'All' && room.cleaningStatus !== filters.cleaningStatus) return false;
+      return true;
+    });
+  }, [calendarRooms, filters]);
+
+  // Transform reservations to calendar bookings using real data
+  const bookings = useMemo(() => {
+    return rawReservations.map(res => ({
+      id: res.id,
+      roomId: res.room_id ? (roomIdToNumber.get(res.room_id) || String(res.room_id)) : '',
+      roomNumber: res.room_id ? (roomIdToNumber.get(res.room_id) || String(res.room_id)) : res.room,
+      guest: res.guest,
+      phone: res.guest_phone || '',
+      email: res.guest_email || '',
+      amount: res.amount || 0,
+      source: res.source,
+      start: new Date(res.checkIn),
+      end: new Date(res.checkOut),
+      status: res.status,
+      payment: res.payment,
+    }));
+  }, [rawReservations, roomIdToNumber]);
+
+  // Apply booking status filter
+  const filteredBookings = useMemo(() => {
+    if (filters.bookingStatus === 'All') return bookings;
+    return bookings.filter(b => b.status === filters.bookingStatus);
+  }, [bookings, filters.bookingStatus]);
+
+  const today = useMemo(() => new Date(), []);
 
   const startDate = startOfWeek(currentDate, { weekStartsOn: 1 });
-  const endDate = endOfWeek(addDays(currentDate, 13), { weekStartsOn: 1 }); // Show 2 weeks
+  const endDate = endOfWeek(addDays(currentDate, 13), { weekStartsOn: 1 });
   const days = eachDayOfInterval({ start: startDate, end: endDate });
 
   const handlePrevWeek = () => setCurrentDate(addDays(currentDate, -7));
@@ -48,20 +111,39 @@ export default function Calendar() {
   const handleToday = () => setCurrentDate(new Date());
 
   const getBookingForRoomAndDate = (roomId: string, date: Date) => {
-    return bookings.find(b =>
+    return filteredBookings.find(b =>
       b.roomId === roomId &&
-      date >= new Date(b.start.setHours(0, 0, 0, 0)) &&
-      date <= new Date(b.end.setHours(23, 59, 59, 999))
+      isWithinInterval(date, { start: startOfDay(b.start), end: endOfDay(b.end) })
     );
   };
 
-  const smartStats = [
-    { label: "Today's Check-ins", value: "8", icon: LogIn, color: "text-blue-600", bg: "bg-blue-50" },
-    { label: "Check-outs", value: "5", icon: LogOut, color: "text-amber-600", bg: "bg-amber-50" },
-    { label: "Occupied", value: "24", icon: Home, color: "text-emerald-600", bg: "bg-emerald-50" },
-    { label: "Available", value: "12", icon: CheckCircle, color: "text-purple-600", bg: "bg-purple-50" },
-    { label: "Maintenance", value: "2", icon: Wrench, color: "text-red-600", bg: "bg-red-50" },
-  ];
+  // Compute smart stats from real data
+  const smartStats = useMemo(() => {
+    const todayStart = startOfDay(today);
+    const todayEnd = endOfDay(today);
+
+    const todayCheckIns = rawReservations.filter(r =>
+      isSameDay(new Date(r.checkIn), today) && (r.status === 'Confirmed' || r.status === 'Pending')
+    ).length;
+
+    const todayCheckOuts = rawReservations.filter(r =>
+      isSameDay(new Date(r.checkOut), today) && (r.status === 'Confirmed' || r.status === 'Checked Out')
+    ).length;
+
+    const occupiedRooms = crmRooms.filter(r => r.status === 'Occupied').length;
+    const availableRooms = crmRooms.filter(r => r.status === 'Available').length;
+    const maintenanceRooms = crmRooms.filter(r => r.status === 'Maintenance').length;
+
+    return [
+      { label: "Today's Check-ins", value: String(todayCheckIns), icon: LogIn, color: "text-blue-600", bg: "bg-blue-50" },
+      { label: "Check-outs", value: String(todayCheckOuts), icon: LogOut, color: "text-amber-600", bg: "bg-amber-50" },
+      { label: "Occupied", value: String(occupiedRooms), icon: Home, color: "text-emerald-600", bg: "bg-emerald-50" },
+      { label: "Available", value: String(availableRooms), icon: CheckCircle, color: "text-purple-600", bg: "bg-purple-50" },
+      { label: "Maintenance", value: String(maintenanceRooms), icon: Wrench, color: "text-red-600", bg: "bg-red-50" },
+    ];
+  }, [rawReservations, crmRooms, today]);
+
+  const activeFilterCount = [filters.roomStatus, filters.cleaningStatus, filters.bookingStatus].filter(v => v !== 'All').length;
 
   return (
     <div className="max-w-[1600px] mx-auto flex flex-col h-[calc(100vh-8rem)] relative">
@@ -87,12 +169,88 @@ export default function Calendar() {
               <ChevronRight size={18} />
             </button>
           </div>
-          <button
-            onClick={() => toast.info('Filter options coming soon!')}
-            className="flex items-center gap-2 bg-white/80 backdrop-blur-md border border-gray-200/60 text-gray-700 px-4 py-2.5 rounded-xl text-sm font-bold uppercase tracking-widest transition-all shadow-sm hover:shadow-md hover:bg-gray-50"
-          >
-            <Filter size={16} /> Filters
-          </button>
+
+          {/* Filter Button & Dropdown */}
+          <div className="relative" ref={filterRef}>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center gap-2 bg-white/80 backdrop-blur-md border text-gray-700 px-4 py-2.5 rounded-xl text-sm font-bold uppercase tracking-widest transition-all shadow-sm hover:shadow-md hover:bg-gray-50 ${activeFilterCount > 0 ? 'border-[#C9A646] bg-[#C9A646]/5' : 'border-gray-200/60'}`}
+            >
+              <Filter size={16} /> Filters
+              {activeFilterCount > 0 && (
+                <span className="ml-1 w-5 h-5 rounded-full bg-[#C9A646] text-[#0E2A38] text-[10px] font-bold flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+
+            <AnimatePresence>
+              {showFilters && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 p-5 space-y-4"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-[#0E2A38]">Filter Rooms</h3>
+                    {activeFilterCount > 0 && (
+                      <button
+                        onClick={() => setFilters({ roomStatus: 'All', cleaningStatus: 'All', bookingStatus: 'All' })}
+                        className="text-[10px] font-bold uppercase tracking-widest text-[#C9A646] hover:text-[#0E2A38] transition-colors"
+                      >
+                        Clear All
+                      </button>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">Room Status</label>
+                    <select
+                      value={filters.roomStatus}
+                      onChange={(e) => setFilters(f => ({ ...f, roomStatus: e.target.value }))}
+                      className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:border-[#C9A646] focus:ring-1 focus:ring-[#C9A646]/30 outline-none transition-all"
+                    >
+                      <option value="All">All Statuses</option>
+                      <option value="Available">Available</option>
+                      <option value="Occupied">Occupied</option>
+                      <option value="Maintenance">Maintenance</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">Cleaning</label>
+                    <select
+                      value={filters.cleaningStatus}
+                      onChange={(e) => setFilters(f => ({ ...f, cleaningStatus: e.target.value }))}
+                      className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:border-[#C9A646] focus:ring-1 focus:ring-[#C9A646]/30 outline-none transition-all"
+                    >
+                      <option value="All">All</option>
+                      <option value="Clean">Clean</option>
+                      <option value="Dirty">Dirty</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">Booking Status</label>
+                    <select
+                      value={filters.bookingStatus}
+                      onChange={(e) => setFilters(f => ({ ...f, bookingStatus: e.target.value }))}
+                      className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:border-[#C9A646] focus:ring-1 focus:ring-[#C9A646]/30 outline-none transition-all"
+                    >
+                      <option value="All">All Bookings</option>
+                      <option value="Confirmed">Confirmed</option>
+                      <option value="Pending">Pending</option>
+                      <option value="Cancelled">Cancelled</option>
+                      <option value="Checked Out">Checked Out</option>
+                    </select>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
           <motion.button
             onClick={() => navigate('/admin/reservations?action=new')}
             whileHover={{ scale: 1.02 }}
@@ -135,8 +293,15 @@ export default function Calendar() {
               <div className="w-3 h-3 rounded-full bg-gradient-to-r from-red-400 to-red-500 shadow-sm" /> Maintenance
             </div>
           </div>
-          <div className="text-xs font-semibold text-gray-400">
-            {format(startDate, 'MMMM yyyy')}
+          <div className="flex items-center gap-3">
+            {activeFilterCount > 0 && (
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#C9A646]">
+                {filteredRooms.length} of {calendarRooms.length} rooms
+              </span>
+            )}
+            <span className="text-xs font-semibold text-gray-400">
+              {format(startDate, 'MMMM yyyy')}
+            </span>
           </div>
         </div>
 
@@ -172,7 +337,12 @@ export default function Calendar() {
 
             {/* Room Rows */}
             <div className="divide-y divide-gray-100/50 flex-1 relative z-10">
-              {rooms.map((room) => (
+              {filteredRooms.length === 0 && (
+                <div className="flex items-center justify-center h-32 text-gray-400 text-sm font-medium">
+                  No rooms match the current filters.
+                </div>
+              )}
+              {filteredRooms.map((room) => (
                 <div key={room.id} className="flex group relative h-[72px] w-max min-w-full">
                   {/* Sticky Room Info Sidebar */}
                   <div className="w-[140px] sm:w-64 shrink-0 p-2 sm:p-3 px-3 sm:px-4 border-r border-gray-100 bg-white group-hover:bg-gray-50/80 transition-colors flex items-center gap-2 sm:gap-4 sticky left-0 z-20 shadow-[2px_0_10px_rgba(0,0,0,0.02)]">
@@ -183,11 +353,17 @@ export default function Calendar() {
                       <p className="text-[10px] sm:text-xs font-bold text-gray-900 uppercase tracking-wide truncate" title={room.type}>{room.type}</p>
                       <div className="mt-1 flex items-center gap-1.5">
                         <span className={`px-1.5 sm:px-2 py-0.5 rounded-full text-[8px] sm:text-[9px] font-bold uppercase tracking-widest flex items-center gap-1
-                          ${room.status === 'Clean' ? 'bg-emerald-50 text-emerald-700' : room.status === 'Dirty' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}
+                          ${room.cleaningStatus === 'Clean' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}
                         `}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${room.status === 'Clean' ? 'bg-emerald-500' : room.status === 'Dirty' ? 'bg-amber-500' : 'bg-red-500'}`} />
-                          <span className="hidden sm:inline">{room.status}</span>
+                          <span className={`w-1.5 h-1.5 rounded-full ${room.cleaningStatus === 'Clean' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                          <span className="hidden sm:inline">{room.cleaningStatus}</span>
                         </span>
+                        {room.status === 'Maintenance' && (
+                          <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[8px] sm:text-[9px] font-bold uppercase tracking-widest flex items-center gap-1 bg-red-50 text-red-700">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                            <span className="hidden sm:inline">Maintenance</span>
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -216,8 +392,8 @@ export default function Calendar() {
                       let bgGradient = 'from-gray-400 to-gray-500';
                       if (booking) {
                         if (booking.status === 'Confirmed') bgGradient = 'from-emerald-400 to-emerald-600';
-                        if (booking.status === 'Checked In') bgGradient = 'from-amber-400 to-amber-500';
-                        if (booking.status === 'Maintenance') bgGradient = 'from-red-400 to-red-600';
+                        if (booking.status === 'Checked In' as string) bgGradient = 'from-amber-400 to-amber-500';
+                        if (booking.status === 'Pending') bgGradient = 'from-blue-400 to-blue-500';
                       }
 
                       return (
@@ -243,7 +419,7 @@ export default function Calendar() {
                               {(isStart || day.getDay() === 1) && (
                                 <div className="relative z-10">
                                   <p className="text-xs font-bold text-white tracking-wide truncate drop-shadow-md flex items-center gap-1.5">
-                                    {booking.status === 'Checked In' && <CheckCircle2 size={12} className="text-white/80" />}
+                                    {booking.status === 'Checked In' as string && <CheckCircle2 size={12} className="text-white/80" />}
                                     {booking.guest}
                                   </p>
                                 </div>
@@ -311,10 +487,10 @@ export default function Calendar() {
                   </div>
                   <div className="space-y-3">
                     <div className="flex items-center gap-3 text-sm font-medium text-gray-600 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
-                      <Phone size={16} className="text-gray-400" /> {selectedBooking.phone}
+                      <Phone size={16} className="text-gray-400" /> {selectedBooking.phone || 'N/A'}
                     </div>
                     <div className="flex items-center gap-3 text-sm font-medium text-gray-600 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
-                      <Mail size={16} className="text-gray-400" /> {selectedBooking.email}
+                      <Mail size={16} className="text-gray-400" /> {selectedBooking.email || 'N/A'}
                     </div>
                   </div>
                 </div>
@@ -341,7 +517,7 @@ export default function Calendar() {
                     <div className="bg-white/10 rounded-xl p-3 flex justify-between items-center backdrop-blur-sm relative z-10 border border-white/10">
                       <div>
                         <p className="text-[10px] font-bold uppercase tracking-widest text-white/60">Room</p>
-                        <p className="font-bold text-[#C9A646]">{selectedBooking.roomId}</p>
+                        <p className="font-bold text-[#C9A646]">{selectedBooking.roomNumber}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-white/60">Status</p>
@@ -351,25 +527,18 @@ export default function Calendar() {
                   </div>
                 </div>
 
-                {/* Billing & Notes */}
+                {/* Billing */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
                     <div className="flex items-center gap-2 text-gray-400 mb-2">
                       <CreditCard size={14} />
                       <h4 className="text-[10px] font-bold uppercase tracking-widest">Payment</h4>
                     </div>
-                    <p className="text-xl font-bold text-gray-900 leading-tight">₹{selectedBooking.amount.toLocaleString('en-IN')}</p>
+                    <p className="text-xl font-bold text-gray-900 leading-tight">{selectedBooking.amount > 0 ? `₹${selectedBooking.amount.toLocaleString('en-IN')}` : '—'}</p>
                     <p className={`text-xs font-bold mt-1 ${selectedBooking.payment === 'Paid' ? 'text-emerald-600' : 'text-amber-600'}`}>
                       {selectedBooking.payment}
                     </p>
                   </div>
-
-                  {selectedBooking.notes && (
-                    <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100 col-span-2">
-                      <h4 className="text-[10px] font-bold uppercase tracking-widest text-amber-600 mb-1">Special Notes</h4>
-                      <p className="text-sm font-medium text-amber-900">{selectedBooking.notes}</p>
-                    </div>
-                  )}
                 </div>
 
               </div>

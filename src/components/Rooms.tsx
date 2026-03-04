@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { useCRM } from '../context/CRMDataContext';
+import { useOccupancyPricing } from '../hooks/useOccupancyPricing';
 
 export default function Rooms() {
   const { rooms: backendRooms } = useCRM();
+  const { adjustedPrice } = useOccupancyPricing();
   // Filter available rooms and limit to 4 for the homepage layout
   const availableRooms = backendRooms.filter(r => r.is_available).slice(0, 4);
 
@@ -65,9 +67,15 @@ export default function Rooms() {
                   transition={{ duration: 1.2, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
                   className="w-full lg:w-[45%] flex flex-col justify-center text-center lg:text-left"
                 >
-                  <span className="text-[11px] tracking-[0.25em] text-foreground/50 uppercase mb-6 block font-medium">
-                    {room.max_occupancy} Guests
-                  </span>
+                  <div className="flex items-center justify-center lg:justify-start gap-4 mb-6">
+                    <span className="text-[11px] tracking-[0.25em] text-foreground/50 uppercase block font-medium">
+                      {room.max_occupancy} Guests
+                    </span>
+                    <span className="text-[11px] text-foreground/30">&bull;</span>
+                    <span className="text-[11px] tracking-[0.15em] text-accent uppercase block font-semibold">
+                      From &#8377;{adjustedPrice(room.price_per_night ?? 0).toLocaleString()}/night
+                    </span>
+                  </div>
                   <h3 className="font-serif text-3xl md:text-4xl lg:text-[44px] leading-tight text-foreground mb-8">
                     {room.name}
                   </h3>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Calendar, Users, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 
 export default function BookingBar() {
   const [checkIn, setCheckIn] = useState('');

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useCRM } from '../context/CRMDataContext';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
+import { calculateNights as calcNights } from '../lib/booking';
 import BookingProgress from '../components/BookingProgress';
 import RoomSelector from '../components/RoomSelector';
 import BookingSummary from '../components/BookingSummary';
@@ -48,17 +49,7 @@ export default function Booking() {
     }
   }, [location.search]);
 
-  // Calculate nights
-  const calculateNights = () => {
-    if (!bookingData.checkIn || !bookingData.checkOut) return 0;
-    const start = new Date(bookingData.checkIn);
-    const end = new Date(bookingData.checkOut);
-    const diffTime = Math.abs(end.getTime() - start.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays > 0 ? diffDays : 0;
-  };
-
-  const nights = calculateNights();
+  const nights = calcNights(bookingData.checkIn, bookingData.checkOut);
 
   const { addReservation } = useCRM();
 

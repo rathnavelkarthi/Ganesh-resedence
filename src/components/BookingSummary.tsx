@@ -1,4 +1,5 @@
 import { Calendar, Users, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { calculateBookingPrice, formatBookingDate } from '../lib/booking';
 
 interface BookingSummaryProps {
   checkIn: string;
@@ -11,26 +12,18 @@ interface BookingSummaryProps {
   isMobileDrawer?: boolean;
 }
 
-export default function BookingSummary({ 
-  checkIn, 
-  checkOut, 
-  guests, 
-  room, 
-  nights, 
-  onContinue, 
+export default function BookingSummary({
+  checkIn,
+  checkOut,
+  guests,
+  room,
+  nights,
+  onContinue,
   buttonText,
   isMobileDrawer = false
 }: BookingSummaryProps) {
-  
-  const roomPrice = room ? room.price * nights : 0;
-  const taxes = Math.round(roomPrice * 0.12); // 12% GST
-  const total = roomPrice + taxes;
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return 'Select date';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
+  const { roomPrice, taxes, total } = calculateBookingPrice(room ? room.price : 0, nights);
 
   const content = (
     <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden flex flex-col h-full">
@@ -46,14 +39,14 @@ export default function BookingSummary({
             <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">Check-in</p>
             <p className="font-medium text-gray-900 flex items-center gap-2">
               <Calendar size={14} className="text-[var(--color-ocean-500)]" />
-              {formatDate(checkIn)}
+              {formatBookingDate(checkIn)}
             </p>
           </div>
           <div>
             <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">Check-out</p>
             <p className="font-medium text-gray-900 flex items-center gap-2">
               <Calendar size={14} className="text-[var(--color-ocean-500)]" />
-              {formatDate(checkOut)}
+              {formatBookingDate(checkOut)}
             </p>
           </div>
           <div className="col-span-2 mt-2">

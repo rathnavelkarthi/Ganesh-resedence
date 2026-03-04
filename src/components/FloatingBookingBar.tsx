@@ -1,8 +1,12 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Calendar, Users, ChevronDown, Plus, Minus } from 'lucide-react';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
+
+const MAX_ADULTS = 10;
+const MAX_CHILDREN = 6;
 
 export default function FloatingBookingBar() {
     const navigate = useNavigate();
@@ -15,9 +19,8 @@ export default function FloatingBookingBar() {
     const checkOutRef = useRef<HTMLInputElement>(null);
 
     const handleReserve = () => {
-        // Simple date validation before navigating
         if (!checkIn || !checkOut) {
-            alert('Please select check-in and check-out dates');
+            toast.error('Please select check-in and check-out dates.');
             return;
         }
 
@@ -25,7 +28,7 @@ export default function FloatingBookingBar() {
         const end = new Date(checkOut);
 
         if (end <= start) {
-            alert('Check-out date must be after check-in date');
+            toast.error('Check-out date must be after check-in date.');
             return;
         }
 
@@ -139,8 +142,9 @@ export default function FloatingBookingBar() {
                                             </button>
                                             <span className="font-serif w-6 text-center text-foreground">{guests.adults}</span>
                                             <button
-                                                onClick={() => setGuests(prev => ({ ...prev, adults: prev.adults + 1 }))}
-                                                className="w-8 h-8 rounded-full border border-accent/20 flex items-center justify-center hover:bg-accent/10 transition-colors text-foreground"
+                                                onClick={() => setGuests(prev => ({ ...prev, adults: Math.min(MAX_ADULTS, prev.adults + 1) }))}
+                                                className="w-8 h-8 rounded-full border border-accent/20 flex items-center justify-center hover:bg-accent/10 transition-colors text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                                                disabled={guests.adults >= MAX_ADULTS}
                                             >
                                                 <Plus size={14} />
                                             </button>
@@ -157,8 +161,9 @@ export default function FloatingBookingBar() {
                                             </button>
                                             <span className="font-serif w-6 text-center text-foreground">{guests.children}</span>
                                             <button
-                                                onClick={() => setGuests(prev => ({ ...prev, children: prev.children + 1 }))}
-                                                className="w-8 h-8 rounded-full border border-accent/20 flex items-center justify-center hover:bg-accent/10 transition-colors text-foreground"
+                                                onClick={() => setGuests(prev => ({ ...prev, children: Math.min(MAX_CHILDREN, prev.children + 1) }))}
+                                                className="w-8 h-8 rounded-full border border-accent/20 flex items-center justify-center hover:bg-accent/10 transition-colors text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                                                disabled={guests.children >= MAX_CHILDREN}
                                             >
                                                 <Plus size={14} />
                                             </button>

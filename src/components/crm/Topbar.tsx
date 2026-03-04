@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Search, Bell, Plus, Menu, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import QuickCheckoutModal from './QuickCheckoutModal';
 
 interface TopbarProps {

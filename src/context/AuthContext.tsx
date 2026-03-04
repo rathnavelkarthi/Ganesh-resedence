@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
+import { generateSubdomain, hasPermission as checkPermission } from '../lib/booking';
 
 export type Role = 'SUPER_ADMIN' | 'MANAGER' | 'RECEPTION' | 'HOUSEKEEPING' | 'ACCOUNTANT';
 
@@ -53,11 +54,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(supaUser.user_metadata?.name || supaUser.email?.split('@')[0] || 'U')}&background=0E2A38&color=fff`,
   });
 
-  // Fetch tenant for the current user
-  const fetchTenant = async () => {
+  // Fetch tenant for the current user (filtered by owner_id)
+  const fetchTenant = async (userId: string) => {
     const { data, error } = await supabase
       .from('tenants')
       .select('*')
+      .eq('owner_id', userId)
       .limit(1)
       .single();
 
@@ -69,7 +71,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshTenant = async () => {
-    await fetchTenant();
+    const { data: { session: currentSession } } = await supabase.auth.getSession();
+    if (currentSession?.user) {
+      await fetchTenant(currentSession.user.id);
+    }
   };
 
   // Listen to auth state changes
@@ -79,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(currentSession);
       if (currentSession?.user) {
         setUser(mapUser(currentSession.user));
-        fetchTenant();
+        fetchTenant(currentSession.user.id);
       }
       setLoading(false);
     });
@@ -89,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(newSession);
       if (newSession?.user) {
         setUser(mapUser(newSession.user));
-        fetchTenant();
+        fetchTenant(newSession.user.id);
       } else {
         setUser(null);
         setTenant(null);
@@ -128,11 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!authData.user) return { error: 'Signup failed. Please try again.' };
 
     // 2. Create the tenant row via RPC (bypasses RLS)
-    const subdomain = businessName
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
-      .slice(0, 30);
+    const subdomain = generateSubdomain(businessName);
 
     const { error: tenantError } = await supabase.rpc('create_tenant', {
       p_owner_id: authData.user.id,
@@ -155,8 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const hasPermission = (allowedRoles: Role[]) => {
-    if (!user) return false;
-    return allowedRoles.includes(user.role);
+    return checkPermission(user?.role ?? null, allowedRoles);
   };
 
   return (

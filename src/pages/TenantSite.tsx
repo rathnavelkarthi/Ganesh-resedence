@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
+import { useTenantOccupancyPricing } from '../hooks/useOccupancyPricing';
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'motion/react';
 import {
     Star, MapPin, Phone, Mail, Calendar, Users, ChevronDown,
     ArrowRight, Wifi, Car, Coffee, Waves, X, Check, Clock,
     Quote, ExternalLink, ChevronLeft, ChevronRight, Plus, Minus,
-    Shield, Sunrise, BadgeCheck, Camera, Navigation, Plane, Building2
+    Shield, Sunrise, BadgeCheck, Camera, Navigation, Plane, Building2,
+    MessageCircle
 } from 'lucide-react';
 
 // --- Types ---
@@ -42,8 +44,8 @@ function Stars({ count }: { count: number }) {
 }
 
 // --- Booking Modal ---
-function BookingModal({ room, subdomain, onClose, onSuccess }: {
-    room: Room; subdomain: string; onClose: () => void; onSuccess: (data: any) => void;
+function BookingModal({ room, subdomain, onClose, onSuccess, adjustedPrice }: {
+    room: Room; subdomain: string; onClose: () => void; onSuccess: (data: any) => void; adjustedPrice: (base: number) => number;
 }) {
     const [form, setForm] = useState({ name: '', email: '', phone: '', checkIn: '', checkOut: '' });
     const [loading, setLoading] = useState(false);
@@ -88,7 +90,7 @@ function BookingModal({ room, subdomain, onClose, onSuccess }: {
                 className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="relative h-32 bg-gradient-to-br from-[#0E2A38] to-[#1a3d4f] p-6 flex flex-col justify-end">
+                <div className="relative h-32 bg-gradient-to-br from-primary to-primary-hover p-6 flex flex-col justify-end">
                     <button onClick={onClose} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors">
                         <X size={16} />
                     </button>
@@ -104,13 +106,13 @@ function BookingModal({ room, subdomain, onClose, onSuccess }: {
                             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Check-in</label>
                             <input type="date" required value={form.checkIn} onChange={e => setForm({ ...form, checkIn: e.target.value })}
                                 min={new Date().toISOString().split('T')[0]}
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#0E2A38]/20 focus:border-[#0E2A38] outline-none transition-all" />
+                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" />
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Check-out</label>
                             <input type="date" required value={form.checkOut} onChange={e => setForm({ ...form, checkOut: e.target.value })}
                                 min={form.checkIn || new Date().toISOString().split('T')[0]}
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#0E2A38]/20 focus:border-[#0E2A38] outline-none transition-all" />
+                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" />
                         </div>
                     </div>
 
@@ -118,7 +120,7 @@ function BookingModal({ room, subdomain, onClose, onSuccess }: {
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Full name</label>
                         <input type="text" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
                             placeholder="John Doe"
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#0E2A38]/20 focus:border-[#0E2A38] outline-none transition-all" />
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" />
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
@@ -126,28 +128,28 @@ function BookingModal({ room, subdomain, onClose, onSuccess }: {
                             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Email</label>
                             <input type="email" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
                                 placeholder="you@email.com"
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#0E2A38]/20 focus:border-[#0E2A38] outline-none transition-all" />
+                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" />
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Phone</label>
                             <input type="tel" required value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })}
                                 placeholder="+91 98765 43210"
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#0E2A38]/20 focus:border-[#0E2A38] outline-none transition-all" />
+                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" />
                         </div>
                     </div>
 
                     {nights > 0 && (
                         <div className="bg-[#F7F4EF] rounded-xl p-4 flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-600">{nights} night{nights > 1 ? 's' : ''} x ₹{room.price_per_night.toLocaleString()}</p>
+                                <p className="text-sm text-gray-600">{nights} night{nights > 1 ? 's' : ''} x ₹{adjustedPrice(room.price_per_night).toLocaleString()}</p>
                                 <p className="text-xs text-gray-400 mt-0.5">Taxes included</p>
                             </div>
-                            <p className="text-xl font-bold text-[#0E2A38]">₹{(nights * room.price_per_night).toLocaleString()}</p>
+                            <p className="text-xl font-bold text-primary">₹{(nights * adjustedPrice(room.price_per_night)).toLocaleString()}</p>
                         </div>
                     )}
 
                     <button type="submit" disabled={loading}
-                        className="w-full bg-[#0E2A38] hover:bg-[#1a3d4f] text-white font-semibold py-3 rounded-xl transition-all text-sm disabled:opacity-50 flex items-center justify-center gap-2">
+                        className="w-full bg-primary hover:bg-primary-hover text-white font-semibold py-3 rounded-xl transition-all text-sm disabled:opacity-50 flex items-center justify-center gap-2">
                         {loading ? 'Reserving...' : 'Reserve now'}
                         {!loading && <ArrowRight size={16} />}
                     </button>
@@ -175,7 +177,7 @@ function BookingConfirmation({ data, onClose }: { data: any; onClose: () => void
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Booking confirmed</h3>
                 <p className="text-sm text-gray-500 mb-4">
-                    Your reservation <span className="font-semibold text-[#0E2A38]">{data.booking_id}</span> has been received.
+                    Your reservation <span className="font-semibold text-primary">{data.booking_id}</span> has been received.
                 </p>
                 <div className="bg-gray-50 rounded-xl p-4 mb-6 text-left space-y-2">
                     <div className="flex justify-between text-sm">
@@ -188,11 +190,11 @@ function BookingConfirmation({ data, onClose }: { data: any; onClose: () => void
                     </div>
                     <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Total</span>
-                        <span className="font-bold text-[#0E2A38]">₹{Number(data.amount).toLocaleString()}</span>
+                        <span className="font-bold text-primary">₹{Number(data.amount).toLocaleString()}</span>
                     </div>
                 </div>
                 <p className="text-xs text-gray-400 mb-4">You'll receive a confirmation email shortly.</p>
-                <button onClick={onClose} className="w-full bg-[#0E2A38] text-white font-semibold py-3 rounded-xl hover:bg-[#1a3d4f] transition-all text-sm">
+                <button onClick={onClose} className="w-full bg-primary text-white font-semibold py-3 rounded-xl hover:bg-primary-hover transition-all text-sm">
                     Done
                 </button>
             </motion.div>
@@ -218,6 +220,12 @@ export default function TenantSite() {
     const heroCheckInRef = useRef<HTMLInputElement>(null);
     const heroCheckOutRef = useRef<HTMLInputElement>(null);
 
+    // Occupancy-based pricing
+    const { adjustedPrice } = useTenantOccupancyPricing(
+        siteData?.tenant?.id,
+        siteData?.rooms || []
+    );
+
     // Sticky mobile bar
     const [showStickyBar, setShowStickyBar] = useState(false);
     const { scrollY } = useScroll();
@@ -237,10 +245,30 @@ export default function TenantSite() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-[#FDFBF7]">
-                <div className="text-center">
-                    <div className="w-10 h-10 border-3 border-[#0E2A38]/10 border-t-[#0E2A38] rounded-full animate-spin mx-auto mb-4" />
-                    <p className="text-sm text-gray-400 tracking-wide">Loading...</p>
+            <div className="min-h-screen bg-background animate-pulse">
+                {/* Skeleton navbar */}
+                <div className="h-16 bg-white/80 border-b border-gray-100/80" />
+                {/* Skeleton hero */}
+                <div className="h-[60vh] bg-gray-200/50" />
+                {/* Skeleton booking strip */}
+                <div className="max-w-5xl mx-auto -mt-8 px-6">
+                    <div className="h-24 bg-white rounded-2xl shadow-sm" />
+                </div>
+                {/* Skeleton room cards */}
+                <div className="max-w-6xl mx-auto px-6 py-28">
+                    <div className="h-8 w-48 bg-gray-200/60 rounded mx-auto mb-16" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="bg-white rounded-2xl overflow-hidden border border-gray-100">
+                                <div className="h-64 bg-gray-200/50" />
+                                <div className="p-5 space-y-3">
+                                    <div className="h-5 w-32 bg-gray-200/60 rounded" />
+                                    <div className="h-4 w-full bg-gray-100 rounded" />
+                                    <div className="h-10 w-full bg-gray-100 rounded-xl mt-4" />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         );
@@ -248,7 +276,7 @@ export default function TenantSite() {
 
     if (notFound || !siteData) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-[#0E2A38]">
+            <div className="min-h-screen flex items-center justify-center bg-primary">
                 <div className="text-center">
                     <h1 className="text-6xl font-bold text-white/10 mb-4">404</h1>
                     <p className="text-white/50 text-lg mb-2">Property not found</p>
@@ -267,8 +295,6 @@ export default function TenantSite() {
     const aboutText = settings.aboutText || '';
     const vis = tenant.sections_visible || { hero: true, rooms: true, testimonials: true, about: true, contact: true };
 
-    // Pseudo-random "rooms left" per room (stable across re-renders)
-    const roomsLeft = (id: number) => ((id * 7 + 13) % 3) + 1;
 
     const handleHeroBook = () => {
         const el = document.getElementById('rooms');
@@ -276,10 +302,7 @@ export default function TenantSite() {
     };
 
     return (
-        <div className="min-h-screen bg-[#FDFBF7] font-sans text-gray-900 antialiased">
-            {/* Google Fonts */}
-            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet" />
-
+        <div id="main-content" className="min-h-screen bg-background font-sans text-gray-900 antialiased">
             {/* ===== NAVBAR ===== */}
             <nav className="fixed top-0 inset-x-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-100/80">
                 <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -287,11 +310,11 @@ export default function TenantSite() {
                         {tenant.logo_url ? (
                             <img src={tenant.logo_url} alt="" className="w-8 h-8 rounded-lg object-cover" />
                         ) : (
-                            <div className="w-8 h-8 rounded-lg bg-[#0E2A38] flex items-center justify-center">
+                            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
                                 <span className="text-white font-bold text-sm">{tenant.business_name.charAt(0)}</span>
                             </div>
                         )}
-                        <span className="font-bold text-[#0E2A38] tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>{tenant.business_name}</span>
+                        <span className="font-serif font-bold text-primary tracking-tight">{tenant.business_name}</span>
                     </div>
                     <div className="hidden md:flex items-center gap-8 text-sm">
                         <a href="#rooms" className="text-gray-500 hover:text-gray-900 transition-colors font-medium">Rooms</a>
@@ -302,7 +325,7 @@ export default function TenantSite() {
                     </div>
                     <a
                         href="#rooms"
-                        className="bg-[#0E2A38] text-white text-sm font-semibold px-5 py-2 rounded-lg hover:bg-[#1a3d4f] transition-all shadow-sm hover:shadow-md"
+                        className="bg-primary text-white text-sm font-semibold px-5 py-2 rounded-lg hover:bg-primary-hover transition-all shadow-sm hover:shadow-md"
                     >
                         Book now
                     </a>
@@ -311,23 +334,25 @@ export default function TenantSite() {
 
             {/* ===== HERO ===== */}
             {vis.hero !== false && (
-                <section className="relative pt-16 min-h-[60vh] md:min-h-[75vh] flex flex-col overflow-hidden">
-                    {/* Background */}
-                    {tenant.hero_image_url ? (
-                        <>
-                            <img src={tenant.hero_image_url} alt="" className="absolute inset-0 w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/20 to-transparent" />
-                        </>
-                    ) : (
-                        <div className="absolute inset-0 bg-gradient-to-r from-[#0E2A38]/90 via-[#0E2A38]/70 to-[#0E2A38]/40" />
-                    )}
-                    {/* Decorative */}
-                    <div className="absolute top-20 right-20 w-96 h-96 bg-[#C9A646]/5 rounded-full blur-3xl pointer-events-none" />
-                    <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#FDFBF7]/90 to-transparent backdrop-blur-[2px] z-10 pointer-events-none" />
-                    <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{
-                        backgroundImage: 'linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)',
-                        backgroundSize: '60px 60px'
-                    }} />
+                <section className="relative pt-16 min-h-[60vh] md:min-h-[75vh] flex flex-col">
+                    {/* Background Wrapper */}
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+                        {tenant.hero_image_url ? (
+                            <>
+                                <img src={tenant.hero_image_url} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/20 to-transparent" />
+                            </>
+                        ) : (
+                            <div className="absolute inset-0 bg-gradient-to-r from-primary/90 via-primary/70 to-primary/40" />
+                        )}
+                        {/* Decorative */}
+                        <div className="absolute top-20 right-20 w-96 h-96 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
+                        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background/90 to-transparent backdrop-blur-[2px] z-10 pointer-events-none" />
+                        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{
+                            backgroundImage: 'linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)',
+                            backgroundSize: '60px 60px'
+                        }} />
+                    </div>
 
                     {/* Hero content */}
                     <div className="relative z-20 flex-1 flex flex-col justify-center max-w-6xl mx-auto px-6 pt-24 pb-32 md:pt-32 md:pb-40 w-full text-center md:text-left">
@@ -338,8 +363,7 @@ export default function TenantSite() {
                             className="max-w-3xl mx-auto md:mx-0 flex flex-col items-center md:items-start"
                         >
                             <h1
-                                className="text-4xl md:text-5xl lg:text-[64px] font-bold text-white leading-[1.15] tracking-tight mb-6"
-                                style={{ fontFamily: "'Playfair Display', serif" }}
+                                className="font-serif text-4xl md:text-5xl lg:text-[64px] font-bold text-white leading-[1.15] tracking-tight mb-6"
                             >
                                 {heroTitle.split(',').join('\n')}
                             </h1>
@@ -358,7 +382,7 @@ export default function TenantSite() {
                                 {rooms.length > 0 && testimonials.length > 0 && <span className="text-white/30">|</span>}
                                 {testimonials.length > 0 && (
                                     <div className="flex items-center gap-2">
-                                        <span className="text-[#C9A646]">★</span>
+                                        <span className="text-accent">★</span>
                                         <span className="text-white font-semibold">
                                             {(testimonials.reduce((s, t) => s + t.rating, 0) / testimonials.length).toFixed(1)}
                                         </span>
@@ -370,8 +394,8 @@ export default function TenantSite() {
                                     <div className="flex items-center gap-2">
                                         <span className="text-white/80 text-sm hidden sm:inline">From</span>
                                         <span className="text-white font-semibold flex items-center gap-1">
-                                            <span className="text-[#C9A646] text-xs font-normal">₹</span>
-                                            {Math.min(...rooms.map(r => r.price_per_night)).toLocaleString()}
+                                            <span className="text-accent text-xs font-normal">₹</span>
+                                            {Math.min(...rooms.map(r => adjustedPrice(r.price_per_night))).toLocaleString()}
                                             <span className="text-white/60 font-normal text-xs ml-0.5">/ night</span>
                                         </span>
                                     </div>
@@ -395,8 +419,8 @@ export default function TenantSite() {
                                     onClick={() => heroCheckInRef.current?.showPicker()}
                                 >
                                     <span className="text-[10px] tracking-[0.15em] text-gray-400 uppercase font-semibold">Check-in</span>
-                                    <div className="flex items-center gap-2 text-[#0E2A38] font-semibold">
-                                        <Calendar size={16} className="text-[#C9A646] hidden sm:block" />
+                                    <div className="flex items-center gap-2 text-primary font-semibold">
+                                        <Calendar size={16} className="text-accent hidden sm:block" />
                                         <span className="text-sm">{heroCheckIn ? new Date(heroCheckIn + 'T00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Select date'}</span>
                                     </div>
                                     <input ref={heroCheckInRef} type="date" min={new Date().toISOString().split('T')[0]}
@@ -416,8 +440,8 @@ export default function TenantSite() {
                                     onClick={() => heroCheckOutRef.current?.showPicker()}
                                 >
                                     <span className="text-[10px] tracking-[0.15em] text-gray-400 uppercase font-semibold">Check-out</span>
-                                    <div className="flex items-center gap-2 text-[#0E2A38] font-semibold">
-                                        <Calendar size={16} className="text-[#C9A646] hidden sm:block" />
+                                    <div className="flex items-center gap-2 text-primary font-semibold">
+                                        <Calendar size={16} className="text-accent hidden sm:block" />
                                         <span className="text-sm">{heroCheckOut ? new Date(heroCheckOut + 'T00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Select date'}</span>
                                     </div>
                                     <input ref={heroCheckOutRef} type="date" min={heroCheckIn || new Date().toISOString().split('T')[0]}
@@ -429,15 +453,16 @@ export default function TenantSite() {
                                 <div className="col-span-2 md:flex-1 p-3 md:p-5 flex flex-row md:flex-col items-center md:items-start justify-between md:justify-start gap-1">
                                     <span className="text-[10px] tracking-[0.15em] text-gray-400 uppercase font-semibold md:mb-1">Guests</span>
                                     <div className="flex items-center gap-3">
-                                        <Users size={16} className="text-[#C9A646] hidden md:block" />
+                                        <Users size={16} className="text-accent hidden md:block" />
                                         <div className="flex items-center gap-2">
                                             <button type="button" onClick={() => setHeroGuests(Math.max(1, heroGuests - 1))}
                                                 className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors text-gray-500">
                                                 <Minus size={12} />
                                             </button>
-                                            <span className="text-sm font-semibold text-[#0E2A38] w-12 text-center">{heroGuests} Guest{heroGuests > 1 ? 's' : ''}</span>
-                                            <button type="button" onClick={() => setHeroGuests(heroGuests + 1)}
-                                                className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors text-gray-500">
+                                            <span className="text-sm font-semibold text-primary w-12 text-center">{heroGuests} Guest{heroGuests > 1 ? 's' : ''}</span>
+                                            <button type="button" onClick={() => setHeroGuests(Math.min(16, heroGuests + 1))}
+                                                disabled={heroGuests >= 16}
+                                                className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors text-gray-500 disabled:opacity-30 disabled:cursor-not-allowed">
                                                 <Plus size={12} />
                                             </button>
                                         </div>
@@ -448,7 +473,7 @@ export default function TenantSite() {
                                 <div className="col-span-2 p-3 md:p-4 flex items-center bg-gray-50/30">
                                     <button
                                         onClick={handleHeroBook}
-                                        className="w-full md:w-auto bg-[#0E2A38] text-white font-semibold px-8 py-3.5 rounded-xl hover:bg-[#1a3d4f] transition-all shadow-lg shadow-[#0E2A38]/20 text-sm flex items-center justify-center gap-2 whitespace-nowrap"
+                                        className="w-full md:w-auto bg-primary text-white font-semibold px-8 py-3.5 rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 text-sm flex items-center justify-center gap-2 whitespace-nowrap"
                                     >
                                         Check Availability
                                         <ArrowRight size={16} />
@@ -456,9 +481,9 @@ export default function TenantSite() {
                                 </div>
                             </div>
 
-                            <div className="bg-[#FDFBF7] py-2 md:py-2.5 text-center border-t border-gray-100">
+                            <div className="bg-background py-2 md:py-2.5 text-center border-t border-gray-100">
                                 <p className="text-[9px] md:text-[10px] tracking-[0.1em] md:tracking-[0.15em] text-gray-400 uppercase font-medium">
-                                    Best Rate Guarantee <span className="text-[#C9A646] mx-1 md:mx-2">•</span> No fees <span className="text-[#C9A646] mx-1 md:mx-2">•</span> Free cancel
+                                    Best Rate Guarantee <span className="text-accent mx-1 md:mx-2">•</span> No fees <span className="text-accent mx-1 md:mx-2">•</span> Free cancel
                                 </p>
                             </div>
                         </div>
@@ -471,8 +496,8 @@ export default function TenantSite() {
                 <section id="rooms" className="py-28 px-6">
                     <div className="max-w-6xl mx-auto">
                         <div className="text-center mb-16">
-                            <p className="text-xs font-semibold text-[#C9A646] uppercase tracking-[0.2em] mb-3">Accommodation</p>
-                            <h2 className="text-4xl md:text-5xl font-bold text-[#0E2A38] tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>Our rooms</h2>
+                            <p className="text-xs font-semibold text-accent uppercase tracking-[0.2em] mb-3">Accommodation</p>
+                            <h2 className="text-4xl md:text-5xl font-bold text-primary tracking-tight">Our rooms</h2>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
@@ -491,12 +516,12 @@ export default function TenantSite() {
                                             <img src={room.images[0]} alt={room.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                                         ) : (
                                             /* Elegant placeholder for missing images */
-                                            <div className="w-full h-full bg-gradient-to-br from-[#0E2A38]/8 via-[#C9A646]/5 to-[#0E2A38]/10 flex items-center justify-center backdrop-blur-sm">
+                                            <div className="w-full h-full bg-gradient-to-br from-primary/8 via-accent/5 to-primary/10 flex items-center justify-center backdrop-blur-sm">
                                                 <div className="text-center">
                                                     <div className="w-14 h-14 rounded-2xl bg-white/80 shadow-sm flex items-center justify-center mx-auto mb-3">
-                                                        <Camera size={24} className="text-[#0E2A38]/30" />
+                                                        <Camera size={24} className="text-primary/30" />
                                                     </div>
-                                                    <p className="text-xs text-[#0E2A38]/40 font-medium">{room.type}</p>
+                                                    <p className="text-xs text-primary/40 font-medium">{room.type}</p>
                                                 </div>
                                             </div>
                                         )}
@@ -504,7 +529,7 @@ export default function TenantSite() {
                                         {/* Price overlay on image */}
                                         <div className="absolute top-4 left-4">
                                             <div className="bg-white/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg">
-                                                <p className="text-lg font-bold text-[#0E2A38]">₹{room.price_per_night.toLocaleString()}<span className="text-[10px] font-normal text-gray-400 ml-0.5">/night</span></p>
+                                                <p className="text-lg font-bold text-primary">₹{adjustedPrice(room.price_per_night).toLocaleString()}<span className="text-[10px] font-normal text-gray-400 ml-0.5">/night</span></p>
                                             </div>
                                         </div>
 
@@ -515,15 +540,10 @@ export default function TenantSite() {
                                                     Sold Out
                                                 </div>
                                             ) : (
-                                                <>
-                                                    <div className="bg-emerald-500 text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-sm flex items-center gap-1">
-                                                        <div className="w-1 h-1 bg-white rounded-full animate-pulse" />
-                                                        Available
-                                                    </div>
-                                                    <div className="bg-[#C9A646] text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-sm">
-                                                        Only {roomsLeft(room.id)} left
-                                                    </div>
-                                                </>
+                                                <div className="bg-emerald-500 text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-sm flex items-center gap-1">
+                                                    <div className="w-1 h-1 bg-white rounded-full animate-pulse" />
+                                                    Available
+                                                </div>
                                             )}
                                         </div>
                                     </div>
@@ -531,7 +551,7 @@ export default function TenantSite() {
                                     <div className="p-5">
                                         <div className="flex items-start justify-between mb-2">
                                             <div>
-                                                <h3 className="font-bold text-[#0E2A38] text-lg" style={{ fontFamily: "'Playfair Display', serif" }}>{room.name}</h3>
+                                                <h3 className="font-bold text-primary text-lg">{room.name}</h3>
                                                 <p className="text-xs text-gray-400 uppercase tracking-wider">{room.type}</p>
                                             </div>
                                             <div className="flex items-center gap-1 text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-md">
@@ -563,13 +583,13 @@ export default function TenantSite() {
                                         <div className="flex gap-2">
                                             <Link
                                                 to={`/site/${subdomain}/room/${room.id}`}
-                                                className="flex-1 bg-white text-[#0E2A38] border-2 border-[#0E2A38]/15 font-semibold py-2.5 rounded-xl text-sm hover:border-[#0E2A38]/40 hover:bg-[#0E2A38]/5 transition-all text-center"
+                                                className="flex-1 bg-white text-primary border-2 border-primary/15 font-semibold py-2.5 rounded-xl text-sm hover:border-primary/40 hover:bg-primary/5 transition-all text-center"
                                             >
                                                 Explore room
                                             </Link>
                                             <button
                                                 onClick={() => setBookingRoom(room)}
-                                                className="flex-1 bg-[#0E2A38] text-white font-semibold py-2.5 rounded-xl text-sm hover:bg-[#1a3d4f] transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-lg hover:shadow-[#0E2A38]/15"
+                                                className="flex-1 bg-primary text-white font-semibold py-2.5 rounded-xl text-sm hover:bg-primary-hover transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-lg hover:shadow-primary/15"
                                             >
                                                 Book now <ArrowRight size={14} />
                                             </button>
@@ -584,11 +604,11 @@ export default function TenantSite() {
 
             {/* ===== TESTIMONIALS -- 3-column grid ===== */}
             {vis.testimonials !== false && testimonials.length > 0 && (
-                <section id="reviews" className="py-28 px-6 bg-[#0E2A38]">
+                <section id="reviews" className="py-28 px-6 bg-primary">
                     <div className="max-w-6xl mx-auto">
                         <div className="text-center mb-16">
-                            <p className="text-xs font-semibold text-[#C9A646] uppercase tracking-[0.2em] mb-3">Guest reviews</p>
-                            <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>What our guests say</h2>
+                            <p className="text-xs font-semibold text-accent uppercase tracking-[0.2em] mb-3">Guest reviews</p>
+                            <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight">What our guests say</h2>
                             {testimonials.length >= 3 && (
                                 <div className="flex items-center justify-center gap-2 mt-5">
                                     <div className="flex gap-0.5">
@@ -630,8 +650,8 @@ export default function TenantSite() {
                                         {t.avatar_url ? (
                                             <img src={t.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover ring-2 ring-white/10" />
                                         ) : (
-                                            <div className="w-10 h-10 rounded-full bg-[#C9A646]/20 flex items-center justify-center ring-2 ring-white/10">
-                                                <span className="text-[#C9A646] font-bold">{t.guest_name.charAt(0)}</span>
+                                            <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center ring-2 ring-white/10">
+                                                <span className="text-accent font-bold">{t.guest_name.charAt(0)}</span>
                                             </div>
                                         )}
                                         <div>
@@ -665,8 +685,8 @@ export default function TenantSite() {
             {vis.about !== false && aboutText && (
                 <section id="about" className="py-28 px-6">
                     <div className="max-w-3xl mx-auto text-center">
-                        <p className="text-xs font-semibold text-[#C9A646] uppercase tracking-[0.2em] mb-3">About us</p>
-                        <h2 className="text-4xl md:text-5xl font-bold text-[#0E2A38] tracking-tight mb-8" style={{ fontFamily: "'Playfair Display', serif" }}>{tenant.business_name}</h2>
+                        <p className="text-xs font-semibold text-accent uppercase tracking-[0.2em] mb-3">About us</p>
+                        <h2 className="text-4xl md:text-5xl font-bold text-primary tracking-tight mb-8">{tenant.business_name}</h2>
                         <p className="text-lg text-gray-500 leading-relaxed max-w-2xl mx-auto">{aboutText}</p>
                     </div>
                 </section>
@@ -676,16 +696,16 @@ export default function TenantSite() {
             <section id="location" className="py-28 px-6 bg-white">
                 <div className="max-w-6xl mx-auto">
                     <div className="text-center mb-16">
-                        <p className="text-xs font-semibold text-[#C9A646] uppercase tracking-[0.2em] mb-3">Find us</p>
-                        <h2 className="text-4xl md:text-5xl font-bold text-[#0E2A38] tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>Perfectly located</h2>
+                        <p className="text-xs font-semibold text-accent uppercase tracking-[0.2em] mb-3">Find us</p>
+                        <h2 className="text-4xl md:text-5xl font-bold text-primary tracking-tight">Perfectly located</h2>
                     </div>
 
                     {/* Proximity stats */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-14 max-w-3xl mx-auto">
                         {[
                             { icon: Waves, label: settings.locationStat1Label || 'Beach', value: settings.locationStat1Value || '500m', color: 'text-cyan-500' },
-                            { icon: Building2, label: settings.locationStat2Label || 'Town Center', value: settings.locationStat2Value || '2 km', color: 'text-[#C9A646]' },
-                            { icon: Plane, label: settings.locationStat3Label || 'Airport', value: settings.locationStat3Value || '15 min', color: 'text-[#0E2A38]' },
+                            { icon: Building2, label: settings.locationStat2Label || 'Town Center', value: settings.locationStat2Value || '2 km', color: 'text-accent' },
+                            { icon: Plane, label: settings.locationStat3Label || 'Airport', value: settings.locationStat3Value || '15 min', color: 'text-primary' },
                         ].map((stat, i) => {
                             const Icon = stat.icon;
                             return (
@@ -695,12 +715,12 @@ export default function TenantSite() {
                                     whileInView={{ opacity: 1, y: 0 }}
                                     viewport={{ once: true }}
                                     transition={{ delay: i * 0.1 }}
-                                    className="flex flex-col items-center bg-[#FDFBF7] rounded-2xl p-6 border border-gray-100"
+                                    className="flex flex-col items-center bg-background rounded-2xl p-6 border border-gray-100"
                                 >
                                     <div className={`w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center mb-3 ${stat.color}`}>
                                         <Icon size={22} />
                                     </div>
-                                    <p className="text-2xl font-bold text-[#0E2A38] mb-1">{stat.value}</p>
+                                    <p className="text-2xl font-bold text-primary mb-1">{stat.value}</p>
                                     <p className="text-xs text-gray-400 uppercase tracking-wider font-medium">from {stat.label}</p>
                                 </motion.div>
                             );
@@ -711,7 +731,7 @@ export default function TenantSite() {
                     <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm h-[350px] md:h-[400px]">
                         {tenant.google_place_id ? (
                             <iframe
-                                src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=place_id:${tenant.google_place_id}`}
+                                src={`https://www.google.com/maps/embed/v1/place?key=${import.meta.env.VITE_GOOGLE_MAPS_KEY || ''}&q=place_id:${tenant.google_place_id}`}
                                 className="w-full h-full border-0"
                                 loading="lazy"
                                 allowFullScreen
@@ -719,7 +739,7 @@ export default function TenantSite() {
                             />
                         ) : contactAddress ? (
                             <iframe
-                                src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${encodeURIComponent(contactAddress)}`}
+                                src={`https://www.google.com/maps/embed/v1/place?key=${import.meta.env.VITE_GOOGLE_MAPS_KEY || ''}&q=${encodeURIComponent(contactAddress)}`}
                                 className="w-full h-full border-0"
                                 loading="lazy"
                                 allowFullScreen
@@ -744,7 +764,7 @@ export default function TenantSite() {
                             className="text-center mt-6"
                         >
                             <p className="text-sm text-gray-500 flex items-center justify-center gap-2">
-                                <MapPin size={14} className="text-[#C9A646]" />
+                                <MapPin size={14} className="text-accent" />
                                 {contactAddress}
                             </p>
                         </motion.div>
@@ -753,14 +773,14 @@ export default function TenantSite() {
             </section>
 
             {/* ===== DIRECT BOOKING BENEFITS ===== */}
-            <section className="py-20 px-6 bg-[#0E2A38] relative overflow-hidden">
+            <section className="py-20 px-6 bg-primary relative overflow-hidden">
                 {/* Decorative */}
-                <div className="absolute top-0 right-0 w-72 h-72 bg-[#C9A646]/5 rounded-full blur-3xl" />
-                <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#C9A646]/3 rounded-full blur-3xl" />
+                <div className="absolute top-0 right-0 w-72 h-72 bg-accent/5 rounded-full blur-3xl" />
+                <div className="absolute bottom-0 left-0 w-96 h-96 bg-accent/3 rounded-full blur-3xl" />
 
                 <div className="max-w-4xl mx-auto relative z-10">
                     <div className="text-center mb-12">
-                        <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>
+                        <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight mb-3">
                             Book direct & save
                         </h2>
                         <p className="text-white/40 text-sm">Skip the middleman. Get the best deal when you book with us directly.</p>
@@ -782,8 +802,8 @@ export default function TenantSite() {
                                     transition={{ delay: i * 0.1 }}
                                     className="flex items-start gap-4 bg-white/5 rounded-xl p-5 border border-white/5"
                                 >
-                                    <div className="w-10 h-10 rounded-lg bg-[#C9A646]/20 flex items-center justify-center shrink-0">
-                                        <Icon size={20} className="text-[#C9A646]" />
+                                    <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center shrink-0">
+                                        <Icon size={20} className="text-accent" />
                                     </div>
                                     <div>
                                         <p className="text-white font-semibold text-sm mb-1">{benefit.title}</p>
@@ -797,7 +817,7 @@ export default function TenantSite() {
                     <div className="text-center">
                         <a
                             href="#rooms"
-                            className="inline-flex items-center gap-2 bg-[#C9A646] text-[#0E2A38] font-bold px-8 py-3.5 rounded-xl hover:bg-[#d4af4f] transition-all shadow-lg shadow-[#C9A646]/20 text-sm"
+                            className="inline-flex items-center gap-2 bg-accent text-primary font-bold px-8 py-3.5 rounded-xl hover:bg-accent-hover transition-all shadow-lg shadow-accent/20 text-sm"
                         >
                             Browse rooms & book
                             <ArrowRight size={16} />
@@ -808,7 +828,7 @@ export default function TenantSite() {
 
             {/* ===== CONTACT / FOOTER ===== */}
             {vis.contact !== false && (
-                <footer id="contact" className="bg-[#0a1f2c] text-white py-20 px-6">
+                <footer id="contact" className="bg-ocean-950 text-white py-20 px-6">
                     <div className="max-w-6xl mx-auto">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-16">
                             {/* Brand */}
@@ -817,11 +837,11 @@ export default function TenantSite() {
                                     {tenant.logo_url ? (
                                         <img src={tenant.logo_url} alt="" className="w-8 h-8 rounded-lg object-cover" />
                                     ) : (
-                                        <div className="w-8 h-8 rounded-lg bg-[#C9A646] flex items-center justify-center">
+                                        <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
                                             <span className="text-white font-bold text-sm">{tenant.business_name.charAt(0)}</span>
                                         </div>
                                     )}
-                                    <span className="font-bold text-lg tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>{tenant.business_name}</span>
+                                    <span className="font-serif font-bold text-lg tracking-tight">{tenant.business_name}</span>
                                 </div>
                                 {aboutText && <p className="text-white/40 text-sm leading-relaxed line-clamp-3">{aboutText}</p>}
                             </div>
@@ -843,19 +863,19 @@ export default function TenantSite() {
                                 <ul className="space-y-3 text-sm">
                                     {contactPhone && (
                                         <li className="flex items-center gap-3 text-white/50">
-                                            <Phone size={14} className="text-[#C9A646]" />
+                                            <Phone size={14} className="text-accent" />
                                             <a href={`tel:${contactPhone}`} className="hover:text-white transition-colors">{contactPhone}</a>
                                         </li>
                                     )}
                                     {contactEmail && (
                                         <li className="flex items-center gap-3 text-white/50">
-                                            <Mail size={14} className="text-[#C9A646]" />
+                                            <Mail size={14} className="text-accent" />
                                             <a href={`mailto:${contactEmail}`} className="hover:text-white transition-colors">{contactEmail}</a>
                                         </li>
                                     )}
                                     {contactAddress && (
                                         <li className="flex items-start gap-3 text-white/50">
-                                            <MapPin size={14} className="text-[#C9A646] mt-0.5 shrink-0" />
+                                            <MapPin size={14} className="text-accent mt-0.5 shrink-0" />
                                             <span>{contactAddress}</span>
                                         </li>
                                     )}
@@ -866,7 +886,7 @@ export default function TenantSite() {
                         <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
                             <p className="text-xs text-white/20">&copy; {new Date().getFullYear()} {tenant.business_name}. All rights reserved.</p>
                             <p className="text-xs text-white/20">
-                                Powered by <a href="/" className="text-[#C9A646]/50 hover:text-[#C9A646] transition-colors">HospitalityOS</a>
+                                Powered by <a href="/" className="text-accent/50 hover:text-accent transition-colors">HospitalityOS</a>
                             </p>
                         </div>
                     </div>
@@ -887,12 +907,12 @@ export default function TenantSite() {
                             {rooms.length > 0 && (
                                 <div className="flex-1">
                                     <p className="text-xs text-gray-400">Starting from</p>
-                                    <p className="text-lg font-bold text-[#C9A646]">₹{Math.min(...rooms.map(r => r.price_per_night)).toLocaleString()}<span className="text-xs font-normal text-gray-400">/night</span></p>
+                                    <p className="text-lg font-bold text-accent">₹{Math.min(...rooms.map(r => adjustedPrice(r.price_per_night))).toLocaleString()}<span className="text-xs font-normal text-gray-400">/night</span></p>
                                 </div>
                             )}
                             <a
                                 href="#rooms"
-                                className="bg-[#0E2A38] text-white font-semibold px-6 py-3 rounded-xl text-sm shadow-lg shadow-[#0E2A38]/20 flex items-center gap-2 hover:bg-[#1a3d4f] transition-all"
+                                className="bg-primary text-white font-semibold px-6 py-3 rounded-xl text-sm shadow-lg shadow-primary/20 flex items-center gap-2 hover:bg-primary-hover transition-all"
                             >
                                 Book now
                                 <ArrowRight size={14} />
@@ -910,6 +930,7 @@ export default function TenantSite() {
                         subdomain={subdomain || ''}
                         onClose={() => setBookingRoom(null)}
                         onSuccess={(data) => setBookingSuccess(data)}
+                        adjustedPrice={adjustedPrice}
                     />
                 )}
                 {bookingSuccess && (
@@ -919,6 +940,26 @@ export default function TenantSite() {
                     />
                 )}
             </AnimatePresence>
+
+            {/* ===== WHATSAPP FAB ===== */}
+            {contactPhone && (
+                <motion.a
+                    href={`https://wa.me/${contactPhone.replace(/[\s\(\)\-\+]/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="fixed bottom-6 right-6 z-40 bg-green-500 text-white p-4 rounded-full shadow-lg hover:bg-green-600 transition-colors flex items-center justify-center group"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    initial={{ opacity: 0, y: 50 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: 'spring', stiffness: 260, damping: 20, delay: 1 }}
+                >
+                    <MessageCircle size={28} />
+                    <span className="absolute right-full mr-4 bg-white text-gray-800 text-sm font-medium py-1.5 px-3 rounded-lg shadow-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                        Chat with us
+                    </span>
+                </motion.a>
+            )}
         </div>
     );
 }

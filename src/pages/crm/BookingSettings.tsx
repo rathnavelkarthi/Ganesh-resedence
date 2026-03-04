@@ -12,7 +12,7 @@ import {
     Globe,
     Smartphone
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { toast } from 'sonner';
 
 export default function BookingSettings() {

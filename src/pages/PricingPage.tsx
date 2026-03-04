@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { CheckCircle2, Shield, Zap, Receipt, Building2, ArrowRight } from 'lucide-react';
 import BillingToggle from '../components/pricing/BillingToggle';
 import PricingCard from '../components/pricing/PricingCard';

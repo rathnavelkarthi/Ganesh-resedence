@@ -1,6 +1,7 @@
 import { Users, Wind, Wifi, Bath } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { useCRM } from '../context/CRMDataContext';
+import { useOccupancyPricing } from '../hooks/useOccupancyPricing';
 
 interface RoomSelectorProps {
   selectedRoomId: string | null;
@@ -10,6 +11,7 @@ interface RoomSelectorProps {
 
 export default function RoomSelector({ selectedRoomId, onSelectRoom, nights }: RoomSelectorProps) {
   const { rooms: backendRooms } = useCRM();
+  const { adjustedPrice } = useOccupancyPricing();
 
   // Filter only available rooms to show customers
   const availableRooms = backendRooms.filter(r => r.is_available);
@@ -28,7 +30,7 @@ export default function RoomSelector({ selectedRoomId, onSelectRoom, nights }: R
               key={room.id}
               className={`bg-white rounded-2xl overflow-hidden shadow-sm border-2 transition-all duration-300 flex flex-col sm:flex-row group cursor-pointer
                 ${isSelected ? 'border-[var(--color-ocean-500)] ring-4 ring-[var(--color-ocean-50)]' : 'border-transparent hover:border-gray-200 hover:shadow-md'}`}
-              onClick={() => onSelectRoom({ id: String(room.id), name: room.name, price: room.price_per_night })}
+              onClick={() => onSelectRoom({ id: String(room.id), name: room.name, price: adjustedPrice(room.price_per_night) })}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1, duration: 0.4 }}
@@ -71,11 +73,11 @@ export default function RoomSelector({ selectedRoomId, onSelectRoom, nights }: R
 
                 <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
                   <div>
-                    <span className="text-2xl font-bold text-gray-900">₹{room.price_per_night}</span>
+                    <span className="text-2xl font-bold text-gray-900">₹{adjustedPrice(room.price_per_night)}</span>
                     <span className="text-sm text-gray-500"> / night</span>
                     {nights > 0 && (
                       <div className="text-sm font-medium text-[var(--color-ocean-600)] mt-1">
-                        Total: ₹{room.price_per_night * nights} for {nights} night{nights > 1 ? 's' : ''}
+                        Total: ₹{adjustedPrice(room.price_per_night) * nights} for {nights} night{nights > 1 ? 's' : ''}
                       </div>
                     )}
                   </div>

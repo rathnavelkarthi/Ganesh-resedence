@@ -10,20 +10,28 @@ import {
     Percent,
     ArrowRight,
     TrendingUp,
+    TrendingDown,
     Activity,
     Users,
     ChevronLeft,
     ChevronRight,
-    Save
+    Save,
+    Edit2,
+    ToggleLeft,
+    ToggleRight,
+    AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { format, addDays, isSameDay, isWeekend } from 'date-fns';
+import { format, addDays, isSameDay, isWeekend, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 
 type TabType = 'calendar' | 'rules' | 'coupons';
 
+const UPSELL_THRESHOLD = 80;
+const DOWNSELL_THRESHOLD = 40;
+
 export default function PricingRules() {
     const { tenant } = useAuth();
-    const { rooms } = useCRM();
+    const { rooms, reservations } = useCRM();
     const [rules, setRules] = useState<any[]>([]);
     const [coupons, setCoupons] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -33,8 +41,54 @@ export default function PricingRules() {
     const [startDate, setStartDate] = useState(new Date());
     const [showBulkUpdate, setShowBulkUpdate] = useState(false);
 
+    // Dynamic Rule Modal State
+    const [showRuleModal, setShowRuleModal] = useState(false);
+    const [editingRule, setEditingRule] = useState<any | null>(null);
+    const [ruleForm, setRuleForm] = useState({
+        room_id: '',
+        rule_type: 'peak',
+        start_date: '',
+        end_date: '',
+        price_override: '',
+    });
+    const [savingRule, setSavingRule] = useState(false);
+
+    // Occupancy-Based Pricing State
+    const [upsellEnabled, setUpsellEnabled] = useState(false);
+    const [downsellEnabled, setDownsellEnabled] = useState(false);
+    const [upsellPercentage, setUpsellPercentage] = useState(15);
+    const [downsellPercentage, setDownsellPercentage] = useState(10);
+    const [savingOccupancy, setSavingOccupancy] = useState(false);
+
     // Derive dates synchronously on render so dates[0] is never undefined
     const dates = Array.from({ length: 14 }).map((_, i) => addDays(startDate, i));
+
+    // Occupancy computation
+    const computeOccupancy = (targetDate: Date): number => {
+        if (rooms.length === 0) return 0;
+        const target = startOfDay(targetDate);
+        const bookedCount = rooms.filter(room => {
+            return reservations.some(res => {
+                if (res.status !== 'Confirmed' && res.status !== 'Pending') return false;
+                if (res.room_id !== room.id && res.room !== (room.name || room.type)) return false;
+                const checkIn = startOfDay(new Date(res.checkIn));
+                const checkOut = endOfDay(new Date(res.checkOut));
+                return isWithinInterval(target, { start: checkIn, end: checkOut });
+            });
+        }).length;
+        return Math.round((bookedCount / rooms.length) * 100);
+    };
+
+    const todayOccupancy = computeOccupancy(new Date());
+
+    // Pre-compute occupancy for the 14-day calendar window
+    const occupancyByDate: Record<string, number> = {};
+    dates.forEach(date => {
+        occupancyByDate[format(date, 'yyyy-MM-dd')] = computeOccupancy(date);
+    });
+
+    // Filter out occupancy rules from the rules listing
+    const dateRangeRules = rules.filter(r => r.rule_type !== 'occupancy_upsell' && r.rule_type !== 'occupancy_downsell');
 
     // Simulate Daily Rates (In a real app, this would be a Time-Series DB query)
     const [dailyRates, setDailyRates] = useState<Record<number, Record<string, number>>>({});
@@ -46,7 +100,7 @@ export default function PricingRules() {
     }, [tenant]);
 
     useEffect(() => {
-        // Initialize simulated daily rates based on base room prices and active rules
+        // Compute daily rates based on base room prices and active pricing rules
         const initialRates: Record<number, Record<string, number>> = {};
         rooms.forEach(room => {
             initialRates[room.id] = {};
@@ -54,9 +108,32 @@ export default function PricingRules() {
                 const dateStr = format(date, 'yyyy-MM-dd');
                 let price = room.price_per_night || 0;
 
-                // Simulate applying a rule (e.g. +$20 on weekends if no specific rule is set, just for demo variance)
-                if (isWeekend(date)) {
-                    price += price * 0.15; // 15% weekend premium
+                // Find matching rules for this date
+                const matchingRules = rules.filter(rule => {
+                    if (!rule.start_date || !rule.end_date) return false;
+                    const ruleStart = new Date(rule.start_date);
+                    const ruleEnd = new Date(rule.end_date);
+                    return date >= ruleStart && date <= ruleEnd;
+                });
+
+                // Room-specific rule takes priority over "all rooms" rule
+                const roomSpecificRule = matchingRules.find(r => r.room_id === room.id);
+                const allRoomsRule = matchingRules.find(r => !r.room_id);
+                const applicableRule = roomSpecificRule || allRoomsRule;
+
+                if (applicableRule) {
+                    price = applicableRule.price_override;
+                } else if (isWeekend(date)) {
+                    // Only apply default weekend premium if no explicit rule covers this date
+                    price += price * 0.15;
+                }
+
+                // Apply occupancy-based dynamic pricing
+                const dateOccupancy = occupancyByDate[dateStr] ?? 0;
+                if (upsellEnabled && dateOccupancy >= UPSELL_THRESHOLD) {
+                    price *= (1 + upsellPercentage / 100);
+                } else if (downsellEnabled && dateOccupancy <= DOWNSELL_THRESHOLD) {
+                    price *= (1 - downsellPercentage / 100);
                 }
 
                 initialRates[room.id][dateStr] = Math.round(price);
@@ -65,7 +142,7 @@ export default function PricingRules() {
         setDailyRates(initialRates);
 
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [startDate, rooms, rules]);
+    }, [startDate, rooms, rules, reservations, upsellEnabled, downsellEnabled, upsellPercentage, downsellPercentage]);
 
     const fetchData = async () => {
         setLoading(true);
@@ -78,8 +155,17 @@ export default function PricingRules() {
             if (rulesRes.error) throw rulesRes.error;
             if (couponsRes.error) throw couponsRes.error;
 
-            setRules(rulesRes.data || []);
+            const allRules = rulesRes.data || [];
+            setRules(allRules);
             setCoupons(couponsRes.data || []);
+
+            // Hydrate occupancy pricing settings
+            const upsellRow = allRules.find((r: any) => r.rule_type === 'occupancy_upsell');
+            const downsellRow = allRules.find((r: any) => r.rule_type === 'occupancy_downsell');
+            setUpsellEnabled(!!upsellRow);
+            setUpsellPercentage(upsellRow ? upsellRow.price_override : 15);
+            setDownsellEnabled(!!downsellRow);
+            setDownsellPercentage(downsellRow ? downsellRow.price_override : 10);
         } catch (error: any) {
             toast.error('Failed to fetch data: ' + error.message);
         } finally {
@@ -99,6 +185,91 @@ export default function PricingRules() {
         }));
     };
 
+    const openRuleModal = (rule?: any) => {
+        if (rule) {
+            setEditingRule(rule);
+            setRuleForm({
+                room_id: rule.room_id?.toString() || '',
+                rule_type: rule.rule_type || 'peak',
+                start_date: rule.start_date || '',
+                end_date: rule.end_date || '',
+                price_override: rule.price_override?.toString() || '',
+            });
+        } else {
+            setEditingRule(null);
+            setRuleForm({
+                room_id: '',
+                rule_type: 'peak',
+                start_date: '',
+                end_date: '',
+                price_override: '',
+            });
+        }
+        setShowRuleModal(true);
+    };
+
+    const closeRuleModal = () => {
+        setShowRuleModal(false);
+        setEditingRule(null);
+        setRuleForm({ room_id: '', rule_type: 'peak', start_date: '', end_date: '', price_override: '' });
+    };
+
+    const handleSaveRule = async () => {
+        if (!ruleForm.start_date || !ruleForm.end_date || !ruleForm.price_override) {
+            toast.error('Please fill in all required fields (dates and price).');
+            return;
+        }
+        if (new Date(ruleForm.end_date) < new Date(ruleForm.start_date)) {
+            toast.error('End date must be after start date.');
+            return;
+        }
+        setSavingRule(true);
+        try {
+            const payload = {
+                tenant_id: tenant.id,
+                room_id: ruleForm.room_id ? parseInt(ruleForm.room_id, 10) : null,
+                rule_type: ruleForm.rule_type,
+                start_date: ruleForm.start_date,
+                end_date: ruleForm.end_date,
+                price_override: parseFloat(ruleForm.price_override),
+            };
+
+            if (editingRule) {
+                const { error } = await supabase
+                    .from('room_pricing')
+                    .update(payload)
+                    .eq('id', editingRule.id);
+                if (error) throw error;
+                toast.success('Rule updated successfully!');
+            } else {
+                const { error } = await supabase
+                    .from('room_pricing')
+                    .insert(payload);
+                if (error) throw error;
+                toast.success('Rule created successfully!');
+            }
+            closeRuleModal();
+            await fetchData();
+        } catch (error: any) {
+            toast.error('Failed to save rule: ' + error.message);
+        } finally {
+            setSavingRule(false);
+        }
+    };
+
+    const handleDeleteRule = async (id: number) => {
+        if (!window.confirm('Are you sure you want to delete this pricing rule?')) return;
+        try {
+            setRules(prev => prev.filter(r => r.id !== id));
+            const { error } = await supabase.from('room_pricing').delete().eq('id', id);
+            if (error) throw error;
+            toast.success('Rule deleted.');
+        } catch (error: any) {
+            toast.error('Failed to delete rule: ' + error.message);
+            await fetchData();
+        }
+    };
+
     const saveRates = () => {
         toast.promise(
             new Promise(resolve => setTimeout(resolve, 800)),
@@ -108,6 +279,65 @@ export default function PricingRules() {
                 error: 'Failed to sync rates'
             }
         );
+    };
+
+    const handleSaveOccupancySettings = async () => {
+        setSavingOccupancy(true);
+        try {
+            const existingUpsell = rules.find(r => r.rule_type === 'occupancy_upsell');
+            const existingDownsell = rules.find(r => r.rule_type === 'occupancy_downsell');
+
+            // Handle upsell
+            if (upsellEnabled) {
+                const payload = {
+                    tenant_id: tenant.id,
+                    room_id: null,
+                    rule_type: 'occupancy_upsell',
+                    start_date: null,
+                    end_date: null,
+                    price_override: upsellPercentage,
+                };
+                if (existingUpsell) {
+                    const { error } = await supabase.from('room_pricing').update(payload).eq('id', existingUpsell.id);
+                    if (error) throw error;
+                } else {
+                    const { error } = await supabase.from('room_pricing').insert(payload);
+                    if (error) throw error;
+                }
+            } else if (existingUpsell) {
+                const { error } = await supabase.from('room_pricing').delete().eq('id', existingUpsell.id);
+                if (error) throw error;
+            }
+
+            // Handle downsell
+            if (downsellEnabled) {
+                const payload = {
+                    tenant_id: tenant.id,
+                    room_id: null,
+                    rule_type: 'occupancy_downsell',
+                    start_date: null,
+                    end_date: null,
+                    price_override: downsellPercentage,
+                };
+                if (existingDownsell) {
+                    const { error } = await supabase.from('room_pricing').update(payload).eq('id', existingDownsell.id);
+                    if (error) throw error;
+                } else {
+                    const { error } = await supabase.from('room_pricing').insert(payload);
+                    if (error) throw error;
+                }
+            } else if (existingDownsell) {
+                const { error } = await supabase.from('room_pricing').delete().eq('id', existingDownsell.id);
+                if (error) throw error;
+            }
+
+            toast.success('Occupancy pricing settings saved!');
+            await fetchData();
+        } catch (error: any) {
+            toast.error('Failed to save settings: ' + error.message);
+        } finally {
+            setSavingOccupancy(false);
+        }
     };
 
     return (
@@ -155,10 +385,19 @@ export default function PricingRules() {
                     </div>
                     <div className="relative z-10">
                         <p className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-1">Occupancy Rate</p>
-                        <h3 className="text-3xl font-bold text-[#0E2A38]">82%</h3>
-                        <div className="flex items-center gap-2 mt-2 text-green-600 text-sm font-medium">
-                            <TrendingUp size={16} />
-                            <span>+8% vs last month</span>
+                        <h3 className="text-3xl font-bold text-[#0E2A38]">{todayOccupancy}%</h3>
+                        <div className={`flex items-center gap-2 mt-2 text-sm font-medium ${
+                            upsellEnabled && todayOccupancy >= UPSELL_THRESHOLD ? 'text-amber-600' :
+                            downsellEnabled && todayOccupancy <= DOWNSELL_THRESHOLD ? 'text-blue-600' :
+                            'text-green-600'
+                        }`}>
+                            {upsellEnabled && todayOccupancy >= UPSELL_THRESHOLD ? (
+                                <><TrendingUp size={16} /><span>Upsell Active (+{upsellPercentage}%)</span></>
+                            ) : downsellEnabled && todayOccupancy <= DOWNSELL_THRESHOLD ? (
+                                <><TrendingDown size={16} /><span>Downsell Active (-{downsellPercentage}%)</span></>
+                            ) : (
+                                <><TrendingUp size={16} /><span>Normal Rates</span></>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -277,20 +516,23 @@ export default function PricingRules() {
                         <div className="space-y-4">
                             <div className="flex justify-between items-center mb-6">
                                 <h3 className="text-lg font-bold text-gray-900">Automation Rules</h3>
-                                <button className="bg-white text-[#0E2A38] border border-gray-200 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-all flex items-center gap-2">
+                                <button
+                                    onClick={() => openRuleModal()}
+                                    className="bg-white text-[#0E2A38] border border-gray-200 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-all flex items-center gap-2"
+                                >
                                     <Plus size={16} /> New Rule
                                 </button>
                             </div>
                             {loading ? (
                                 <div className="p-8 text-center text-gray-400">Loading rules...</div>
-                            ) : rules.length === 0 ? (
+                            ) : dateRangeRules.length === 0 ? (
                                 <div className="p-12 text-center text-gray-400 border border-dashed border-gray-200 rounded-xl">
                                     <Calendar className="mx-auto mb-3 opacity-20" size={40} />
                                     <p>No pricing rules set up yet.</p>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {rules.map((rule) => (
+                                    {dateRangeRules.map((rule) => (
                                         <div key={rule.id} className="p-5 border border-gray-200 rounded-xl hover:shadow-md transition-shadow group relative">
                                             <div className="flex gap-4">
                                                 <div className={`p-3 rounded-xl flex-shrink-0 ${rule.rule_type === 'peak' ? 'bg-red-50 text-red-600' :
@@ -313,15 +555,180 @@ export default function PricingRules() {
                                                 </div>
                                                 <div className="text-right flex flex-col items-end justify-between">
                                                     <p className="font-bold text-xl text-[#0E2A38]">₹{rule.price_override.toLocaleString()}</p>
-                                                    <button className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                                                        <Trash2 size={16} />
-                                                    </button>
+                                                    <div className="flex items-center gap-1">
+                                                        <button
+                                                            onClick={() => openRuleModal(rule)}
+                                                            className="p-1.5 text-gray-400 hover:text-[var(--color-ocean-600)] hover:bg-[var(--color-ocean-50)] rounded-lg transition-colors"
+                                                        >
+                                                            <Edit2 size={16} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteRule(rule.id)}
+                                                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             )}
+
+                            {/* OCCUPANCY-BASED DYNAMIC PRICING */}
+                            <div className="mt-10 pt-8 border-t border-gray-200">
+                                {/* Header */}
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                                    <div>
+                                        <h3 className="text-lg font-bold text-gray-900">Occupancy-Based Pricing</h3>
+                                        <p className="text-sm text-gray-500 mt-1">Auto-adjust rates based on real-time occupancy. Current occupancy: <span className="font-bold text-[#0E2A38]">{todayOccupancy}%</span></p>
+                                    </div>
+                                    <button
+                                        onClick={handleSaveOccupancySettings}
+                                        disabled={savingOccupancy}
+                                        className="bg-[var(--color-ocean-900)] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-[var(--color-ocean-800)] transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <Save size={16} /> {savingOccupancy ? 'Saving...' : 'Save Settings'}
+                                    </button>
+                                </div>
+
+                                {/* Occupancy Bar */}
+                                <div className="mb-8 bg-gray-50 rounded-xl p-5 border border-gray-100">
+                                    <div className="flex justify-between text-xs font-semibold text-gray-500 mb-2">
+                                        <span>0%</span>
+                                        <span>Downsell Zone (&le;{DOWNSELL_THRESHOLD}%)</span>
+                                        <span>Normal</span>
+                                        <span>Upsell Zone (&ge;{UPSELL_THRESHOLD}%)</span>
+                                        <span>100%</span>
+                                    </div>
+                                    <div className="relative h-6 rounded-full overflow-hidden flex">
+                                        <div className="bg-blue-200 h-full" style={{ width: `${DOWNSELL_THRESHOLD}%` }} />
+                                        <div className="bg-green-100 h-full" style={{ width: `${UPSELL_THRESHOLD - DOWNSELL_THRESHOLD}%` }} />
+                                        <div className="bg-amber-200 h-full" style={{ width: `${100 - UPSELL_THRESHOLD}%` }} />
+                                        {/* Current Occupancy Marker */}
+                                        <div
+                                            className="absolute top-0 h-full w-1 bg-[#0E2A38] rounded-full shadow-md"
+                                            style={{ left: `${Math.min(todayOccupancy, 100)}%`, transform: 'translateX(-50%)' }}
+                                        />
+                                        <div
+                                            className="absolute -top-6 text-[10px] font-bold text-[#0E2A38] bg-white px-1.5 py-0.5 rounded shadow-sm border"
+                                            style={{ left: `${Math.min(todayOccupancy, 100)}%`, transform: 'translateX(-50%)' }}
+                                        >
+                                            {todayOccupancy}%
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Upsell / Downsell Cards */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Upsell Card */}
+                                    <div className={`p-6 rounded-xl border-2 transition-all ${upsellEnabled ? 'border-amber-300 bg-amber-50/50 shadow-md' : 'border-gray-200 bg-white'}`}>
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 rounded-lg bg-amber-100 text-amber-600">
+                                                    <TrendingUp size={20} />
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-gray-900">Upsell</h4>
+                                                    <p className="text-xs text-gray-500">When occupancy &ge; {UPSELL_THRESHOLD}%</p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => setUpsellEnabled(!upsellEnabled)}
+                                                className={`transition-colors ${upsellEnabled ? 'text-amber-500' : 'text-gray-300'}`}
+                                            >
+                                                {upsellEnabled ? <ToggleRight size={36} /> : <ToggleLeft size={36} />}
+                                            </button>
+                                        </div>
+
+                                        <div className={`space-y-4 transition-opacity ${upsellEnabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+                                            <div>
+                                                <div className="flex justify-between text-sm mb-2">
+                                                    <span className="text-gray-600 font-medium">Price Increase</span>
+                                                    <span className="font-bold text-amber-700">+{upsellPercentage}%</span>
+                                                </div>
+                                                <input
+                                                    type="range"
+                                                    min={5}
+                                                    max={50}
+                                                    value={upsellPercentage}
+                                                    onChange={(e) => setUpsellPercentage(parseInt(e.target.value))}
+                                                    className="w-full h-2 bg-amber-200 rounded-full appearance-none cursor-pointer accent-amber-500"
+                                                />
+                                                <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+                                                    <span>5%</span>
+                                                    <span>50%</span>
+                                                </div>
+                                            </div>
+                                            <div className="bg-white rounded-lg p-3 border border-amber-200">
+                                                <p className="text-xs text-gray-500 mb-1">Example: Base rate ₹4,000</p>
+                                                <p className="font-bold text-amber-700">₹{Math.round(4000 * (1 + upsellPercentage / 100)).toLocaleString()} <span className="text-xs font-normal text-gray-400">(+₹{Math.round(4000 * upsellPercentage / 100).toLocaleString()})</span></p>
+                                            </div>
+                                        </div>
+
+                                        {upsellEnabled && todayOccupancy >= UPSELL_THRESHOLD && (
+                                            <div className="mt-4 bg-amber-100 text-amber-800 px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2">
+                                                <AlertTriangle size={14} />
+                                                Upsell is currently active — occupancy at {todayOccupancy}%
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Downsell Card */}
+                                    <div className={`p-6 rounded-xl border-2 transition-all ${downsellEnabled ? 'border-blue-300 bg-blue-50/50 shadow-md' : 'border-gray-200 bg-white'}`}>
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 rounded-lg bg-blue-100 text-blue-600">
+                                                    <TrendingDown size={20} />
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-gray-900">Downsell</h4>
+                                                    <p className="text-xs text-gray-500">When occupancy &le; {DOWNSELL_THRESHOLD}%</p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => setDownsellEnabled(!downsellEnabled)}
+                                                className={`transition-colors ${downsellEnabled ? 'text-blue-500' : 'text-gray-300'}`}
+                                            >
+                                                {downsellEnabled ? <ToggleRight size={36} /> : <ToggleLeft size={36} />}
+                                            </button>
+                                        </div>
+
+                                        <div className={`space-y-4 transition-opacity ${downsellEnabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+                                            <div>
+                                                <div className="flex justify-between text-sm mb-2">
+                                                    <span className="text-gray-600 font-medium">Price Decrease</span>
+                                                    <span className="font-bold text-blue-700">-{downsellPercentage}%</span>
+                                                </div>
+                                                <input
+                                                    type="range"
+                                                    min={5}
+                                                    max={40}
+                                                    value={downsellPercentage}
+                                                    onChange={(e) => setDownsellPercentage(parseInt(e.target.value))}
+                                                    className="w-full h-2 bg-blue-200 rounded-full appearance-none cursor-pointer accent-blue-500"
+                                                />
+                                                <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+                                                    <span>5%</span>
+                                                    <span>40%</span>
+                                                </div>
+                                            </div>
+                                            <div className="bg-white rounded-lg p-3 border border-blue-200">
+                                                <p className="text-xs text-gray-500 mb-1">Example: Base rate ₹4,000</p>
+                                                <p className="font-bold text-blue-700">₹{Math.round(4000 * (1 - downsellPercentage / 100)).toLocaleString()} <span className="text-xs font-normal text-gray-400">(-₹{Math.round(4000 * downsellPercentage / 100).toLocaleString()})</span></p>
+                                            </div>
+                                        </div>
+
+                                        {downsellEnabled && todayOccupancy <= DOWNSELL_THRESHOLD && (
+                                            <div className="mt-4 bg-blue-100 text-blue-800 px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2">
+                                                <AlertTriangle size={14} />
+                                                Downsell is currently active — occupancy at {todayOccupancy}%
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
 
@@ -440,6 +847,101 @@ export default function PricingRules() {
                                 className="bg-[#C9A646] text-[#0E2A38] px-6 py-2.5 rounded-xl text-sm font-bold shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all"
                             >
                                 Apply Changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Rule Create/Edit Modal */}
+            {showRuleModal && (
+                <div className="fixed inset-0 bg-[#0E2A38]/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-lg p-8 shadow-2xl">
+                        <h3 className="text-2xl font-serif font-bold text-[#0E2A38] mb-2">
+                            {editingRule ? 'Edit Pricing Rule' : 'Create Pricing Rule'}
+                        </h3>
+                        <p className="text-sm text-gray-500 mb-6">
+                            {editingRule ? 'Update the rule details below.' : 'Set a price override for a specific date range and room type.'}
+                        </p>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Rule Type</label>
+                                <select
+                                    value={ruleForm.rule_type}
+                                    onChange={(e) => setRuleForm(prev => ({ ...prev, rule_type: e.target.value }))}
+                                    className="w-full border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-[var(--color-ocean-500)] bg-white"
+                                >
+                                    <option value="peak">Peak</option>
+                                    <option value="seasonal">Seasonal</option>
+                                    <option value="weekend">Weekend</option>
+                                    <option value="holiday">Holiday</option>
+                                    <option value="last_minute">Last Minute</option>
+                                    <option value="custom">Custom</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Target Room</label>
+                                <select
+                                    value={ruleForm.room_id}
+                                    onChange={(e) => setRuleForm(prev => ({ ...prev, room_id: e.target.value }))}
+                                    className="w-full border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-[var(--color-ocean-500)] bg-white"
+                                >
+                                    <option value="">All Rooms</option>
+                                    {rooms.map(r => <option key={r.id} value={r.id}>{r.name || r.type}</option>)}
+                                </select>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Start Date</label>
+                                    <input
+                                        type="date"
+                                        value={ruleForm.start_date}
+                                        onChange={(e) => setRuleForm(prev => ({ ...prev, start_date: e.target.value }))}
+                                        className="w-full border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-[var(--color-ocean-500)]"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">End Date</label>
+                                    <input
+                                        type="date"
+                                        value={ruleForm.end_date}
+                                        onChange={(e) => setRuleForm(prev => ({ ...prev, end_date: e.target.value }))}
+                                        className="w-full border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-[var(--color-ocean-500)]"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Price Override</label>
+                                <div className="relative">
+                                    <input
+                                        type="number"
+                                        value={ruleForm.price_override}
+                                        onChange={(e) => setRuleForm(prev => ({ ...prev, price_override: e.target.value }))}
+                                        placeholder="e.g. 5000"
+                                        className="w-full border border-gray-200 rounded-xl p-3 pl-8 focus:outline-none focus:border-[var(--color-ocean-500)]"
+                                    />
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₹</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-3 mt-8">
+                            <button
+                                onClick={closeRuleModal}
+                                className="px-5 py-2.5 text-sm font-semibold text-gray-500 hover:text-gray-900 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSaveRule}
+                                disabled={savingRule}
+                                className="bg-[#C9A646] text-[#0E2A38] px-6 py-2.5 rounded-xl text-sm font-bold shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {savingRule ? 'Saving...' : editingRule ? 'Update Rule' : 'Create Rule'}
                             </button>
                         </div>
                     </div>

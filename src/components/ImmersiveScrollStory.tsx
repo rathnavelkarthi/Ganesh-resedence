@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'motion/react';
 
 const stories = [
     {
@@ -46,6 +46,7 @@ const StorySection: React.FC<{ story: typeof stories[0] }> = ({ story }) => {
                 <img
                     src={story.image}
                     alt={story.title}
+                    loading="lazy"
                     className="object-cover w-full h-[130%] -top-[15%] absolute"
                 />
                 {/* Dark overlay for text legibility and premium feel */}

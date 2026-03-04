@@ -1,8 +1,29 @@
-import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { motion } from 'motion/react';
 import { useCRM } from '../context/CRMDataContext';
+import { toast } from 'sonner';
 
 export default function Contact() {
   const { cmsSettings } = useCRM();
+  const [form, setForm] = useState({ name: '', phone: '', message: '' });
+  const [sending, setSending] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.message.trim()) {
+      toast.error('Please fill in your name and message.');
+      return;
+    }
+    setSending(true);
+    // Build WhatsApp message as a fallback contact method
+    const phone = cmsSettings.contactPhone?.replace(/[\s\(\)\-]/g, '') || '';
+    const text = `Hi, I'm ${form.name}.${form.phone ? ` My phone: ${form.phone}.` : ''} ${form.message}`;
+    const waUrl = `https://wa.me/${phone.startsWith('+') ? phone.slice(1) : phone}?text=${encodeURIComponent(text)}`;
+    window.open(waUrl, '_blank');
+    setSending(false);
+    toast.success('Redirecting you to WhatsApp to send your enquiry.');
+    setForm({ name: '', phone: '', message: '' });
+  };
 
   return (
     <section id="contact" className="py-32 md:py-48 bg-background relative selection:bg-accent/30">
@@ -31,7 +52,7 @@ export default function Contact() {
               <div>
                 <h4 className="text-[10px] tracking-[0.2em] uppercase text-foreground/40 mb-3 block font-semibold">Location</h4>
                 <p className="font-light text-foreground/80 leading-relaxed text-lg">
-                  {cmsSettings.contactAddress.split('\n').map((line, i) => (
+                  {cmsSettings.contactAddress.split('\n').map((line: string, i: number) => (
                     <span key={i}>{line}<br /></span>
                   ))}
                 </p>
@@ -63,24 +84,48 @@ export default function Contact() {
           >
             <div className="bg-white p-10 md:p-16 rounded-sm shadow-[0_20px_60px_-15px_rgba(0,0,0,0.06)] border border-muted/50">
               <h3 className="font-serif text-3xl text-foreground mb-12">Send an Enquiry</h3>
-              <form className="space-y-10">
+              <form onSubmit={handleSubmit} className="space-y-10">
                 <div className="relative border-b border-foreground/10 pb-2">
-                  <label className="block text-[10px] font-semibold uppercase tracking-widest text-foreground/40 mb-3">Name</label>
-                  <input type="text" className="w-full bg-transparent outline-none text-foreground font-light text-lg transition-colors focus:border-accent border-b border-transparent pb-1" />
+                  <label htmlFor="contact-name" className="block text-[10px] font-semibold uppercase tracking-widest text-foreground/40 mb-3">Name</label>
+                  <input
+                    id="contact-name"
+                    type="text"
+                    required
+                    value={form.name}
+                    onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full bg-transparent outline-none text-foreground font-light text-lg transition-colors focus:border-accent border-b border-transparent pb-1"
+                  />
                 </div>
 
                 <div className="relative border-b border-foreground/10 pb-2">
-                  <label className="block text-[10px] font-semibold uppercase tracking-widest text-foreground/40 mb-3">Phone</label>
-                  <input type="tel" className="w-full bg-transparent outline-none text-foreground font-light text-lg transition-colors focus:border-accent border-b border-transparent pb-1" />
+                  <label htmlFor="contact-phone" className="block text-[10px] font-semibold uppercase tracking-widest text-foreground/40 mb-3">Phone</label>
+                  <input
+                    id="contact-phone"
+                    type="tel"
+                    value={form.phone}
+                    onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))}
+                    className="w-full bg-transparent outline-none text-foreground font-light text-lg transition-colors focus:border-accent border-b border-transparent pb-1"
+                  />
                 </div>
 
                 <div className="relative border-b border-foreground/10 pb-2">
-                  <label className="block text-[10px] font-semibold uppercase tracking-widest text-foreground/40 mb-3">Message</label>
-                  <textarea rows={3} className="w-full bg-transparent outline-none text-foreground font-light text-lg transition-colors focus:border-accent border-b border-transparent pb-1 resize-none" ></textarea>
+                  <label htmlFor="contact-message" className="block text-[10px] font-semibold uppercase tracking-widest text-foreground/40 mb-3">Message</label>
+                  <textarea
+                    id="contact-message"
+                    rows={3}
+                    required
+                    value={form.message}
+                    onChange={(e) => setForm(prev => ({ ...prev, message: e.target.value }))}
+                    className="w-full bg-transparent outline-none text-foreground font-light text-lg transition-colors focus:border-accent border-b border-transparent pb-1 resize-none"
+                  />
                 </div>
 
-                <button type="submit" className="w-full bg-foreground text-background py-5 uppercase tracking-widest text-xs font-semibold hover:bg-accent hover:text-accent-foreground transition-all duration-500 mt-6 shadow-md rounded-sm">
-                  Send Message
+                <button
+                  type="submit"
+                  disabled={sending}
+                  className="w-full bg-foreground text-background py-5 uppercase tracking-widest text-xs font-semibold hover:bg-accent hover:text-accent-foreground transition-all duration-500 mt-6 shadow-md rounded-sm disabled:opacity-50"
+                >
+                  {sending ? 'Sending...' : 'Send Message'}
                 </button>
               </form>
             </div>

@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth, Tenant } from './AuthContext';
+import { mapReservationStatus, mapPaymentStatus } from '../lib/booking';
 
 // --- Types ---
 
@@ -122,10 +123,10 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         }
 
         const loadInitialData = async () => {
-            // RLS handles tenant filtering automatically via get_my_tenant_id()
+            const tenantId = tenant.id;
 
-            // Fetch CMS Settings
-            const { data: settingsData } = await supabase.from('settings').select('*');
+            // Fetch CMS Settings (explicit tenant_id filter)
+            const { data: settingsData } = await supabase.from('settings').select('*').eq('tenant_id', tenantId);
             if (settingsData && settingsData.length > 0) {
                 const settingsObj = { ...initialCMS };
                 settingsData.forEach(item => {
@@ -135,79 +136,60 @@ export function CRMProvider({ children }: { children: ReactNode }) {
                     }
                 });
                 setCmsSettings(settingsObj);
+            } else {
+                setCmsSettings(initialCMS);
             }
 
             // Fetch Staff
-            const { data: staffData } = await supabase.from('staff').select('*').order('created_at', { ascending: false });
-            if (staffData) {
+            const { data: staffData } = await supabase.from('staff').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false });
+            if (staffData && staffData.length > 0) {
                 setStaff(staffData.map(s => ({
                     ...s,
                     status: s.status.charAt(0) + s.status.slice(1).toLowerCase() as any
                 })));
+            } else {
+                setStaff([]);
             }
 
             // Fetch Reservations
-            const { data: resData } = await supabase.from('reservations').select('*').order('created_at', { ascending: false });
+            const { data: resData } = await supabase.from('reservations').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false });
             if (resData && resData.length > 0) {
-                setReservations(resData.map(r => {
-                    // Map DB status to UI status
-                    const statusMap: Record<string, Reservation['status']> = {
-                        'CONFIRMED': 'Confirmed', 'PENDING': 'Pending', 'CANCELLED': 'Cancelled', 'CHECKED_OUT': 'Checked Out',
-                    };
-                    // Map DB payment_status to UI payment -- 'PENDING' from website bookings maps to 'Unpaid'
-                    const paymentMap: Record<string, Reservation['payment']> = {
-                        'PAID': 'Paid', 'UNPAID': 'Unpaid', 'PENDING': 'Unpaid', 'PARTIAL': 'Partial', 'REFUNDED': 'Refunded',
-                    };
-                    return {
-                        id: r.id,
-                        guest: r.guest_name,
-                        guest_email: r.guest_email,
-                        guest_phone: r.guest_phone,
-                        guest_location: r.guest_location,
-                        room: r.room_type,
-                        room_id: r.room_id,
-                        checkIn: r.check_in,
-                        checkOut: r.check_out,
-                        source: r.source === 'WEBSITE' ? 'Website' : r.source,
-                        status: statusMap[r.status?.toUpperCase()] || 'Pending',
-                        payment: paymentMap[r.payment_status?.toUpperCase()] || 'Unpaid',
-                        payment_method: r.payment_method,
-                        amount: r.amount,
-                        gst_amount: r.gst_amount,
-                        payment_date: r.payment_date,
-                    };
-                }));
+                setReservations(resData.map(r => ({
+                    id: r.id,
+                    guest: r.guest_name,
+                    guest_email: r.guest_email,
+                    guest_phone: r.guest_phone,
+                    guest_location: r.guest_location,
+                    room: r.room_type,
+                    room_id: r.room_id,
+                    checkIn: r.check_in,
+                    checkOut: r.check_out,
+                    source: r.source === 'WEBSITE' ? 'Website' : r.source,
+                    status: mapReservationStatus(r.status),
+                    payment: mapPaymentStatus(r.payment_status),
+                    payment_method: r.payment_method,
+                    amount: r.amount,
+                    gst_amount: r.gst_amount,
+                    payment_date: r.payment_date,
+                })));
             } else {
-                // Inject mock reservations for prototype demonstration
-                setReservations([
-                    {
-                        id: 'RES-001', guest: 'Rahul Sharma', room: 'Executive Double AC',
-                        checkIn: '2023-11-05', checkOut: '2023-11-08', source: 'MakeMyTrip',
-                        status: 'Confirmed', payment: 'Paid', amount: 12500
-                    },
-                    {
-                        id: 'RES-002', guest: 'Sarah Jenkins', room: 'Six Bed AC Room',
-                        checkIn: '2023-11-10', checkOut: '2023-11-14', source: 'Booking.com',
-                        status: 'Confirmed', payment: 'Partial', amount: 24000
-                    },
-                    {
-                        id: 'RES-003', guest: 'Priya Desai', room: 'Triple Room AC',
-                        checkIn: '2023-11-12', checkOut: '2023-11-13', source: 'Agoda',
-                        status: 'Pending', payment: 'Unpaid', amount: 4500
-                    }
-                ]);
+                setReservations([]);
             }
 
             // Fetch Rooms
-            const { data: roomsData } = await supabase.from('rooms').select('*').order('created_at', { ascending: false });
-            if (roomsData) {
+            const { data: roomsData } = await supabase.from('rooms').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false });
+            if (roomsData && roomsData.length > 0) {
                 setRooms(roomsData as any);
+            } else {
+                setRooms([]);
             }
 
             // Fetch Page Content
-            const { data: contentData } = await supabase.from('page_content').select('*').order('order_index', { ascending: true });
-            if (contentData) {
+            const { data: contentData } = await supabase.from('page_content').select('*').eq('tenant_id', tenantId).order('order_index', { ascending: true });
+            if (contentData && contentData.length > 0) {
                 setPageContent(contentData as any);
+            } else {
+                setPageContent([]);
             }
         };
 

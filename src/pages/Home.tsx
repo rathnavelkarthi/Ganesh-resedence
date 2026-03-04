@@ -5,6 +5,7 @@ import ImmersiveScrollStory from '../components/ImmersiveScrollStory';
 import DestinationMagazine from '../components/DestinationMagazine';
 import Events from '../components/Events';
 import Contact from '../components/Contact';
+import MobileStickyBar from '../components/MobileStickyBar';
 
 export default function Home() {
   return (
@@ -16,6 +17,7 @@ export default function Home() {
       <DestinationMagazine />
       <Events />
       <Contact />
+      <MobileStickyBar />
     </div>
   );
 }

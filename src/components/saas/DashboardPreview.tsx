@@ -9,6 +9,7 @@ import {
     Clock,
     CheckCircle2,
     ArrowRight,
+    LucideIcon
 } from 'lucide-react';
 import {
     BarChart,
@@ -68,7 +69,7 @@ const activities = [
     { icon: Users, bg: 'bg-purple-500/20', color: 'text-purple-400', title: 'Guest Check-in', time: '2 hrs ago', desc: 'Sarah Jenkins arrived' },
 ];
 
-function StatCard({ title, value, icon: Icon, trend, up, delay }: { title: string; value: string; icon: any; trend: string; up: boolean; delay: number }) {
+function StatCard({ title, value, icon: Icon, trend, up, delay }: { title: string; value: string; icon: LucideIcon; trend: string; up: boolean; delay: number; key?: string }) {
     return (
         <motion.div
             initial={{ opacity: 0, y: 15 }}

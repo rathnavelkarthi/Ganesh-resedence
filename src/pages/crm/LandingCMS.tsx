@@ -1,11 +1,16 @@
 import React, { useState } from 'react';
-import { Save, Image as ImageIcon, Check } from 'lucide-react';
+import { Save, Image as ImageIcon, Check, Building, Globe, MessageSquare, Phone } from 'lucide-react';
 import { useCRM, PageContent } from '../../context/CRMDataContext';
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabaseClient';
 import { toast } from 'sonner';
+import WhatsAppSettings from '../../components/crm/WhatsAppSettings';
 
 export default function LandingCMS() {
     const { pageContent, updatePageContent } = useCRM();
+    const { tenant } = useAuth();
     const [isUploading, setIsUploading] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<'hero' | 'about' | 'contact' | 'whatsapp'>('hero');
 
     // Helper to get current content value safely
     const getContent = (section: string, key: string, field: 'content_text' | 'image_url' = 'content_text') => {
@@ -21,6 +26,10 @@ export default function LandingCMS() {
     const [aboutHeading, setAboutHeading] = useState(getContent('about', 'heading') || 'Your Home by the Sea');
     const [aboutBody, setAboutBody] = useState(getContent('about', 'body') || 'Ganesh Residency is a peaceful retreat...');
 
+    const [contactEmail, setContactEmail] = useState(getContent('contact', 'email') || '');
+    const [contactPhone, setContactPhone] = useState(getContent('contact', 'phone') || '');
+    const [contactAddress, setContactAddress] = useState(getContent('contact', 'address') || '');
+
     const handleSaveSection = (section: string) => {
         if (section === 'hero') {
             updatePageContent('hero', 'title', { content_text: heroTitle });
@@ -29,6 +38,10 @@ export default function LandingCMS() {
         } else if (section === 'about') {
             updatePageContent('about', 'heading', { content_text: aboutHeading });
             updatePageContent('about', 'body', { content_text: aboutBody });
+        } else if (section === 'contact') {
+            updatePageContent('contact', 'email', { content_text: contactEmail });
+            updatePageContent('contact', 'phone', { content_text: contactPhone });
+            updatePageContent('contact', 'address', { content_text: contactAddress });
         }
         toast.success(`${section.toUpperCase()} section saved`);
     };
@@ -41,25 +54,19 @@ export default function LandingCMS() {
         setIsUploading(blockId);
         const toastId = toast.loading('Uploading image...');
 
-        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        const API_BASE_URL = isLocalhost ? 'http://localhost/Ganesh-resedence/api' : '/api';
-        const formDataToUpload = new FormData();
-        formDataToUpload.append('image', file);
-
         try {
-            const response = await fetch(`${API_BASE_URL}/upload.php`, {
-                method: 'POST',
-                body: formDataToUpload,
-            });
+            const ext = file.name.split('.').pop();
+            const filePath = `${tenant?.id}/${section}-${key}-${Date.now()}.${ext}`;
 
-            const data = await response.json();
-            if (data.success) {
-                // Save the image URL immediately to the API
-                updatePageContent(section, key, { image_url: data.url });
-                toast.success('Image updated successfully', { id: toastId });
-            } else {
-                toast.error(data.error || 'Upload failed', { id: toastId });
+            const { error } = await supabase.storage.from('site-assets').upload(filePath, file, { upsert: true });
+            if (error) {
+                toast.error('Upload failed: ' + error.message, { id: toastId });
+                return;
             }
+
+            const { data } = supabase.storage.from('site-assets').getPublicUrl(filePath);
+            updatePageContent(section, key, { image_url: data.publicUrl });
+            toast.success('Image updated successfully', { id: toastId });
         } catch (error) {
             console.error('Upload Error:', error);
             toast.error('Network error during upload', { id: toastId });
@@ -75,129 +82,225 @@ export default function LandingCMS() {
                 <p className="text-gray-500 mt-1">Control the text and images displayed on the main website.</p>
             </div>
 
-            {/* Hero Section settings */}
-            <section className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
-                    <h2 className="text-xl font-bold font-serif text-[#0E2A38]">Hero Section</h2>
-                    <button
-                        onClick={() => handleSaveSection('hero')}
-                        className="flex items-center gap-2 bg-[#0E2A38] text-[#C9A646] px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:bg-[#091b24] transition-colors"
-                    >
-                        <Save size={16} /> Save Changes
-                    </button>
-                </div>
+            <div className="flex border-b border-gray-100 bg-gray-50 overflow-x-auto rounded-t-2xl">
+                <button
+                    onClick={() => setActiveTab('hero')}
+                    className={`px-4 py-3 border-b-2 font-semibold flex items-center gap-2 transition-colors ${activeTab === 'hero' ? 'border-[#0E2A38] text-[#0E2A38]' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                >
+                    <Globe size={18} /> Hero Banner
+                </button>
+                <button
+                    onClick={() => setActiveTab('about')}
+                    className={`px-4 py-3 border-b-2 font-semibold flex items-center gap-2 transition-colors ${activeTab === 'about' ? 'border-[#0E2A38] text-[#0E2A38]' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                >
+                    <Building size={18} /> About Section
+                </button>
+                <button
+                    onClick={() => setActiveTab('contact')}
+                    className={`px-4 py-3 border-b-2 font-semibold flex items-center gap-2 transition-colors ${activeTab === 'contact' ? 'border-[#0E2A38] text-[#0E2A38]' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                >
+                    <Phone size={18} /> Contact Info
+                </button>
+                <button
+                    onClick={() => setActiveTab('whatsapp')}
+                    className={`px-4 py-3 border-b-2 font-semibold flex items-center gap-2 transition-colors ${activeTab === 'whatsapp' ? 'border-[#0E2A38] text-[#0E2A38]' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                >
+                    <MessageSquare size={18} /> WhatsApp
+                </button>
+            </div>
 
-                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Main Title</label>
-                            <input
-                                type="text"
-                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C9A646] outline-none"
-                                value={heroTitle}
-                                onChange={(e) => setHeroTitle(e.target.value)}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Subtitle</label>
-                            <input
-                                type="text"
-                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C9A646] outline-none"
-                                value={heroSubtitle}
-                                onChange={(e) => setHeroSubtitle(e.target.value)}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Button Text</label>
-                            <input
-                                type="text"
-                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C9A646] outline-none"
-                                value={heroBtn}
-                                onChange={(e) => setHeroBtn(e.target.value)}
-                            />
-                        </div>
+            {/* Hero Section settings */}
+            {activeTab === 'hero' && (
+                <section className="bg-white rounded-b-2xl shadow-sm border border-t-0 border-gray-200 overflow-hidden animate-in fade-in duration-300">
+                    <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                        <h2 className="text-xl font-bold font-serif text-[#0E2A38]">Hero Section</h2>
+                        <button
+                            onClick={() => handleSaveSection('hero')}
+                            className="flex items-center gap-2 bg-[#0E2A38] text-[#C9A646] px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:bg-[#091b24] transition-colors"
+                        >
+                            <Save size={16} /> Save Changes
+                        </button>
                     </div>
 
-                    <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Hero Background Image</label>
-                        <div className="relative aspect-video rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex flex-col items-center justify-center overflow-hidden group">
-                            {getContent('hero', 'bgImage', 'image_url') ? (
-                                <img src={getContent('hero', 'bgImage', 'image_url')} className="w-full h-full object-cover" alt="Hero background" />
-                            ) : (
-                                <div className="text-center p-4">
-                                    <ImageIcon className="text-gray-400 mx-auto mb-2" size={32} />
-                                    <p className="text-sm font-medium text-gray-500">No image uploaded</p>
-                                </div>
-                            )}
-
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                <label className="cursor-pointer bg-white px-4 py-2 rounded-lg font-bold text-sm shadow-lg text-gray-800 flex items-center gap-2 hover:bg-gray-100">
-                                    <ImageIcon size={16} /> {isUploading === 'hero-bgImage' ? 'Uploading...' : 'Change Image'}
-                                    <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, 'hero', 'bgImage')} disabled={isUploading === 'hero-bgImage'} />
-                                </label>
+                    <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Main Title</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C9A646] outline-none"
+                                    value={heroTitle}
+                                    onChange={(e) => setHeroTitle(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Subtitle</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C9A646] outline-none"
+                                    value={heroSubtitle}
+                                    onChange={(e) => setHeroSubtitle(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Button Text</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C9A646] outline-none"
+                                    value={heroBtn}
+                                    onChange={(e) => setHeroBtn(e.target.value)}
+                                />
                             </div>
                         </div>
-                        <p className="text-xs text-gray-400 mt-2">Recommended size: 1920x1080px (Darkened automatically in UI)</p>
+
+                        <div>
+                            <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Hero Background Image</label>
+                            <div className="relative aspect-video rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex flex-col items-center justify-center overflow-hidden group">
+                                {getContent('hero', 'bgImage', 'image_url') ? (
+                                    <img src={getContent('hero', 'bgImage', 'image_url')} className="w-full h-full object-cover" alt="Hero background" />
+                                ) : (
+                                    <div className="text-center p-4">
+                                        <ImageIcon className="text-gray-400 mx-auto mb-2" size={32} />
+                                        <p className="text-sm font-medium text-gray-500">No image uploaded</p>
+                                    </div>
+                                )}
+
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                    <label className="cursor-pointer bg-white px-4 py-2 rounded-lg font-bold text-sm shadow-lg text-gray-800 flex items-center gap-2 hover:bg-gray-100">
+                                        <ImageIcon size={16} /> {isUploading === 'hero-bgImage' ? 'Uploading...' : 'Change Image'}
+                                        <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, 'hero', 'bgImage')} disabled={isUploading === 'hero-bgImage'} />
+                                    </label>
+                                </div>
+                            </div>
+                            <p className="text-xs text-gray-400 mt-2">Recommended size: 1920x1080px (Darkened automatically in UI)</p>
+                        </div>
                     </div>
-                </div>
-            </section>
+                </section>
+            )}
 
             {/* About Section settings */}
-            <section className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
-                    <h2 className="text-xl font-bold font-serif text-[#0E2A38]">About Section</h2>
-                    <button
-                        onClick={() => handleSaveSection('about')}
-                        className="flex items-center gap-2 bg-[#0E2A38] text-[#C9A646] px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:bg-[#091b24] transition-colors"
-                    >
-                        <Save size={16} /> Save Changes
-                    </button>
-                </div>
-
-                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Section Heading</label>
-                            <input
-                                type="text"
-                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C9A646] outline-none"
-                                value={aboutHeading}
-                                onChange={(e) => setAboutHeading(e.target.value)}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">About Body Text</label>
-                            <textarea
-                                rows={5}
-                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C9A646] outline-none resize-none"
-                                value={aboutBody}
-                                onChange={(e) => setAboutBody(e.target.value)}
-                            />
-                        </div>
+            {activeTab === 'about' && (
+                <section className="bg-white rounded-b-2xl shadow-sm border border-t-0 border-gray-200 overflow-hidden animate-in fade-in duration-300">
+                    <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                        <h2 className="text-xl font-bold font-serif text-[#0E2A38]">About Section</h2>
+                        <button
+                            onClick={() => handleSaveSection('about')}
+                            className="flex items-center gap-2 bg-[#0E2A38] text-[#C9A646] px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:bg-[#091b24] transition-colors"
+                        >
+                            <Save size={16} /> Save Changes
+                        </button>
                     </div>
 
-                    <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">About Image</label>
-                        <div className="relative aspect-square md:aspect-auto md:h-[220px] rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex flex-col items-center justify-center overflow-hidden group">
-                            {getContent('about', 'aboutImage', 'image_url') ? (
-                                <img src={getContent('about', 'aboutImage', 'image_url')} className="w-full h-full object-cover" alt="About Resort" />
-                            ) : (
-                                <div className="text-center p-4">
-                                    <ImageIcon className="text-gray-400 mx-auto mb-2" size={32} />
-                                    <p className="text-sm font-medium text-gray-500">No image uploaded</p>
-                                </div>
-                            )}
+                    <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Section Heading</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C9A646] outline-none"
+                                    value={aboutHeading}
+                                    onChange={(e) => setAboutHeading(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">About Body Text</label>
+                                <textarea
+                                    rows={5}
+                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C9A646] outline-none resize-none"
+                                    value={aboutBody}
+                                    onChange={(e) => setAboutBody(e.target.value)}
+                                />
+                            </div>
+                        </div>
 
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                <label className="cursor-pointer bg-white px-4 py-2 rounded-lg font-bold text-sm shadow-lg text-gray-800 flex items-center gap-2 hover:bg-gray-100">
-                                    <ImageIcon size={16} /> {isUploading === 'about-aboutImage' ? 'Uploading...' : 'Change Image'}
-                                    <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, 'about', 'aboutImage')} disabled={isUploading === 'about-aboutImage'} />
-                                </label>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">About Image</label>
+                            <div className="relative aspect-square md:aspect-auto md:h-[220px] rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex flex-col items-center justify-center overflow-hidden group">
+                                {getContent('about', 'aboutImage', 'image_url') ? (
+                                    <img src={getContent('about', 'aboutImage', 'image_url')} className="w-full h-full object-cover" alt="About Resort" />
+                                ) : (
+                                    <div className="text-center p-4">
+                                        <ImageIcon className="text-gray-400 mx-auto mb-2" size={32} />
+                                        <p className="text-sm font-medium text-gray-500">No image uploaded</p>
+                                    </div>
+                                )}
+
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                    <label className="cursor-pointer bg-white px-4 py-2 rounded-lg font-bold text-sm shadow-lg text-gray-800 flex items-center gap-2 hover:bg-gray-100">
+                                        <ImageIcon size={16} /> {isUploading === 'about-aboutImage' ? 'Uploading...' : 'Change Image'}
+                                        <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, 'about', 'aboutImage')} disabled={isUploading === 'about-aboutImage'} />
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </section>
+                </section>
+            )}
+
+            {/* Contact Info Section */}
+            {activeTab === 'contact' && (
+                <section className="bg-white rounded-b-2xl shadow-sm border border-t-0 border-gray-200 overflow-hidden animate-in fade-in duration-300">
+                    <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                        <h2 className="text-xl font-bold font-serif text-[#0E2A38]">Contact Information</h2>
+                        <button
+                            onClick={() => handleSaveSection('contact')}
+                            className="flex items-center gap-2 bg-[#0E2A38] text-[#C9A646] px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:bg-[#091b24] transition-colors"
+                        >
+                            <Save size={16} /> Save Changes
+                        </button>
+                    </div>
+
+                    <div className="p-6 space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Public Email Address</label>
+                                <input
+                                    type="email"
+                                    value={contactEmail}
+                                    onChange={(e) => setContactEmail(e.target.value)}
+                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C9A646] outline-none transition-all"
+                                    placeholder="e.g. hello@ganeshresidency.com"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Public Phone Number</label>
+                                <input
+                                    type="tel"
+                                    value={contactPhone}
+                                    onChange={(e) => setContactPhone(e.target.value)}
+                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C9A646] outline-none transition-all"
+                                    placeholder="e.g. +91 98765 43210"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Physical Address</label>
+                            <textarea
+                                rows={2}
+                                value={contactAddress}
+                                onChange={(e) => setContactAddress(e.target.value)}
+                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C9A646] outline-none transition-all resize-none"
+                                placeholder="Enter the full physical address..."
+                            />
+                        </div>
+                    </div>
+                </section>
+            )}
+
+            {/* WhatsApp Settings Section */}
+            {activeTab === 'whatsapp' && (
+                <section className="bg-white rounded-b-2xl shadow-sm border border-t-0 border-gray-200 overflow-hidden animate-in fade-in duration-300">
+                    <div className="p-6 border-b border-gray-100 bg-gray-50/50">
+                        <h2 className="text-xl font-bold font-serif text-[#0E2A38]">WhatsApp Automation</h2>
+                        <p className="text-sm text-gray-500 mt-1">Configure automated messages for bookings and reviews.</p>
+                    </div>
+
+                    <div className="p-6">
+                        <WhatsAppSettings />
+                    </div>
+                </section>
+            )}
 
         </div>
     );

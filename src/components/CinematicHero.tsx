@@ -1,4 +1,4 @@
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'motion/react';
 import { useRef } from 'react';
 import { useCRM } from '../context/CRMDataContext';
 // @ts-ignore
