@@ -5,8 +5,10 @@ export function getSubdomain() {
     // Ignore common non-tenant subdomains
     const ignoredSubdomains = ['www', 'app', 'crm', 'admin'];
 
+    const parts = hostname.split('.');
+
+    // Handle localhost (e.g., ganesh.localhost)
     if (isLocalhost) {
-        const parts = hostname.split('.');
         if (parts.length > 1) {
             const sub = parts[0];
             if (!ignoredSubdomains.includes(sub)) {
@@ -16,12 +18,20 @@ export function getSubdomain() {
         return null;
     }
 
-    // Production (e.g., tenant.superstay.com)
-    const parts = hostname.split('.');
+    // Handle production domains
+    // If it's a vercel.app domain (e.g., ganesh-resedence.vercel.app, or ganesh.vercel.app)
+    if (hostname.endsWith('.vercel.app')) {
+        // Vercel apps are always <project-name>.vercel.app
+        const sub = parts[0];
+        // If the user's project is named 'ganesh-resedence' but their DB subdomain is 'ganesh',
+        // we can try returning the exact project name, but the DB must match it.
+        // Let's just return the first part.
+        if (!ignoredSubdomains.includes(sub) && sub !== 'vercel') {
+            return sub;
+        }
+    }
 
-    // Check if it has a subdomain (e.g., parts.length >= 3 for example.com)
-    // Note: This relies on the root domain consisting of 2 parts (e.g. superstay.com).
-    // If using a .co.uk domain, this logic would need extending, but works for .com/.org/etc.
+    // Custom Domains (e.g., hotel.superstay.com)
     if (parts.length >= 3) {
         const sub = parts[0];
         if (!ignoredSubdomains.includes(sub)) {
