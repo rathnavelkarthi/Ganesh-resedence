@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { CheckCircle2, Shield, Zap, Receipt, Building2, ArrowRight } from 'lucide-react';
+import { Shield, Zap, Receipt, Building2 } from 'lucide-react';
 import BillingToggle from '../components/pricing/BillingToggle';
 import PricingCard from '../components/pricing/PricingCard';
 import FAQAccordion from '../components/pricing/FAQAccordion';
@@ -8,10 +8,13 @@ import FAQAccordion from '../components/pricing/FAQAccordion';
 export default function PricingPage() {
     const [isYearly, setIsYearly] = useState(true);
 
-    // Pricing Data
-    const basicPrice = isYearly ? "₹69,999" : "₹7,099";
-    const proPrice = isYearly ? "₹1,24,999" : "₹12,699";
-    const elitePrice = isYearly ? "₹1,99,999" : "₹20,399";
+    const starterPrice = "Free";
+    const growthPrice = isYearly ? "₹23,999" : "₹2,499";
+    const growthPeriod = isYearly ? "/ year" : "/ month";
+    const proPrice = isYearly ? "₹47,999" : "₹4,999";
+    const proPeriod = isYearly ? "/ year" : "/ month";
+    const enterprisePrice = isYearly ? "₹95,999" : "₹9,999";
+    const enterprisePeriod = isYearly ? "/ year" : "/ month";
 
     return (
         <div className="bg-[#F8FAFC] min-h-screen pt-32 pb-24 relative overflow-hidden text-[#0E2A38]">
@@ -30,7 +33,7 @@ export default function PricingPage() {
                         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                         className="font-serif text-5xl md:text-6xl lg:text-[72px] font-bold text-[#0E2A38] tracking-tight leading-[1.1] mb-6 drop-shadow-sm"
                     >
-                        Simple Pricing.<br />Built for Serious Hotels.
+                        Simple Pricing.<br />Start Free.
                     </motion.h1>
                     <motion.p
                         initial={{ opacity: 0, y: 20 }}
@@ -38,7 +41,7 @@ export default function PricingPage() {
                         transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
                         className="text-lg md:text-xl text-gray-500 font-medium tracking-wide"
                     >
-                        One platform. Complete operational control. Predictable annual cost.
+                        One platform. Complete hotel & restaurant operations. Free to start.
                     </motion.p>
                 </div>
 
@@ -52,85 +55,75 @@ export default function PricingPage() {
                 </motion.div>
 
                 {/* PRICING GRID */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-10 mb-32 items-center">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 mb-32 items-start">
                     <PricingCard
                         index={0}
-                        name="BASIC"
-                        price={basicPrice}
-                        description="For independent hotels starting digital operations."
-                        ctaText="Get Started"
+                        name="STARTER"
+                        isFree={true}
+                        price={starterPrice}
+                        description="Try HospitalityOS with zero commitment."
+                        ctaText="Start Free"
                         features={[
-                            "Direct Booking Website",
-                            "Booking Engine",
-                            "CRM Dashboard",
-                            "Calendar & Room Management",
-                            "Guest Management",
-                            "GST Invoice System",
-                            "Hosting & Maintenance"
+                            "Basic Booking Page",
+                            "Up to 5 Rooms",
+                            "Calendar View",
+                            "20 Bookings / month",
+                            "Email Support"
                         ]}
                     />
                     <PricingCard
                         index={1}
-                        name="PRO"
-                        isPopular={true}
-                        price={proPrice}
-                        description="Complete operational platform to scale revenue."
-                        ctaText="Start Pro Plan"
+                        name="GROWTH"
+                        price={growthPrice}
+                        period={growthPeriod}
+                        description="For independent hotels going digital."
+                        ctaText="Get Started"
                         features={[
-                            "Everything in BASIC, plus:",
-                            "OTA Booking Sync",
-                            "WhatsApp Automation",
-                            "Revenue & Occupancy Analytics",
-                            "Payment Tracking",
-                            "Booking Source Breakdown",
-                            "Priority Support"
+                            "Everything in Starter, plus:",
+                            "Custom Booking Website",
+                            "Booking Engine",
+                            "CRM Dashboard",
+                            "Guest Management",
+                            "GST Invoice System",
+                            "WhatsApp (100 msgs/mo)"
                         ]}
                     />
                     <PricingCard
                         index={2}
-                        name="ELITE"
-                        price={elitePrice}
-                        description="Advanced intelligence for established properties."
+                        name="PRO"
+                        isPopular={true}
+                        price={proPrice}
+                        period={proPeriod}
+                        description="Complete hotel + restaurant platform."
+                        ctaText="Start Pro Plan"
+                        features={[
+                            "Everything in Growth, plus:",
+                            "OTA Booking Sync",
+                            "Restaurant POS & Menu",
+                            "Food Orders & Inventory",
+                            "Full WhatsApp Automation",
+                            "Revenue Analytics",
+                            "Priority Support"
+                        ]}
+                    />
+                    <PricingCard
+                        index={3}
+                        name="ENTERPRISE"
+                        price={enterprisePrice}
+                        period={enterprisePeriod}
+                        description="For hotel groups and chains."
                         ctaText="Contact Sales"
                         features={[
-                            "Everything in PRO, plus:",
-                            "AI Revenue Insights",
-                            "Forecasting & Analytics",
-                            "Custom Branding",
-                            "Dedicated Onboarding",
+                            "Everything in Pro, plus:",
+                            "Unlimited Rooms",
+                            "Multi-Property Dashboard",
                             "API Access",
-                            "Multi-Role Enterprise Control"
+                            "Custom Branding",
+                            "Dedicated Account Manager",
+                            "On-Site Training"
                         ]}
                     />
                 </div>
-
-                {/* ENTERPRISE SECTION */}
-                <motion.div
-                    initial={{ opacity: 0, y: 40 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-10%" }}
-                    transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-                    className="bg-white rounded-3xl p-10 lg:p-16 text-center shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-12 mb-32"
-                >
-                    <div className="text-left max-w-xl">
-                        <h2 className="font-serif text-3xl md:text-4xl font-bold text-[#0E2A38] mb-4">Enterprise & Multi-Property</h2>
-                        <p className="text-gray-500 font-medium text-lg mb-6 leading-relaxed">
-                            Custom deployment for 70+ rooms and hotel groups. Built for scale, security, and unified operational control across regions.
-                        </p>
-                        <ul className="grid grid-cols-2 gap-4 text-sm font-bold text-[#0E2A38]">
-                            <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-[#C9A646]" /> Dedicated Account Manager</li>
-                            <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-[#C9A646]" /> Custom Integrations</li>
-                            <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-[#C9A646]" /> Multi-Property Dashboard</li>
-                            <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-[#C9A646]" /> On-Site Training</li>
-                        </ul>
-                    </div>
-                    <div className="flex flex-col items-center md:items-end text-center md:text-right shrink-0">
-                        <span className="text-3xl font-bold tracking-tight text-[#0E2A38]">₹3L – ₹5L <span className="text-gray-400 text-lg font-medium">/ year</span></span>
-                        <button className="mt-8 px-8 py-4 bg-[#0E2A38] text-white rounded-xl font-bold tracking-wide shadow-md hover:shadow-lg transition-all hover:bg-[#091b24] flex items-center gap-2">
-                            Talk to Enterprise Sales <ArrowRight size={18} />
-                        </button>
-                    </div>
-                </motion.div>
 
             </div>
 
@@ -157,20 +150,20 @@ export default function PricingPage() {
                         className="bg-white/5 backdrop-blur-xl border border-white/10 p-10 lg:p-14 rounded-3xl shadow-2xl inline-block text-left"
                     >
                         <div className="space-y-6 text-[17px] font-medium text-white/90">
-                            <p className="flex items-center gap-4"><span className="w-2 h-2 rounded-full bg-gray-500" /> If your hotel makes <strong className="text-white text-xl ml-2">₹10L/month</strong></p>
-                            <p className="flex items-center gap-4"><span className="w-2 h-2 rounded-full bg-gray-500" /> And direct bookings increase by <strong className="text-[#2E7D5B] text-xl ml-2 bg-[#E8F3EF]/10 px-2 py-0.5 rounded">5%</strong></p>
+                            <p className="flex items-center gap-4"><span className="w-2 h-2 rounded-full bg-gray-500" /> Growth plan costs just <strong className="text-white text-xl ml-2">₹2,499/month</strong></p>
+                            <p className="flex items-center gap-4"><span className="w-2 h-2 rounded-full bg-gray-500" /> One extra direct booking at <strong className="text-[#2E7D5B] text-xl ml-2 bg-[#E8F3EF]/10 px-2 py-0.5 rounded">₹3,000/night</strong> covers it</p>
 
                             <div className="h-[1px] bg-white/20 my-8" />
 
                             <div className="flex items-center justify-between gap-12">
-                                <span className="text-white/60 text-lg">That's an additional</span>
-                                <span className="font-serif text-4xl lg:text-5xl font-bold text-[#C9A646]">₹6L / year</span>
+                                <span className="text-white/60 text-lg">Annual ROI</span>
+                                <span className="font-serif text-4xl lg:text-5xl font-bold text-[#C9A646]">12x return</span>
                             </div>
                         </div>
 
                         <div className="mt-12 pt-8 border-t border-white/10 text-center">
                             <p className="text-lg font-bold tracking-widest uppercase text-white/80">
-                                Your system pays for itself <span className="text-white">3–5x over.</span>
+                                One booking pays for <span className="text-white">the entire month.</span>
                             </p>
                         </div>
                     </motion.div>

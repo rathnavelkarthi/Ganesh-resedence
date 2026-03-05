@@ -9,20 +9,24 @@ interface FAQ {
 
 const faqs: FAQ[] = [
     {
+        question: "Is there a free plan?",
+        answer: "Yes! Our Starter plan is completely free — up to 5 rooms, 20 bookings per month, and a basic booking page. No credit card required. Upgrade anytime as you grow."
+    },
+    {
         question: "Is there a setup fee?",
-        answer: "No. All onboarding, initial data migration, and training are included in your annual subscription. We believe your success is our success."
+        answer: "No. All onboarding, initial data migration, and training are included in your subscription. We believe your success is our success."
     },
     {
         question: "Do you integrate with OTAs?",
-        answer: "Yes, our PRO and ELITE plans include seamless two-way synchronization with all major OTAs (MakeMyTrip, Goibibo, Booking.com, Agoda) via our channel manager."
+        answer: "Yes, our Pro and Enterprise plans include seamless two-way synchronization with all major OTAs (MakeMyTrip, Goibibo, Booking.com, Agoda) via our channel manager."
     },
     {
-        question: "Can we migrate existing data?",
-        answer: "Absolutely. Our dedicated onboarding team will carefully migrate your past guest records, future reservations, and financial data securely to the new system."
+        question: "Can I manage my hotel restaurant too?",
+        answer: "Absolutely. Our Pro plan includes a full restaurant POS — menu management, food orders with kitchen tracking, table management, and inventory control. All integrated with your hotel operations."
     },
     {
-        question: "Is training included?",
-        answer: "Yes. Every plan receives a comprehensive onboarding session. The ELITE plan includes on-site training for your staff to ensure maximum operational efficiency."
+        question: "Can I manage multiple properties?",
+        answer: "Yes. The Enterprise plan includes a multi-property dashboard where you can manage all your hotels from a single login, with per-property staff roles and unified analytics."
     },
     {
         question: "What happens after Year 1?",

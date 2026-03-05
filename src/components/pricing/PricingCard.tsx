@@ -10,6 +10,8 @@ interface PricingCardProps {
     ctaText: string;
     onCtaClick?: () => void;
     index: number;
+    period?: string;
+    isFree?: boolean;
 }
 
 export default function PricingCard({
@@ -20,7 +22,9 @@ export default function PricingCard({
     isPopular,
     ctaText,
     onCtaClick,
-    index
+    index,
+    period,
+    isFree
 }: PricingCardProps) {
     return (
         <motion.div
@@ -45,7 +49,7 @@ export default function PricingCard({
 
             <div className="mb-8 pb-8 border-b border-gray-100 flex items-baseline gap-1">
                 <span className="text-4xl lg:text-5xl font-bold text-[#0E2A38] tracking-tight">{price}</span>
-                <span className="text-gray-400 font-medium tracking-wide">/ year</span>
+                {period && <span className="text-gray-400 font-medium tracking-wide">{period}</span>}
             </div>
 
             <ul className="space-y-4 mb-10 flex-1">
@@ -59,10 +63,13 @@ export default function PricingCard({
 
             <button
                 onClick={onCtaClick}
-                className={`w-full py-4 rounded-xl font-bold tracking-wide transition-all shadow-sm ${isPopular
+                className={`w-full py-4 rounded-xl font-bold tracking-wide transition-all shadow-sm ${
+                    isPopular
                         ? 'bg-[#0E2A38] hover:bg-[#091b24] text-[#C9A646] hover:shadow-lg'
-                        : 'bg-[#F7F4EF] hover:bg-[#edeade] text-[#0E2A38] border border-gray-200'
-                    }`}
+                        : isFree
+                            ? 'bg-[#2E7D5B] hover:bg-[#256b4d] text-white hover:shadow-lg'
+                            : 'bg-[#F7F4EF] hover:bg-[#edeade] text-[#0E2A38] border border-gray-200'
+                }`}
             >
                 {ctaText}
             </button>

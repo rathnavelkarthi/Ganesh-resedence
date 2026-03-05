@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import {
     Eye, Save, Upload, Trash2, Plus, GripVertical, ChevronDown, ChevronUp,
     Image as ImageIcon, Type, MapPin, Phone, Mail, Star, Quote, Globe,
-    EyeOff, ExternalLink, Loader2, Check, Sparkles, X
+    EyeOff, ExternalLink, Loader2, Check, Sparkles, X, UtensilsCrossed
 } from 'lucide-react';
 
 // --- Types ---
@@ -114,7 +114,7 @@ export default function WebsiteEditor() {
     const [settings, setSettings] = useState<SiteSettings>({});
     const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
     const [visibility, setVisibility] = useState<SectionVisibility>({
-        hero: true, rooms: true, testimonials: true, about: true, contact: true
+        hero: true, rooms: true, testimonials: true, about: true, contact: true, menu: true
     });
     const [heroImageUrl, setHeroImageUrl] = useState('');
     const [rooms, setRooms] = useState<EditorRoom[]>([]);
@@ -155,11 +155,14 @@ export default function WebsiteEditor() {
             if (tenantData.sections_visible) setVisibility(tenantData.sections_visible);
         }
 
-        // Load rooms
-        const { data: roomsData } = await supabase
-            .from('rooms').select('id, name, type, description, price_per_night, max_occupancy, amenities, images, show_on_website')
-            .eq('tenant_id', tenant.id).order('price_per_night', { ascending: true });
-        if (roomsData) setRooms(roomsData);
+        // Load rooms (hotel/combined only)
+        const bType = tenant?.business_type;
+        if (bType === 'hotel' || bType === 'combined') {
+            const { data: roomsData } = await supabase
+                .from('rooms').select('id, name, type, description, price_per_night, max_occupancy, amenities, images, show_on_website')
+                .eq('tenant_id', tenant.id).order('price_per_night', { ascending: true });
+            if (roomsData) setRooms(roomsData);
+        }
     };
 
     // Update setting
@@ -350,88 +353,111 @@ export default function WebsiteEditor() {
                             <ImageUploader label="Hero background image" currentUrl={heroImageUrl} onUpload={handleHeroImageUpload} uploading={uploading === 'hero'} />
                         </SectionPanel>
 
-                        {/* ROOMS */}
-                        <SectionPanel title="Rooms" icon={ImageIcon} isOpen={!!openSections.rooms} onToggle={() => toggleOpen('rooms')}
-                            isVisible={visibility.rooms} onToggleVisibility={() => toggleVis('rooms')}>
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <p className="text-[11px] text-gray-500">Toggle which rooms appear on your website.</p>
-                                    <a href="/admin/rooms-cms" className="inline-flex items-center gap-1 text-[11px] text-[#0E2A38] font-semibold hover:underline">
-                                        Manage in CMS <ExternalLink size={10} />
-                                    </a>
-                                </div>
-
-                                {rooms.length === 0 && (
-                                    <div className="text-center py-6">
-                                        <ImageIcon size={24} className="mx-auto text-gray-300 mb-2" />
-                                        <p className="text-xs text-gray-400">No rooms found.</p>
-                                        <a href="/admin/rooms-cms" className="text-xs text-[#0E2A38] font-semibold hover:underline mt-1 inline-block">Add rooms in Rooms CMS</a>
+                        {/* ROOMS (Hotel/Combined only) */}
+                        {(tenant?.business_type === 'hotel' || tenant?.business_type === 'combined') && (
+                            <SectionPanel title="Rooms" icon={ImageIcon} isOpen={!!openSections.rooms} onToggle={() => toggleOpen('rooms')}
+                                isVisible={visibility.rooms} onToggleVisibility={() => toggleVis('rooms')}>
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-[11px] text-gray-500">Toggle which rooms appear on your website.</p>
+                                        <a href="/admin/rooms-cms" className="inline-flex items-center gap-1 text-[11px] text-[#0E2A38] font-semibold hover:underline">
+                                            Manage in CMS <ExternalLink size={10} />
+                                        </a>
                                     </div>
-                                )}
 
-                                {rooms.map(room => (
-                                    <div key={room.id} className={`rounded-xl border transition-all ${room.show_on_website
-                                        ? 'bg-white border-gray-100 shadow-sm'
-                                        : 'bg-gray-50/50 border-gray-100/50 opacity-60'
-                                        }`}>
-                                        <div className="flex items-center gap-3 p-3">
-                                            {/* Room thumbnail */}
-                                            <div className="w-14 h-14 rounded-lg overflow-hidden shrink-0 bg-gray-100">
-                                                {room.images?.[0] ? (
-                                                    <img src={room.images[0]} alt={room.name} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center">
-                                                        <ImageIcon size={16} className="text-gray-300" />
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            {/* Room info */}
-                                            <div className="flex-1 min-w-0">
-                                                <h4 className="text-sm font-bold text-[#0E2A38] truncate">{room.name}</h4>
-                                                <div className="flex items-center gap-2 mt-0.5">
-                                                    <span className="text-[10px] text-gray-400 uppercase tracking-wider">{room.type}</span>
-                                                    <span className="text-gray-200">|</span>
-                                                    <span className="text-xs font-semibold text-[#0E2A38]">₹{room.price_per_night.toLocaleString()}<span className="text-[10px] font-normal text-gray-400">/night</span></span>
-                                                </div>
-                                            </div>
-
-                                            {/* Toggle */}
-                                            <button
-                                                onClick={() => toggleRoomWebsite(room.id)}
-                                                className={`w-10 h-6 rounded-full transition-colors relative shrink-0 ${room.show_on_website ? 'bg-[#0E2A38]' : 'bg-gray-300'
-                                                    }`}
-                                            >
-                                                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform shadow-sm ${room.show_on_website ? 'left-5' : 'left-1'
-                                                    }`} />
-                                            </button>
+                                    {rooms.length === 0 && (
+                                        <div className="text-center py-6">
+                                            <ImageIcon size={24} className="mx-auto text-gray-300 mb-2" />
+                                            <p className="text-xs text-gray-400">No rooms found.</p>
+                                            <a href="/admin/rooms-cms" className="text-xs text-[#0E2A38] font-semibold hover:underline mt-1 inline-block">Add rooms in Rooms CMS</a>
                                         </div>
+                                    )}
 
-                                        {/* Amenity chips preview */}
-                                        {room.show_on_website && room.amenities?.length > 0 && (
-                                            <div className="px-3 pb-3 flex flex-wrap gap-1">
-                                                {room.amenities.slice(0, 5).map((a, j) => (
-                                                    <span key={j} className="text-[10px] text-gray-500 bg-gray-50 border border-gray-100 px-1.5 py-0.5 rounded">{a}</span>
-                                                ))}
-                                                {room.amenities.length > 5 && (
-                                                    <span className="text-[10px] text-gray-400">+{room.amenities.length - 5}</span>
-                                                )}
+                                    {rooms.map(room => (
+                                        <div key={room.id} className={`rounded-xl border transition-all ${room.show_on_website
+                                            ? 'bg-white border-gray-100 shadow-sm'
+                                            : 'bg-gray-50/50 border-gray-100/50 opacity-60'
+                                            }`}>
+                                            <div className="flex items-center gap-3 p-3">
+                                                {/* Room thumbnail */}
+                                                <div className="w-14 h-14 rounded-lg overflow-hidden shrink-0 bg-gray-100">
+                                                    {room.images?.[0] ? (
+                                                        <img src={room.images[0]} alt={room.name} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center">
+                                                            <ImageIcon size={16} className="text-gray-300" />
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Room info */}
+                                                <div className="flex-1 min-w-0">
+                                                    <h4 className="text-sm font-bold text-[#0E2A38] truncate">{room.name}</h4>
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        <span className="text-[10px] text-gray-400 uppercase tracking-wider">{room.type}</span>
+                                                        <span className="text-gray-200">|</span>
+                                                        <span className="text-xs font-semibold text-[#0E2A38]">₹{room.price_per_night.toLocaleString()}<span className="text-[10px] font-normal text-gray-400">/night</span></span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Toggle */}
+                                                <button
+                                                    onClick={() => toggleRoomWebsite(room.id)}
+                                                    className={`w-10 h-6 rounded-full transition-colors relative shrink-0 ${room.show_on_website ? 'bg-[#0E2A38]' : 'bg-gray-300'
+                                                        }`}
+                                                >
+                                                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform shadow-sm ${room.show_on_website ? 'left-5' : 'left-1'
+                                                        }`} />
+                                                </button>
                                             </div>
-                                        )}
-                                    </div>
-                                ))}
 
-                                {rooms.length > 0 && (
-                                    <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-2.5 flex items-start gap-2">
-                                        <Eye size={12} className="text-blue-400 mt-0.5 shrink-0" />
-                                        <p className="text-[11px] text-blue-600 leading-relaxed">
-                                            {rooms.filter(r => r.show_on_website).length} of {rooms.length} rooms visible on your website.
-                                            Edit room details in <a href="/admin/rooms-cms" className="font-semibold underline">Rooms CMS</a>.
+                                            {/* Amenity chips preview */}
+                                            {room.show_on_website && room.amenities?.length > 0 && (
+                                                <div className="px-3 pb-3 flex flex-wrap gap-1">
+                                                    {room.amenities.slice(0, 5).map((a, j) => (
+                                                        <span key={j} className="text-[10px] text-gray-500 bg-gray-50 border border-gray-100 px-1.5 py-0.5 rounded">{a}</span>
+                                                    ))}
+                                                    {room.amenities.length > 5 && (
+                                                        <span className="text-[10px] text-gray-400">+{room.amenities.length - 5}</span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+
+                                    {rooms.length > 0 && (
+                                        <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-2.5 flex items-start gap-2">
+                                            <Eye size={12} className="text-blue-400 mt-0.5 shrink-0" />
+                                            <p className="text-[11px] text-blue-600 leading-relaxed">
+                                                {rooms.filter(r => r.show_on_website).length} of {rooms.length} rooms visible on your website.
+                                                Edit room details in <a href="/admin/rooms-cms" className="font-semibold underline">Rooms CMS</a>.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </SectionPanel>
+                        )}
+
+                        {/* MENU (Restaurant/Combined only) */}
+                        {(tenant?.business_type === 'restaurant' || tenant?.business_type === 'combined') && (
+                            <SectionPanel title="Menu" icon={UtensilsCrossed} isOpen={!!openSections.menu} onToggle={() => toggleOpen('menu')}
+                                isVisible={visibility.menu !== false} onToggleVisibility={() => toggleVis('menu')}>
+                                <div className="space-y-3">
+                                    <p className="text-xs text-gray-500 leading-relaxed">
+                                        Your menu is displayed on the website automatically from the items you've added in Menu Manager.
+                                    </p>
+                                    <a href="/admin/menu" className="inline-flex items-center gap-2 text-xs text-[#0E2A38] font-semibold hover:underline">
+                                        Manage menu items <ExternalLink size={10} />
+                                    </a>
+                                    <div className="bg-amber-50/50 border border-amber-100 rounded-lg p-2.5 flex items-start gap-2">
+                                        <UtensilsCrossed size={12} className="text-amber-500 mt-0.5 shrink-0" />
+                                        <p className="text-[11px] text-amber-700 leading-relaxed">
+                                            Customers can browse your menu on the website and place orders via WhatsApp.
                                         </p>
                                     </div>
-                                )}
-                            </div>
-                        </SectionPanel>
+                                </div>
+                            </SectionPanel>
+                        )}
 
                         {/* TESTIMONIALS */}
                         <SectionPanel title="Reviews & testimonials" icon={Quote} isOpen={!!openSections.testimonials} onToggle={() => toggleOpen('testimonials')}

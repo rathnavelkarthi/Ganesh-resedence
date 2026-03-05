@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
+import { getSubdomain } from '../hooks/useSubdomain';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Star, MapPin, Phone, Mail, Calendar, Users, ChevronLeft, ChevronRight,
@@ -25,7 +26,9 @@ const amenityIcons: Record<string, React.ElementType> = {
 };
 
 export default function RoomDetail() {
-  const { subdomain, roomId } = useParams<{ subdomain: string; roomId: string }>();
+  const { subdomain: pathSubdomain, roomId } = useParams<{ subdomain?: string; roomId: string }>();
+  const hostSubdomain = getSubdomain();
+  const subdomain = pathSubdomain || hostSubdomain || '';
   const [room, setRoom] = useState<Room | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [otherRooms, setOtherRooms] = useState<OtherRoom[]>([]);
@@ -171,7 +174,7 @@ export default function RoomDetail() {
       <div className="text-center">
         <h1 className="text-6xl font-bold text-white/10 mb-4">404</h1>
         <p className="text-white/50 text-lg mb-4">Room not found</p>
-        <Link to={`/site/${subdomain}`} className="text-[#C9A646] hover:underline text-sm">Back to property</Link>
+        <Link to={hostSubdomain ? "/" : `/site/${subdomain}`} className="text-[#C9A646] hover:underline text-sm">Back to property</Link>
       </div>
     </div>
   );
@@ -185,7 +188,7 @@ export default function RoomDetail() {
       <nav className="fixed top-0 inset-x-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-100/80">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link to={`/site/${subdomain}`} className="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors text-sm">
+            <Link to={hostSubdomain ? "/" : `/site/${subdomain}`} className="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors text-sm">
               <ArrowLeft size={16} />
               <span className="hidden sm:inline">All rooms</span>
             </Link>
@@ -219,7 +222,7 @@ export default function RoomDetail() {
               <div className="grid grid-cols-2 h-[60vh] gap-1">
                 {images.map((img, i) => (
                   <div key={i} className="overflow-hidden cursor-pointer" onClick={() => { setActiveImage(i); setLightboxOpen(true); }}>
-                    <img src={img} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                    <img src={img} alt="" loading="lazy" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
                   </div>
                 ))}
               </div>
@@ -227,12 +230,12 @@ export default function RoomDetail() {
               <div className="grid grid-cols-4 grid-rows-2 h-[60vh] gap-1">
                 <div className="col-span-2 row-span-2 overflow-hidden cursor-pointer"
                   onClick={() => { setActiveImage(0); setLightboxOpen(true); }}>
-                  <img src={images[0]} alt={room.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                  <img src={images[0]} alt={room.name} loading="lazy" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
                 </div>
                 {images.slice(1, 5).map((img, i) => (
                   <div key={i} className="overflow-hidden cursor-pointer relative"
                     onClick={() => { setActiveImage(i + 1); setLightboxOpen(true); }}>
-                    <img src={img} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                    <img src={img} alt="" loading="lazy" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
                     {i === 3 && images.length > 5 && (
                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                         <span className="text-white font-semibold text-lg">+{images.length - 5}</span>
@@ -480,11 +483,11 @@ export default function RoomDetail() {
           <h2 className="text-2xl font-bold text-[#0E2A38] mb-6">Other rooms you might like</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {otherRooms.map(r => (
-              <Link key={r.id} to={`/site/${subdomain}/room/${r.id}`}
+              <Link key={r.id} to={hostSubdomain ? `/room/${r.id}` : `/site/${subdomain}/room/${r.id}`}
                 className="group bg-white rounded-xl overflow-hidden border border-gray-100 hover:shadow-lg transition-all">
                 <div className="h-40 bg-gray-100 overflow-hidden">
                   {r.images?.[0] ? (
-                    <img src={r.images[0]} alt={r.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <img src={r.images[0]} alt={r.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center"><Bed size={24} className="text-gray-300" /></div>
                   )}
@@ -505,7 +508,7 @@ export default function RoomDetail() {
       {/* Footer */}
       <footer className="bg-[#0E2A38] py-8 px-6 text-center">
         <p className="text-xs text-white/20">
-          &copy; {new Date().getFullYear()} {tenant.business_name}. Powered by <Link to="/" className="text-[#C9A646]/50 hover:text-[#C9A646] transition-colors">HospitalityOS</Link>
+          &copy; {new Date().getFullYear()} {tenant.business_name}. Powered by <a href={hostSubdomain ? "https://superstay.com" : "/"} className="text-[#C9A646]/50 hover:text-[#C9A646] transition-colors">HospitalityOS</a>
         </p>
       </footer>
 

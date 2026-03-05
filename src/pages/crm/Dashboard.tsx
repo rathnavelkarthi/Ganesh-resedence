@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useCRM } from '../../context/CRMDataContext';
 import { isDemoAccount } from '../../lib/booking';
+import { UtensilsCrossed as UtensilsIcon, ClipboardList, Armchair } from 'lucide-react';
 import { motion } from 'motion/react';
 import {
   IndianRupee,
@@ -81,9 +82,12 @@ function formatINRDisplay(amount: number): string {
 
 export default function Dashboard() {
   const { user, tenant } = useAuth();
-  const { reservations, rooms } = useCRM();
+  const { reservations, rooms, foodOrders, restaurantTables, menuItems } = useCRM();
   const [dateFilter, setDateFilter] = useState('Yearly');
   const isDemo = isDemoAccount(user?.email);
+
+  const isHotel = tenant?.business_type === 'hotel' || tenant?.business_type === 'combined';
+  const isRestaurant = tenant?.business_type === 'restaurant' || tenant?.business_type === 'combined';
 
   // Compute real dashboard data from reservations and rooms
   const dashboardData = useMemo(() => {
@@ -143,9 +147,9 @@ export default function Dashboard() {
     });
     const occupancyData = totalRooms > 0
       ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => ({
-          name: day,
-          rate: Math.min(100, Math.round(((dayBookings[day] || 0) / totalRooms) * 100))
-        }))
+        name: day,
+        rate: Math.min(100, Math.round(((dayBookings[day] || 0) / totalRooms) * 100))
+      }))
       : [];
 
     const onlineBookings = reservations.filter(r => r.source && r.source !== 'Direct' && r.source !== 'Walk-in').length;
@@ -189,7 +193,18 @@ export default function Dashboard() {
     });
   }, [reservations, isDemo]);
 
-  const hasData = reservations.length > 0 || rooms.length > 0 || isDemo;
+  // Restaurant-specific dashboard data
+  const restaurantData = useMemo(() => {
+    if (!isRestaurant) return null;
+    const todayOrders = foodOrders.filter(o => new Date(o.created_at).toDateString() === new Date().toDateString());
+    const todayRevenue = todayOrders.reduce((s, o) => s + (o.total_amount || 0), 0);
+    const activeOrders = foodOrders.filter(o => ['pending', 'preparing', 'ready'].includes(o.status)).length;
+    const totalTables = restaurantTables.length;
+    const occupiedTables = restaurantTables.filter(t => t.status === 'occupied').length;
+    const tableUtilization = totalTables > 0 ? Math.round((occupiedTables / totalTables) * 100) : 0;
+    const avgOrder = todayOrders.length > 0 ? Math.round(todayRevenue / todayOrders.length) : 0;
+    return { todayOrders: todayOrders.length, todayRevenue, activeOrders, tableUtilization, avgOrder, menuItemCount: menuItems.length };
+  }, [foodOrders, restaurantTables, menuItems, isRestaurant]);
 
   const renderEmptyState = () => (
     <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-8">
@@ -199,7 +214,10 @@ export default function Dashboard() {
         </div>
         <h3 className="font-serif text-2xl font-bold text-[#0E2A38] mb-3">Welcome to your Dashboard</h3>
         <p className="text-gray-500 font-medium max-w-md mx-auto mb-8">
-          Your dashboard will come alive once you start adding rooms and bookings. Head over to <strong>Rooms</strong> to add your first room, then create your first reservation.
+          {isRestaurant && !isHotel
+            ? 'Your dashboard will come alive once you set up your menu and start taking orders. Head over to Menu Manager to add your first category.'
+            : 'Your dashboard will come alive once you start adding rooms and bookings. Head over to Rooms to add your first room, then create your first reservation.'
+          }
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 xl:gap-8 mt-8">
           <StatCard title="Total Revenue" value="₹0" icon={IndianRupee} />
@@ -214,13 +232,72 @@ export default function Dashboard() {
   const renderSuperAdmin = () => (
     <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-8">
 
-      {/* KPI Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 xl:gap-8">
-        <motion.div variants={itemVariants}><StatCard title="Total Revenue" value={dashboardData.totalRevenue} icon={IndianRupee} trend={isDemo ? "+12.5%" : undefined} /></motion.div>
-        <motion.div variants={itemVariants}><StatCard title="Occupancy Rate" value={dashboardData.occupancyRate} icon={BedDouble} trend={isDemo ? "+5.2%" : undefined} /></motion.div>
-        <motion.div variants={itemVariants}><StatCard title="Total Bookings" value={dashboardData.totalBookings} icon={CalendarCheck} trend={isDemo ? "+18.1%" : undefined} /></motion.div>
-        <motion.div variants={itemVariants}><StatCard title="Pending Payments" value={dashboardData.pendingPayments} icon={AlertCircle} trend={isDemo ? "-2.4%" : undefined} trendDown={isDemo} /></motion.div>
-      </div>
+      {/* Restaurant KPI Row */}
+      {isRestaurant && restaurantData && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 xl:gap-8">
+            <motion.div variants={itemVariants}><StatCard title="Today's Orders" value={String(restaurantData.todayOrders)} icon={ClipboardList} /></motion.div>
+            <motion.div variants={itemVariants}><StatCard title="Today's Revenue" value={formatINRDisplay(restaurantData.todayRevenue)} icon={IndianRupee} /></motion.div>
+            <motion.div variants={itemVariants}><StatCard title="Avg Order Value" value={formatINRDisplay(restaurantData.avgOrder)} icon={UtensilsIcon} /></motion.div>
+            <motion.div variants={itemVariants}><StatCard title="Table Utilization" value={`${restaurantData.tableUtilization}%`} icon={Armchair} /></motion.div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 xl:gap-8 mt-8 mb-8">
+            <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-md p-6 lg:p-8 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-serif text-xl lg:text-2xl font-bold text-[#0E2A38]">Live Kitchen Orders</h3>
+                <span className="text-xs font-bold uppercase tracking-widest text-[#C9A646] px-3 py-1 bg-[#C9A646]/10 rounded-full">
+                  {restaurantData.activeOrders} Active
+                </span>
+              </div>
+              <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
+                {foodOrders.filter(o => ['pending', 'preparing'].includes(o.status)).length > 0 ? (
+                  foodOrders
+                    .filter(o => ['pending', 'preparing'].includes(o.status))
+                    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                    .map(order => (
+                      <div key={order.id} className="min-w-[300px] border border-gray-100 bg-[#F8F9FB] rounded-xl p-4 snap-start shrink-0">
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <p className="font-bold text-[#0E2A38] uppercase tracking-wider text-xs">{order.order_type.replace('_', ' ')}</p>
+                            <p className="text-sm font-medium text-gray-600">
+                              {order.table_id ? `Table ${restaurantTables.find(t => t.id === order.table_id)?.table_number}` : (order.customer_name || 'Walk-in')}
+                            </p>
+                          </div>
+                          <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded-md tracking-wider ${order.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+                            }`}>
+                            {order.status}
+                          </span>
+                        </div>
+                        <div className="space-y-1.5 mt-4">
+                          {order.items?.map((item: any, idx: number) => (
+                            <div key={idx} className="flex justify-between text-sm">
+                              <span className="text-gray-700"><span className="font-semibold text-gray-900 pr-2">{item.quantity}x</span> {item.item_name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))
+                ) : (
+                  <div className="w-full py-8 text-center text-gray-400 text-sm">
+                    No active kitchen orders at the moment.
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        </>
+      )}
+
+      {/* Hotel KPI Row */}
+      {isHotel && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 xl:gap-8">
+          <motion.div variants={itemVariants}><StatCard title="Total Revenue" value={dashboardData.totalRevenue} icon={IndianRupee} trend={isDemo ? "+12.5%" : undefined} /></motion.div>
+          <motion.div variants={itemVariants}><StatCard title="Occupancy Rate" value={dashboardData.occupancyRate} icon={BedDouble} trend={isDemo ? "+5.2%" : undefined} /></motion.div>
+          <motion.div variants={itemVariants}><StatCard title="Total Bookings" value={dashboardData.totalBookings} icon={CalendarCheck} trend={isDemo ? "+18.1%" : undefined} /></motion.div>
+          <motion.div variants={itemVariants}><StatCard title="Pending Payments" value={dashboardData.pendingPayments} icon={AlertCircle} trend={isDemo ? "-2.4%" : undefined} trendDown={isDemo} /></motion.div>
+        </div>
+      )}
 
       {/* Charts Row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 xl:gap-8">
@@ -389,8 +466,8 @@ export default function Dashboard() {
               key={f}
               onClick={() => setDateFilter(f)}
               className={`px-5 py-2 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${dateFilter === f
-                  ? 'bg-[#0E2A38] text-[#C9A646] shadow-md'
-                  : 'text-gray-500 hover:text-[#0E2A38] hover:bg-gray-50'
+                ? 'bg-[#0E2A38] text-[#C9A646] shadow-md'
+                : 'text-gray-500 hover:text-[#0E2A38] hover:bg-gray-50'
                 }`}
             >
               {f}
@@ -399,8 +476,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {user?.role === 'SUPER_ADMIN' && (hasData ? renderSuperAdmin() : renderEmptyState())}
-      {user?.role !== 'SUPER_ADMIN' && (
+      {user?.role === 'SUPER_ADMIN' ? (
+        renderSuperAdmin()
+      ) : (
         <div className="bg-white p-8 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100 text-center">
           <p className="text-gray-500 font-medium">Your role-specific dashboard is coming soon.</p>
         </div>

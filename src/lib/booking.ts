@@ -4,7 +4,7 @@
  */
 
 /** Demo account email - this account shows hardcoded showcase data for investors/clients. */
-export const DEMO_EMAIL = 'rathnavelkarthi1@gmail.com';
+export const DEMO_EMAIL = 'demo@hospitalityos.app';
 
 /** Check if the current user is the demo/showcase account. */
 export function isDemoAccount(email: string | undefined | null): boolean {

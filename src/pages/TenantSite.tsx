@@ -2,13 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useTenantOccupancyPricing } from '../hooks/useOccupancyPricing';
+import { getSubdomain } from '../hooks/useSubdomain';
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'motion/react';
 import {
     Star, MapPin, Phone, Mail, Calendar, Users, ChevronDown,
     ArrowRight, Wifi, Car, Coffee, Waves, X, Check, Clock,
     Quote, ExternalLink, ChevronLeft, ChevronRight, Plus, Minus,
     Shield, Sunrise, BadgeCheck, Camera, Navigation, Plane, Building2,
-    MessageCircle
+    MessageCircle, UtensilsCrossed, Leaf
 } from 'lucide-react';
 
 // --- Types ---
@@ -24,6 +25,12 @@ type TenantData = {
     id: string; business_name: string; business_type: string; subdomain: string;
     template: string; logo_url: string; google_place_id: string; google_review_url: string;
     hero_image_url: string; sections_visible: Record<string, boolean> | null;
+};
+type MenuCategory = { id: number; name: string; description: string; sort_order: number; is_active: boolean };
+type MenuItem = {
+    id: number; category_id: number; name: string; description: string;
+    price: number; is_veg: boolean; is_available: boolean; image_url: string | null;
+    preparation_time_mins: number; sort_order: number;
 };
 type SiteData = { tenant: TenantData; rooms: Room[]; testimonials: Testimonial[]; settings: Record<string, string> };
 
@@ -206,12 +213,19 @@ function BookingConfirmation({ data, onClose }: { data: any; onClose: () => void
 // MAIN TENANT SITE COMPONENT
 // =========================================================================
 export default function TenantSite() {
-    const { subdomain } = useParams<{ subdomain: string }>();
+    const { subdomain: pathSubdomain } = useParams<{ subdomain?: string }>();
+    const hostSubdomain = getSubdomain();
+    const subdomain = pathSubdomain || hostSubdomain || '';
+
     const [siteData, setSiteData] = useState<SiteData | null>(null);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
     const [bookingRoom, setBookingRoom] = useState<Room | null>(null);
     const [bookingSuccess, setBookingSuccess] = useState<any>(null);
+    const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([]);
+    const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+    const [activeMenuCat, setActiveMenuCat] = useState<number | null>(null);
+    const [menuSearch, setMenuSearch] = useState('');
 
     // Hero booking strip state
     const [heroCheckIn, setHeroCheckIn] = useState('');
@@ -239,6 +253,19 @@ export default function TenantSite() {
             const { data, error } = await supabase.rpc('get_tenant_site', { p_subdomain: subdomain });
             if (error || !data || !data.tenant) { setNotFound(true); setLoading(false); return; }
             setSiteData(data);
+
+            // Fetch menu data for restaurant/combined tenants
+            const bType = data.tenant.business_type;
+            if (bType === 'restaurant' || bType === 'combined') {
+                const [catRes, itemRes] = await Promise.all([
+                    supabase.from('menu_categories').select('*').eq('tenant_id', data.tenant.id).eq('is_active', true).order('sort_order'),
+                    supabase.from('menu_items').select('*').eq('tenant_id', data.tenant.id).eq('is_available', true).order('sort_order'),
+                ]);
+                if (catRes.data) setMenuCategories(catRes.data);
+                if (itemRes.data) setMenuItems(itemRes.data);
+                if (catRes.data && catRes.data.length > 0) setActiveMenuCat(catRes.data[0].id);
+            }
+
             setLoading(false);
         })();
     }, [subdomain]);
@@ -293,7 +320,16 @@ export default function TenantSite() {
     const heroTitle = settings.heroTitle || tenant.business_name;
     const heroSubtitle = settings.heroSubtitle || 'Experience comfort and luxury';
     const aboutText = settings.aboutText || '';
-    const vis = tenant.sections_visible || { hero: true, rooms: true, testimonials: true, about: true, contact: true };
+    const vis = tenant.sections_visible || { hero: true, rooms: true, testimonials: true, about: true, contact: true, menu: true };
+
+    const isHotel = tenant.business_type === 'hotel' || tenant.business_type === 'combined';
+    const isRestaurant = tenant.business_type === 'restaurant' || tenant.business_type === 'combined';
+
+    const whatsappNumber = contactPhone.replace(/[\s\(\)\-\+]/g, '');
+    const buildWhatsAppOrderUrl = () => {
+        const text = encodeURIComponent(`Hi, I'd like to place an order from ${tenant.business_name}. Can I see the menu?`);
+        return `https://wa.me/${whatsappNumber}?text=${text}`;
+    };
 
 
     const handleHeroBook = () => {
@@ -317,18 +353,20 @@ export default function TenantSite() {
                         <span className="font-serif font-bold text-primary tracking-tight">{tenant.business_name}</span>
                     </div>
                     <div className="hidden md:flex items-center gap-8 text-sm">
-                        <a href="#rooms" className="text-gray-500 hover:text-gray-900 transition-colors font-medium">Rooms</a>
+                        {isHotel && <a href="#rooms" className="text-gray-500 hover:text-gray-900 transition-colors font-medium">Rooms</a>}
+                        {isRestaurant && menuCategories.length > 0 && <a href="#menu" className="text-gray-500 hover:text-gray-900 transition-colors font-medium">Menu</a>}
                         {testimonials.length > 0 && <a href="#reviews" className="text-gray-500 hover:text-gray-900 transition-colors font-medium">Reviews</a>}
                         {aboutText && <a href="#about" className="text-gray-500 hover:text-gray-900 transition-colors font-medium">About</a>}
                         <a href="#location" className="text-gray-500 hover:text-gray-900 transition-colors font-medium">Location</a>
                         <a href="#contact" className="text-gray-500 hover:text-gray-900 transition-colors font-medium">Contact</a>
                     </div>
-                    <a
-                        href="#rooms"
-                        className="bg-primary text-white text-sm font-semibold px-5 py-2 rounded-lg hover:bg-primary-hover transition-all shadow-sm hover:shadow-md"
-                    >
-                        Book now
-                    </a>
+                    {isHotel ? (
+                        <a href="#rooms" className="bg-primary text-white text-sm font-semibold px-5 py-2 rounded-lg hover:bg-primary-hover transition-all shadow-sm hover:shadow-md">Book now</a>
+                    ) : (
+                        <a href={buildWhatsAppOrderUrl()} target="_blank" rel="noopener noreferrer" className="bg-green-500 text-white text-sm font-semibold px-5 py-2 rounded-lg hover:bg-green-600 transition-all shadow-sm hover:shadow-md flex items-center gap-2">
+                            <MessageCircle size={16} /> Order now
+                        </a>
+                    )}
                 </div>
             </nav>
 
@@ -373,126 +411,142 @@ export default function TenantSite() {
 
                             {/* Quick stats - Glass strip */}
                             <div className="inline-flex justify-center md:justify-start items-center gap-4 md:gap-6 bg-white/10 backdrop-blur-md border border-white/20 shadow-lg shadow-black/5 rounded-full px-6 py-3">
-                                {rooms.length > 0 && (
+                                {isHotel && rooms.length > 0 && (
                                     <div className="flex items-center gap-2">
                                         <span className="text-white font-semibold">{rooms.length}</span>
                                         <span className="text-white/80 text-sm">Rooms</span>
                                     </div>
                                 )}
-                                {rooms.length > 0 && testimonials.length > 0 && <span className="text-white/30">|</span>}
-                                {testimonials.length > 0 && (
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-accent">★</span>
-                                        <span className="text-white font-semibold">
-                                            {(testimonials.reduce((s, t) => s + t.rating, 0) / testimonials.length).toFixed(1)}
-                                        </span>
-                                        <span className="text-white/80 text-sm hidden sm:inline">Rating</span>
-                                    </div>
+                                {isRestaurant && menuItems.length > 0 && (
+                                    <>
+                                        {isHotel && rooms.length > 0 && <span className="text-white/30">|</span>}
+                                        <div className="flex items-center gap-2">
+                                            <UtensilsCrossed size={14} className="text-accent" />
+                                            <span className="text-white font-semibold">{menuItems.length}</span>
+                                            <span className="text-white/80 text-sm">Dishes</span>
+                                        </div>
+                                    </>
                                 )}
-                                {testimonials.length > 0 && rooms.length > 0 && <span className="text-white/30 hidden sm:inline">|</span>}
-                                {rooms.length > 0 && (
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-white/80 text-sm hidden sm:inline">From</span>
-                                        <span className="text-white font-semibold flex items-center gap-1">
-                                            <span className="text-accent text-xs font-normal">₹</span>
-                                            {Math.min(...rooms.map(r => adjustedPrice(r.price_per_night))).toLocaleString()}
-                                            <span className="text-white/60 font-normal text-xs ml-0.5">/ night</span>
-                                        </span>
-                                    </div>
+                                {testimonials.length > 0 && (
+                                    <>
+                                        <span className="text-white/30">|</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-accent">★</span>
+                                            <span className="text-white font-semibold">
+                                                {(testimonials.reduce((s, t) => s + t.rating, 0) / testimonials.length).toFixed(1)}
+                                            </span>
+                                            <span className="text-white/80 text-sm hidden sm:inline">Rating</span>
+                                        </div>
+                                    </>
+                                )}
+                                {isHotel && rooms.length > 0 && (
+                                    <>
+                                        <span className="text-white/30 hidden sm:inline">|</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-white/80 text-sm hidden sm:inline">From</span>
+                                            <span className="text-white font-semibold flex items-center gap-1">
+                                                <span className="text-accent text-xs font-normal">₹</span>
+                                                {Math.min(...rooms.map(r => adjustedPrice(r.price_per_night))).toLocaleString()}
+                                                <span className="text-white/60 font-normal text-xs ml-0.5">/ night</span>
+                                            </span>
+                                        </div>
+                                    </>
                                 )}
                             </div>
                         </motion.div>
                     </div>
 
-                    {/* ===== INLINE BOOKING STRIP ===== */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 40 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 1, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                        className="sticky top-[60px] md:relative z-40 w-full px-4 md:px-6 max-w-5xl mx-auto pb-6 md:pb-0 md:-mb-10 mt-6 md:mt-0"
-                    >
-                        <div className="bg-white/95 backdrop-blur-2xl rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.12)] border border-white/40 overflow-hidden">
-                            <div className="grid grid-cols-2 md:flex md:flex-row items-stretch divide-x md:divide-y-0 divide-y md:divide-x divide-gray-100">
-                                {/* Check-in */}
-                                <div
-                                    className="col-span-1 p-3 md:p-5 flex flex-col gap-1 cursor-pointer hover:bg-gray-50/50 transition-colors relative border-b border-gray-100 md:border-b-0"
-                                    onClick={() => heroCheckInRef.current?.showPicker()}
-                                >
-                                    <span className="text-[10px] tracking-[0.15em] text-gray-400 uppercase font-semibold">Check-in</span>
-                                    <div className="flex items-center gap-2 text-primary font-semibold">
-                                        <Calendar size={16} className="text-accent hidden sm:block" />
-                                        <span className="text-sm">{heroCheckIn ? new Date(heroCheckIn + 'T00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Select date'}</span>
+                    {/* ===== INLINE BOOKING STRIP (Hotel only) ===== */}
+                    {isHotel && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 40 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 1, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                            className="sticky top-[60px] md:relative z-40 w-full px-4 md:px-6 max-w-5xl mx-auto pb-6 md:pb-0 md:-mb-10 mt-6 md:mt-0"
+                        >
+                            <div className="bg-white/95 backdrop-blur-2xl rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.12)] border border-white/40 overflow-hidden">
+                                <div className="grid grid-cols-2 md:flex md:flex-row items-stretch divide-x md:divide-y-0 divide-y md:divide-x divide-gray-100">
+                                    {/* Check-in */}
+                                    <div
+                                        className="col-span-1 p-3 md:p-5 flex flex-col gap-1 cursor-pointer hover:bg-gray-50/50 transition-colors relative border-b border-gray-100 md:border-b-0"
+                                        onClick={() => heroCheckInRef.current?.showPicker()}
+                                    >
+                                        <span className="text-[10px] tracking-[0.15em] text-gray-400 uppercase font-semibold">Check-in</span>
+                                        <div className="flex items-center gap-2 text-primary font-semibold">
+                                            <Calendar size={16} className="text-accent hidden sm:block" />
+                                            <span className="text-sm">{heroCheckIn ? new Date(heroCheckIn + 'T00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Select date'}</span>
+                                        </div>
+                                        <input ref={heroCheckInRef} type="date" min={new Date().toISOString().split('T')[0]}
+                                            className="absolute opacity-0 pointer-events-none inset-0"
+                                            onChange={(e) => {
+                                                setHeroCheckIn(e.target.value);
+                                                if (heroCheckOut && new Date(e.target.value) >= new Date(heroCheckOut)) {
+                                                    const next = new Date(e.target.value); next.setDate(next.getDate() + 1);
+                                                    setHeroCheckOut(next.toISOString().split('T')[0]);
+                                                }
+                                            }} />
                                     </div>
-                                    <input ref={heroCheckInRef} type="date" min={new Date().toISOString().split('T')[0]}
-                                        className="absolute opacity-0 pointer-events-none inset-0"
-                                        onChange={(e) => {
-                                            setHeroCheckIn(e.target.value);
-                                            if (heroCheckOut && new Date(e.target.value) >= new Date(heroCheckOut)) {
-                                                const next = new Date(e.target.value); next.setDate(next.getDate() + 1);
-                                                setHeroCheckOut(next.toISOString().split('T')[0]);
-                                            }
-                                        }} />
-                                </div>
 
-                                {/* Check-out */}
-                                <div
-                                    className="col-span-1 p-3 md:p-5 flex flex-col gap-1 cursor-pointer hover:bg-gray-50/50 transition-colors relative border-b border-gray-100 md:border-b-0"
-                                    onClick={() => heroCheckOutRef.current?.showPicker()}
-                                >
-                                    <span className="text-[10px] tracking-[0.15em] text-gray-400 uppercase font-semibold">Check-out</span>
-                                    <div className="flex items-center gap-2 text-primary font-semibold">
-                                        <Calendar size={16} className="text-accent hidden sm:block" />
-                                        <span className="text-sm">{heroCheckOut ? new Date(heroCheckOut + 'T00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Select date'}</span>
+                                    {/* Check-out */}
+                                    <div
+                                        className="col-span-1 p-3 md:p-5 flex flex-col gap-1 cursor-pointer hover:bg-gray-50/50 transition-colors relative border-b border-gray-100 md:border-b-0"
+                                        onClick={() => heroCheckOutRef.current?.showPicker()}
+                                    >
+                                        <span className="text-[10px] tracking-[0.15em] text-gray-400 uppercase font-semibold">Check-out</span>
+                                        <div className="flex items-center gap-2 text-primary font-semibold">
+                                            <Calendar size={16} className="text-accent hidden sm:block" />
+                                            <span className="text-sm">{heroCheckOut ? new Date(heroCheckOut + 'T00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Select date'}</span>
+                                        </div>
+                                        <input ref={heroCheckOutRef} type="date" min={heroCheckIn || new Date().toISOString().split('T')[0]}
+                                            className="absolute opacity-0 pointer-events-none inset-0"
+                                            onChange={(e) => setHeroCheckOut(e.target.value)} />
                                     </div>
-                                    <input ref={heroCheckOutRef} type="date" min={heroCheckIn || new Date().toISOString().split('T')[0]}
-                                        className="absolute opacity-0 pointer-events-none inset-0"
-                                        onChange={(e) => setHeroCheckOut(e.target.value)} />
-                                </div>
 
-                                {/* Guests */}
-                                <div className="col-span-2 md:flex-1 p-3 md:p-5 flex flex-row md:flex-col items-center md:items-start justify-between md:justify-start gap-1">
-                                    <span className="text-[10px] tracking-[0.15em] text-gray-400 uppercase font-semibold md:mb-1">Guests</span>
-                                    <div className="flex items-center gap-3">
-                                        <Users size={16} className="text-accent hidden md:block" />
-                                        <div className="flex items-center gap-2">
-                                            <button type="button" onClick={() => setHeroGuests(Math.max(1, heroGuests - 1))}
-                                                className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors text-gray-500">
-                                                <Minus size={12} />
-                                            </button>
-                                            <span className="text-sm font-semibold text-primary w-12 text-center">{heroGuests} Guest{heroGuests > 1 ? 's' : ''}</span>
-                                            <button type="button" onClick={() => setHeroGuests(Math.min(16, heroGuests + 1))}
-                                                disabled={heroGuests >= 16}
-                                                className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors text-gray-500 disabled:opacity-30 disabled:cursor-not-allowed">
-                                                <Plus size={12} />
-                                            </button>
+                                    {/* Guests */}
+                                    <div className="col-span-2 md:flex-1 p-3 md:p-5 flex flex-row md:flex-col items-center md:items-start justify-between md:justify-start gap-1">
+                                        <span className="text-[10px] tracking-[0.15em] text-gray-400 uppercase font-semibold md:mb-1">Guests</span>
+                                        <div className="flex items-center gap-3">
+                                            <Users size={16} className="text-accent hidden md:block" />
+                                            <div className="flex items-center gap-2">
+                                                <button type="button" onClick={() => setHeroGuests(Math.max(1, heroGuests - 1))}
+                                                    className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors text-gray-500">
+                                                    <Minus size={12} />
+                                                </button>
+                                                <span className="text-sm font-semibold text-primary w-12 text-center">{heroGuests} Guest{heroGuests > 1 ? 's' : ''}</span>
+                                                <button type="button" onClick={() => setHeroGuests(Math.min(16, heroGuests + 1))}
+                                                    disabled={heroGuests >= 16}
+                                                    className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors text-gray-500 disabled:opacity-30 disabled:cursor-not-allowed">
+                                                    <Plus size={12} />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
+
+                                    {/* CTA */}
+                                    <div className="col-span-2 p-3 md:p-4 flex items-center bg-gray-50/30">
+                                        <button
+                                            onClick={handleHeroBook}
+                                            className="w-full md:w-auto bg-primary text-white font-semibold px-8 py-3.5 rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 text-sm flex items-center justify-center gap-2 whitespace-nowrap"
+                                        >
+                                            Check Availability
+                                            <ArrowRight size={16} />
+                                        </button>
+                                    </div>
                                 </div>
 
-                                {/* CTA */}
-                                <div className="col-span-2 p-3 md:p-4 flex items-center bg-gray-50/30">
-                                    <button
-                                        onClick={handleHeroBook}
-                                        className="w-full md:w-auto bg-primary text-white font-semibold px-8 py-3.5 rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 text-sm flex items-center justify-center gap-2 whitespace-nowrap"
-                                    >
-                                        Check Availability
-                                        <ArrowRight size={16} />
-                                    </button>
+                                <div className="bg-background py-2 md:py-2.5 text-center border-t border-gray-100">
+                                    <p className="text-[9px] md:text-[10px] tracking-[0.1em] md:tracking-[0.15em] text-gray-400 uppercase font-medium">
+                                        Best Rate Guarantee <span className="text-accent mx-1 md:mx-2">•</span> No fees <span className="text-accent mx-1 md:mx-2">•</span> Free cancel
+                                    </p>
                                 </div>
                             </div>
-
-                            <div className="bg-background py-2 md:py-2.5 text-center border-t border-gray-100">
-                                <p className="text-[9px] md:text-[10px] tracking-[0.1em] md:tracking-[0.15em] text-gray-400 uppercase font-medium">
-                                    Best Rate Guarantee <span className="text-accent mx-1 md:mx-2">•</span> No fees <span className="text-accent mx-1 md:mx-2">•</span> Free cancel
-                                </p>
-                            </div>
-                        </div>
-                    </motion.div>
+                        </motion.div>
+                    )}
                 </section>
             )}
 
-            {/* ===== ROOMS ===== */}
-            {vis.rooms !== false && rooms.length > 0 && (
+            {/* ===== ROOMS (Hotel only) ===== */}
+            {isHotel && vis.rooms !== false && rooms.length > 0 && (
                 <section id="rooms" className="py-28 px-6">
                     <div className="max-w-6xl mx-auto">
                         <div className="text-center mb-16">
@@ -513,7 +567,7 @@ export default function TenantSite() {
                                     {/* Room image -- taller, with zoom */}
                                     <div className="relative h-64 overflow-hidden">
                                         {room.images?.[0] ? (
-                                            <img src={room.images[0]} alt={room.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                            <img src={room.images[0]} alt={room.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                                         ) : (
                                             /* Elegant placeholder for missing images */
                                             <div className="w-full h-full bg-gradient-to-br from-primary/8 via-accent/5 to-primary/10 flex items-center justify-center backdrop-blur-sm">
@@ -582,7 +636,7 @@ export default function TenantSite() {
 
                                         <div className="flex gap-2">
                                             <Link
-                                                to={`/site/${subdomain}/room/${room.id}`}
+                                                to={hostSubdomain ? `/room/${room.id}` : `/site/${subdomain}/room/${room.id}`}
                                                 className="flex-1 bg-white text-primary border-2 border-primary/15 font-semibold py-2.5 rounded-xl text-sm hover:border-primary/40 hover:bg-primary/5 transition-all text-center"
                                             >
                                                 Explore room
@@ -598,6 +652,94 @@ export default function TenantSite() {
                                 </motion.div>
                             ))}
                         </div>
+                    </div>
+                </section>
+            )}
+
+            {/* ===== RESTAURANT MENU ===== */}
+            {isRestaurant && vis.menu !== false && menuCategories.length > 0 && (
+                <section id="menu" className="py-28 px-6">
+                    <div className="max-w-5xl mx-auto">
+                        <div className="text-center mb-16">
+                            <p className="text-xs font-semibold text-accent uppercase tracking-[0.2em] mb-3">Our menu</p>
+                            <h2 className="text-4xl md:text-5xl font-bold text-primary tracking-tight">What we serve</h2>
+                            <p className="text-gray-500 mt-4 max-w-lg mx-auto">Fresh ingredients, bold flavors. Browse our menu and order via WhatsApp.</p>
+                        </div>
+
+                        {/* Category tabs */}
+                        <div className="flex gap-2 overflow-x-auto pb-4 mb-8 no-scrollbar">
+                            {menuCategories.map(cat => (
+                                <button
+                                    key={cat.id}
+                                    onClick={() => setActiveMenuCat(cat.id)}
+                                    className={`px-5 py-2.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${activeMenuCat === cat.id
+                                        ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                                        : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                        }`}
+                                >
+                                    {cat.name}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Menu items grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {menuItems
+                                .filter(item => item.category_id === activeMenuCat)
+                                .map((item, i) => (
+                                    <motion.div
+                                        key={item.id}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        whileInView={{ opacity: 1, y: 0 }}
+                                        viewport={{ once: true }}
+                                        transition={{ delay: i * 0.05, duration: 0.4 }}
+                                        className="bg-white rounded-xl border border-gray-100 p-4 flex gap-4 hover:shadow-md hover:border-gray-200 transition-all group"
+                                    >
+                                        {item.image_url ? (
+                                            <img src={item.image_url} alt={item.name} loading="lazy" className="w-20 h-20 rounded-lg object-cover shrink-0" />
+                                        ) : (
+                                            <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center shrink-0">
+                                                <span className="text-2xl">{item.is_veg ? '🥬' : '🍗'}</span>
+                                            </div>
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`w-3.5 h-3.5 rounded-sm border-2 flex items-center justify-center shrink-0 ${item.is_veg ? 'border-green-600' : 'border-red-600'}`}>
+                                                        <span className={`w-2 h-2 rounded-full ${item.is_veg ? 'bg-green-600' : 'bg-red-600'}`} />
+                                                    </span>
+                                                    <h3 className="font-semibold text-gray-900 text-sm">{item.name}</h3>
+                                                </div>
+                                                <p className="font-bold text-primary text-sm whitespace-nowrap">₹{item.price}</p>
+                                            </div>
+                                            {item.description && (
+                                                <p className="text-xs text-gray-400 mt-1 line-clamp-2 leading-relaxed">{item.description}</p>
+                                            )}
+                                            {item.preparation_time_mins > 0 && (
+                                                <p className="text-[10px] text-gray-300 mt-2 flex items-center gap-1">
+                                                    <Clock size={10} /> {item.preparation_time_mins} min
+                                                </p>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                ))}
+                        </div>
+
+                        {/* WhatsApp order CTA */}
+                        {contactPhone && (
+                            <div className="text-center mt-16">
+                                <a
+                                    href={buildWhatsAppOrderUrl()}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-3 bg-green-500 text-white font-semibold px-8 py-4 rounded-xl hover:bg-green-600 transition-all shadow-lg shadow-green-500/20 text-sm"
+                                >
+                                    <MessageCircle size={20} />
+                                    Order via WhatsApp
+                                </a>
+                                <p className="text-xs text-gray-400 mt-3">Send us your order and we'll confirm within minutes</p>
+                            </div>
+                        )}
                     </div>
                 </section>
             )}
@@ -648,7 +790,7 @@ export default function TenantSite() {
 
                                     <div className="flex items-center gap-3 pt-4 border-t border-white/5">
                                         {t.avatar_url ? (
-                                            <img src={t.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover ring-2 ring-white/10" />
+                                            <img src={t.avatar_url} alt="" loading="lazy" className="w-10 h-10 rounded-full object-cover ring-2 ring-white/10" />
                                         ) : (
                                             <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center ring-2 ring-white/10">
                                                 <span className="text-accent font-bold">{t.guest_name.charAt(0)}</span>
@@ -772,59 +914,61 @@ export default function TenantSite() {
                 </div>
             </section>
 
-            {/* ===== DIRECT BOOKING BENEFITS ===== */}
-            <section className="py-20 px-6 bg-primary relative overflow-hidden">
-                {/* Decorative */}
-                <div className="absolute top-0 right-0 w-72 h-72 bg-accent/5 rounded-full blur-3xl" />
-                <div className="absolute bottom-0 left-0 w-96 h-96 bg-accent/3 rounded-full blur-3xl" />
+            {/* ===== DIRECT BOOKING BENEFITS (Hotel only) ===== */}
+            {isHotel && (
+                <section className="py-20 px-6 bg-primary relative overflow-hidden">
+                    {/* Decorative */}
+                    <div className="absolute top-0 right-0 w-72 h-72 bg-accent/5 rounded-full blur-3xl" />
+                    <div className="absolute bottom-0 left-0 w-96 h-96 bg-accent/3 rounded-full blur-3xl" />
 
-                <div className="max-w-4xl mx-auto relative z-10">
-                    <div className="text-center mb-12">
-                        <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight mb-3">
-                            Book direct & save
-                        </h2>
-                        <p className="text-white/40 text-sm">Skip the middleman. Get the best deal when you book with us directly.</p>
-                    </div>
+                    <div className="max-w-4xl mx-auto relative z-10">
+                        <div className="text-center mb-12">
+                            <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight mb-3">
+                                Book direct & save
+                            </h2>
+                            <p className="text-white/40 text-sm">Skip the middleman. Get the best deal when you book with us directly.</p>
+                        </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
-                        {[
-                            { icon: Shield, title: 'Best Price Guarantee', desc: 'Lowest rates available only here' },
-                            { icon: Sunrise, title: 'Free Early Check-in', desc: 'Subject to availability' },
-                            { icon: Check, title: 'No Hidden Fees', desc: 'What you see is what you pay' },
-                        ].map((benefit, i) => {
-                            const Icon = benefit.icon;
-                            return (
-                                <motion.div
-                                    key={i}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    whileInView={{ opacity: 1, y: 0 }}
-                                    viewport={{ once: true }}
-                                    transition={{ delay: i * 0.1 }}
-                                    className="flex items-start gap-4 bg-white/5 rounded-xl p-5 border border-white/5"
-                                >
-                                    <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center shrink-0">
-                                        <Icon size={20} className="text-accent" />
-                                    </div>
-                                    <div>
-                                        <p className="text-white font-semibold text-sm mb-1">{benefit.title}</p>
-                                        <p className="text-white/35 text-xs leading-relaxed">{benefit.desc}</p>
-                                    </div>
-                                </motion.div>
-                            );
-                        })}
-                    </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
+                            {[
+                                { icon: Shield, title: 'Best Price Guarantee', desc: 'Lowest rates available only here' },
+                                { icon: Sunrise, title: 'Free Early Check-in', desc: 'Subject to availability' },
+                                { icon: Check, title: 'No Hidden Fees', desc: 'What you see is what you pay' },
+                            ].map((benefit, i) => {
+                                const Icon = benefit.icon;
+                                return (
+                                    <motion.div
+                                        key={i}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        whileInView={{ opacity: 1, y: 0 }}
+                                        viewport={{ once: true }}
+                                        transition={{ delay: i * 0.1 }}
+                                        className="flex items-start gap-4 bg-white/5 rounded-xl p-5 border border-white/5"
+                                    >
+                                        <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center shrink-0">
+                                            <Icon size={20} className="text-accent" />
+                                        </div>
+                                        <div>
+                                            <p className="text-white font-semibold text-sm mb-1">{benefit.title}</p>
+                                            <p className="text-white/35 text-xs leading-relaxed">{benefit.desc}</p>
+                                        </div>
+                                    </motion.div>
+                                );
+                            })}
+                        </div>
 
-                    <div className="text-center">
-                        <a
-                            href="#rooms"
-                            className="inline-flex items-center gap-2 bg-accent text-primary font-bold px-8 py-3.5 rounded-xl hover:bg-accent-hover transition-all shadow-lg shadow-accent/20 text-sm"
-                        >
-                            Browse rooms & book
-                            <ArrowRight size={16} />
-                        </a>
+                        <div className="text-center">
+                            <a
+                                href="#rooms"
+                                className="inline-flex items-center gap-2 bg-accent text-primary font-bold px-8 py-3.5 rounded-xl hover:bg-accent-hover transition-all shadow-lg shadow-accent/20 text-sm"
+                            >
+                                Browse rooms & book
+                                <ArrowRight size={16} />
+                            </a>
+                        </div>
                     </div>
-                </div>
-            </section>
+                </section>
+            )}
 
             {/* ===== CONTACT / FOOTER ===== */}
             {vis.contact !== false && (
@@ -850,7 +994,8 @@ export default function TenantSite() {
                             <div>
                                 <p className="text-xs font-semibold text-white/30 uppercase tracking-[0.2em] mb-4">Quick links</p>
                                 <ul className="space-y-3 text-sm">
-                                    <li><a href="#rooms" className="text-white/50 hover:text-white transition-colors">Rooms</a></li>
+                                    {isHotel && <li><a href="#rooms" className="text-white/50 hover:text-white transition-colors">Rooms</a></li>}
+                                    {isRestaurant && menuCategories.length > 0 && <li><a href="#menu" className="text-white/50 hover:text-white transition-colors">Menu</a></li>}
                                     {testimonials.length > 0 && <li><a href="#reviews" className="text-white/50 hover:text-white transition-colors">Reviews</a></li>}
                                     {aboutText && <li><a href="#about" className="text-white/50 hover:text-white transition-colors">About</a></li>}
                                     <li><a href="#location" className="text-white/50 hover:text-white transition-colors">Location</a></li>
@@ -904,19 +1049,27 @@ export default function TenantSite() {
                         className="fixed bottom-0 inset-x-0 z-50 md:hidden bg-white/95 backdrop-blur-xl border-t border-gray-200 px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
                     >
                         <div className="flex items-center gap-3">
-                            {rooms.length > 0 && (
-                                <div className="flex-1">
-                                    <p className="text-xs text-gray-400">Starting from</p>
-                                    <p className="text-lg font-bold text-accent">₹{Math.min(...rooms.map(r => adjustedPrice(r.price_per_night))).toLocaleString()}<span className="text-xs font-normal text-gray-400">/night</span></p>
-                                </div>
-                            )}
-                            <a
-                                href="#rooms"
-                                className="bg-primary text-white font-semibold px-6 py-3 rounded-xl text-sm shadow-lg shadow-primary/20 flex items-center gap-2 hover:bg-primary-hover transition-all"
-                            >
-                                Book now
-                                <ArrowRight size={14} />
-                            </a>
+                            {isHotel && rooms.length > 0 ? (
+                                <>
+                                    <div className="flex-1">
+                                        <p className="text-xs text-gray-400">Starting from</p>
+                                        <p className="text-lg font-bold text-accent">₹{Math.min(...rooms.map(r => adjustedPrice(r.price_per_night))).toLocaleString()}<span className="text-xs font-normal text-gray-400">/night</span></p>
+                                    </div>
+                                    <a href="#rooms" className="bg-primary text-white font-semibold px-6 py-3 rounded-xl text-sm shadow-lg shadow-primary/20 flex items-center gap-2 hover:bg-primary-hover transition-all">
+                                        Book now <ArrowRight size={14} />
+                                    </a>
+                                </>
+                            ) : isRestaurant ? (
+                                <>
+                                    <div className="flex-1">
+                                        <p className="text-xs text-gray-400">{menuItems.length} dishes available</p>
+                                        <p className="text-sm font-semibold text-gray-700">Browse our menu</p>
+                                    </div>
+                                    <a href={buildWhatsAppOrderUrl()} target="_blank" rel="noopener noreferrer" className="bg-green-500 text-white font-semibold px-6 py-3 rounded-xl text-sm shadow-lg shadow-green-500/20 flex items-center gap-2 hover:bg-green-600 transition-all">
+                                        <MessageCircle size={14} /> Order
+                                    </a>
+                                </>
+                            ) : null}
                         </div>
                     </motion.div>
                 )}

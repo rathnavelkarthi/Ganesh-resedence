@@ -5,7 +5,7 @@ import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import RoleGuard from './RoleGuard';
 
-// Pages
+// Hotel pages
 import Dashboard from '../../pages/crm/Dashboard';
 import ChannelManager from '../../pages/crm/ChannelManager';
 import Reservations from '../../pages/crm/Reservations';
@@ -23,17 +23,22 @@ import PricingRules from '../../pages/crm/PricingRules';
 import BookingSettings from '../../pages/crm/BookingSettings';
 import WhatsAppSettingsPage from '../../pages/crm/WhatsAppSettingsPage';
 
+// Restaurant pages
+import MenuManager from '../../pages/crm/MenuManager';
+import POS from '../../pages/crm/POS';
+import FoodOrders from '../../pages/crm/FoodOrders';
+import Tables from '../../pages/crm/Tables';
+import FoodInventory from '../../pages/crm/FoodInventory';
+
 export default function CRMApp() {
   const { user, loading } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
 
-  // Close sidebar on route change on mobile
   useEffect(() => {
     setIsSidebarOpen(false);
   }, [location.pathname]);
 
-  // Show loading while session initializes
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-gradient-to-b from-[#F8F9FB] to-[#EEF1F5]">
@@ -52,7 +57,6 @@ export default function CRMApp() {
   return (
     <div className="flex h-screen bg-gradient-to-b from-[#F8F9FB] to-[#EEF1F5] overflow-hidden font-sans text-gray-900 relative">
 
-      {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity"
@@ -60,7 +64,6 @@ export default function CRMApp() {
         />
       )}
 
-      {/* Sidebar - Off-canvas on mobile, static on desktop */}
       <div
         className={`fixed inset-y-0 left-0 z-50 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
           } lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out bg-white w-64`}
@@ -68,100 +71,113 @@ export default function CRMApp() {
         <Sidebar onClose={() => setIsSidebarOpen(false)} />
       </div>
 
-      {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         <Topbar onMenuClick={() => setIsSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <Routes>
             <Route path="dashboard" element={<Dashboard />} />
 
+            {/* Hotel routes */}
             <Route path="channels" element={
               <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
                 <ChannelManager />
               </RoleGuard>
             } />
-
             <Route path="reservations" element={
               <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER', 'RECEPTION']}>
                 <Reservations />
               </RoleGuard>
             } />
-
             <Route path="calendar" element={
               <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER', 'RECEPTION']}>
                 <Calendar />
               </RoleGuard>
             } />
-
             <Route path="guests" element={
               <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER', 'RECEPTION']}>
                 <Guests />
               </RoleGuard>
             } />
-
             <Route path="rooms" element={
               <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER', 'RECEPTION', 'HOUSEKEEPING']}>
                 <Rooms />
               </RoleGuard>
             } />
-
             <Route path="payments" element={
               <RoleGuard allowedRoles={['SUPER_ADMIN', 'ACCOUNTANT']}>
                 <Payments />
               </RoleGuard>
             } />
-
             <Route path="invoices" element={
               <RoleGuard allowedRoles={['SUPER_ADMIN', 'RECEPTION', 'ACCOUNTANT']}>
                 <Invoices />
               </RoleGuard>
             } />
-
             <Route path="reports" element={
               <RoleGuard allowedRoles={['SUPER_ADMIN', 'ACCOUNTANT']}>
                 <Reports />
               </RoleGuard>
             } />
-
             <Route path="staff" element={
               <RoleGuard allowedRoles={['SUPER_ADMIN']}>
                 <Staff />
               </RoleGuard>
             } />
-
             <Route path="rooms-cms" element={
               <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
                 <RoomsCMS />
               </RoleGuard>
             } />
-
             <Route path="landing-cms" element={
               <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
                 <LandingCMS />
               </RoleGuard>
             } />
-
             <Route path="website-editor" element={
               <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
                 <WebsiteEditor />
               </RoleGuard>
             } />
-
             <Route path="pricing" element={
               <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
                 <PricingRules />
               </RoleGuard>
             } />
-
             <Route path="booking-settings" element={
               <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
                 <BookingSettings />
               </RoleGuard>
             } />
-
             <Route path="whatsapp" element={
               <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
                 <WhatsAppSettingsPage />
+              </RoleGuard>
+            } />
+
+            {/* Restaurant routes */}
+            <Route path="pos" element={
+              <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER', 'RECEPTION']}>
+                <POS />
+              </RoleGuard>
+            } />
+            <Route path="menu" element={
+              <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
+                <MenuManager />
+              </RoleGuard>
+            } />
+            <Route path="food-orders" element={
+              <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER', 'RECEPTION']}>
+                <FoodOrders />
+              </RoleGuard>
+            } />
+            <Route path="tables" element={
+              <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER', 'RECEPTION']}>
+                <Tables />
+              </RoleGuard>
+            } />
+            <Route path="inventory" element={
+              <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
+                <FoodInventory />
               </RoleGuard>
             } />
 

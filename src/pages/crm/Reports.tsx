@@ -1,39 +1,118 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Download, Calendar as CalendarIcon, Filter } from 'lucide-react';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   PieChart,
   Pie,
   Cell
 } from 'recharts';
-
-const revenueData = [
-  { name: 'Mon', revenue: 45000 },
-  { name: 'Tue', revenue: 38000 },
-  { name: 'Wed', revenue: 52000 },
-  { name: 'Thu', revenue: 48000 },
-  { name: 'Fri', revenue: 65000 },
-  { name: 'Sat', revenue: 85000 },
-  { name: 'Sun', revenue: 70000 },
-];
-
-const sourceData = [
-  { name: 'Direct', value: 400 },
-  { name: 'Booking.com', value: 300 },
-  { name: 'Agoda', value: 300 },
-  { name: 'MakeMyTrip', value: 200 },
-];
+import { useCRM } from '../../context/CRMDataContext';
+import { useAuth } from '../../context/AuthContext';
+import { isDemoAccount } from '../../lib/booking';
 
 const COLORS = ['#2b7a9b', '#10b981', '#f59e0b', '#8b5cf6'];
 
 export default function Reports() {
   const [dateRange, setDateRange] = useState('This Week');
+  const { reservations, rooms } = useCRM();
+  const { user } = useAuth();
+  const isDemo = isDemoAccount(user?.email);
+
+  const reportData = useMemo(() => {
+    if (isDemo) {
+      return {
+        revenueData: [
+          { name: 'Mon', revenue: 45000 },
+          { name: 'Tue', revenue: 38000 },
+          { name: 'Wed', revenue: 52000 },
+          { name: 'Thu', revenue: 48000 },
+          { name: 'Fri', revenue: 65000 },
+          { name: 'Sat', revenue: 85000 },
+          { name: 'Sun', revenue: 70000 },
+        ],
+        sourceData: [
+          { name: 'Direct', value: 400 },
+          { name: 'Booking.com', value: 300 },
+          { name: 'Agoda', value: 300 },
+          { name: 'MakeMyTrip', value: 200 },
+        ],
+        roomPerformance: [
+          { name: 'Executive Double AC', bookings: 145, occ: '88%', revenue: 362500 },
+          { name: 'Triple Room AC', bookings: 98, occ: '82%', revenue: 343000 },
+          { name: 'Four Occupancy Room', bookings: 65, occ: '75%', revenue: 292500 },
+          { name: 'Six Bed AC Room', bookings: 34, occ: '60%', revenue: 204000 },
+        ]
+      };
+    }
+
+    // Group revenue by day of week
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const revenueByDay: Record<string, number> = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 };
+
+    reservations.forEach(r => {
+      if (r.checkIn && r.amount) {
+        const day = dayNames[new Date(r.checkIn).getDay()];
+        if (revenueByDay[day] !== undefined) {
+          revenueByDay[day] += r.amount;
+        }
+      }
+    });
+
+    const revenueData = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => ({
+      name: day,
+      revenue: revenueByDay[day]
+    }));
+
+    // Compute source distribution
+    const sourceCounts: Record<string, number> = {};
+    reservations.forEach(r => {
+      const src = r.source || 'Direct';
+      sourceCounts[src] = (sourceCounts[src] || 0) + 1;
+    });
+    const sourceData = Object.entries(sourceCounts).map(([name, value]) => ({ name, value }));
+
+    // Compute room performance
+    const roomPerformanceMap: Record<string, { bookings: number, revenue: number, activeRooms: number }> = {};
+    rooms.forEach(r => {
+      if (!roomPerformanceMap[r.type]) {
+        roomPerformanceMap[r.type] = { bookings: 0, revenue: 0, activeRooms: 0 };
+      }
+      roomPerformanceMap[r.type].activeRooms += 1;
+    });
+
+    reservations.forEach(r => {
+      if (r.room) {
+        if (!roomPerformanceMap[r.room]) {
+          roomPerformanceMap[r.room] = { bookings: 0, revenue: 0, activeRooms: 0 };
+        }
+        roomPerformanceMap[r.room].bookings += 1;
+        roomPerformanceMap[r.room].revenue += (r.amount || 0);
+      }
+    });
+
+    const roomPerformance = Object.entries(roomPerformanceMap)
+      .map(([name, data]) => {
+        const occ = data.activeRooms > 0 ? Math.round((data.bookings / (data.activeRooms * 30)) * 100) : 0; // rough 30 day occ logic
+        return {
+          name,
+          bookings: data.bookings,
+          occ: `${Math.min(100, Math.max(0, occ))}%`,
+          revenue: data.revenue
+        };
+      })
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
+
+
+    return { revenueData, sourceData, roomPerformance };
+  }, [reservations, rooms, isDemo]);
+
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -44,7 +123,7 @@ export default function Reports() {
         </div>
         <div className="flex items-center gap-3">
           <div className="relative">
-            <select 
+            <select
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value)}
               className="appearance-none pl-10 pr-8 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 focus:border-[var(--color-ocean-500)] focus:ring-2 focus:ring-[var(--color-ocean-100)] outline-none transition-all cursor-pointer shadow-sm"
@@ -64,7 +143,7 @@ export default function Reports() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        
+
         {/* Revenue Chart */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="flex justify-between items-center mb-6">
@@ -75,10 +154,10 @@ export default function Reports() {
           </div>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={revenueData}>
+              <BarChart data={reportData.revenueData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6b7280' }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280' }} tickFormatter={(value) => `₹${value/1000}k`} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280' }} tickFormatter={(value) => `₹${value / 1000}k`} />
                 <Tooltip cursor={{ fill: '#f9fafb' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                 <Bar dataKey="revenue" fill="var(--color-ocean-500)" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -95,27 +174,31 @@ export default function Reports() {
             </button>
           </div>
           <div className="h-80 flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={sourceData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={80}
-                  outerRadius={120}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {sourceData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-              </PieChart>
-            </ResponsiveContainer>
+            {reportData.sourceData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={reportData.sourceData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={80}
+                    outerRadius={120}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {reportData.sourceData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-gray-400 font-medium">No booking data available</p>
+            )}
           </div>
-          <div className="flex justify-center gap-6 mt-4">
-            {sourceData.map((entry, index) => (
+          <div className="flex justify-center gap-6 mt-4 flex-wrap">
+            {reportData.sourceData.map((entry, index) => (
               <div key={entry.name} className="flex items-center gap-2 text-sm text-gray-600">
                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
                 {entry.name}
@@ -142,30 +225,20 @@ export default function Reports() {
               </tr>
             </thead>
             <tbody className="text-sm divide-y divide-gray-50">
-              <tr className="hover:bg-gray-50 transition-colors">
-                <td className="p-4 font-medium text-gray-900">Executive Double AC</td>
-                <td className="p-4 text-gray-600">145</td>
-                <td className="p-4 text-gray-600">88%</td>
-                <td className="p-4 font-bold text-[var(--color-ocean-900)]">₹3,62,500</td>
-              </tr>
-              <tr className="hover:bg-gray-50 transition-colors">
-                <td className="p-4 font-medium text-gray-900">Triple Room AC</td>
-                <td className="p-4 text-gray-600">98</td>
-                <td className="p-4 text-gray-600">82%</td>
-                <td className="p-4 font-bold text-[var(--color-ocean-900)]">₹3,43,000</td>
-              </tr>
-              <tr className="hover:bg-gray-50 transition-colors">
-                <td className="p-4 font-medium text-gray-900">Four Occupancy Room</td>
-                <td className="p-4 text-gray-600">65</td>
-                <td className="p-4 text-gray-600">75%</td>
-                <td className="p-4 font-bold text-[var(--color-ocean-900)]">₹2,92,500</td>
-              </tr>
-              <tr className="hover:bg-gray-50 transition-colors">
-                <td className="p-4 font-medium text-gray-900">Six Bed AC Room</td>
-                <td className="p-4 text-gray-600">34</td>
-                <td className="p-4 text-gray-600">60%</td>
-                <td className="p-4 font-bold text-[var(--color-ocean-900)]">₹2,04,000</td>
-              </tr>
+              {reportData.roomPerformance.length > 0 ? reportData.roomPerformance.map((room, idx) => (
+                <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                  <td className="p-4 font-medium text-gray-900">{room.name}</td>
+                  <td className="p-4 text-gray-600">{room.bookings}</td>
+                  <td className="p-4 text-gray-600">{room.occ}</td>
+                  <td className="p-4 font-bold text-[var(--color-ocean-900)]">₹{room.revenue?.toLocaleString('en-IN') || 0}</td>
+                </tr>
+              )) : (
+                <tr>
+                  <td colSpan={4} className="p-8 text-center text-gray-500">
+                    No rooms or booking performance data yet.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

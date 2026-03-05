@@ -32,7 +32,7 @@ export default function BillingToggle({ isYearly, onToggle }: BillingToggleProps
             >
                 Yearly
                 <span className="bg-[#E8F3EF] text-[#2E7D5B] text-[10px] px-2 py-0.5 rounded-full font-bold">
-                    Save 18%
+                    Save 20%
                 </span>
             </button>
         </div>

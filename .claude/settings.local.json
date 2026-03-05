@@ -10,11 +10,17 @@
       "WebSearch",
       "WebFetch(domain:www.bookingmaster.in)",
       "WebFetch(domain:www.getmonetizely.com)",
-      "Bash(claude mcp:*)"
+      "Bash(claude mcp:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "mcp__plugin_playwright_playwright__browser_wait_for",
+      "Bash(curl:*)",
+      "mcp__plugin_playwright_playwright__browser_take_screenshot"
     ]
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "supabase"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }
