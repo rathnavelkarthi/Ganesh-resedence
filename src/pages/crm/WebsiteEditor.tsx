@@ -308,7 +308,7 @@ export default function WebsiteEditor() {
                     </div>
                     <div>
                         <h1 className="text-sm font-bold text-gray-900">Website editor</h1>
-                        <p className="text-[11px] text-gray-400">{subdomain}.hospitalityos.com</p>
+                        <p className="text-[11px] text-gray-400">{subdomain}.esaystay.com</p>
                     </div>
                 </div>
 
@@ -507,6 +507,23 @@ export default function WebsiteEditor() {
                             <EditorInput label="Phone" value={settings.contactPhone || ''} onChange={v => updateSetting('contactPhone', v)} placeholder="+91 98765 43210" />
                             <EditorInput label="Email" value={settings.contactEmail || ''} onChange={v => updateSetting('contactEmail', v)} placeholder="stay@your-property.com" />
                             <EditorInput label="Address" value={settings.contactAddress || ''} onChange={v => updateSetting('contactAddress', v)} multiline placeholder="123 Beach Road, City, State" />
+                            <div>
+                                <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Google Maps Link</label>
+                                <p className="text-[11px] text-gray-400 mb-2">Paste your Google Maps share link (or a plus code like W5JJ+FJJ Vellakkal, Chennai). We'll embed the map on your website.</p>
+                                <input
+                                    type="text"
+                                    value={settings.googleMapsUrl || ''}
+                                    onChange={e => updateSetting('googleMapsUrl', e.target.value)}
+                                    placeholder="https://maps.google.com/?q=..."
+                                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0E2A38]/10 focus:border-[#0E2A38]/30 outline-none transition-all"
+                                />
+                                {settings.googleMapsUrl && (
+                                    <a href={settings.googleMapsUrl} target="_blank" rel="noopener noreferrer"
+                                        className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-[#0E2A38] hover:underline">
+                                        <MapPin size={10} /> Preview on Google Maps
+                                    </a>
+                                )}
+                            </div>
                         </SectionPanel>
 
                     </div>

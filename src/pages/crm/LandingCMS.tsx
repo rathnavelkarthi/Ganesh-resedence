@@ -28,6 +28,7 @@ export default function LandingCMS() {
 
     const [contactEmail, setContactEmail] = useState(getContent('contact', 'email') || '');
     const [contactPhone, setContactPhone] = useState(getContent('contact', 'phone') || '');
+    const [contactWhatsapp, setContactWhatsapp] = useState(getContent('contact', 'whatsapp') || '');
     const [contactAddress, setContactAddress] = useState(getContent('contact', 'address') || '');
 
     const handleSaveSection = (section: string) => {
@@ -41,6 +42,7 @@ export default function LandingCMS() {
         } else if (section === 'contact') {
             updatePageContent('contact', 'email', { content_text: contactEmail });
             updatePageContent('contact', 'phone', { content_text: contactPhone });
+            updatePageContent('contact', 'whatsapp', { content_text: contactWhatsapp });
             updatePageContent('contact', 'address', { content_text: contactAddress });
         }
         toast.success(`${section.toUpperCase()} section saved`);
@@ -271,6 +273,20 @@ export default function LandingCMS() {
                                     className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C9A646] outline-none transition-all"
                                     placeholder="e.g. +91 98765 43210"
                                 />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">WhatsApp Number</label>
+                                <input
+                                    type="tel"
+                                    value={contactWhatsapp}
+                                    onChange={(e) => setContactWhatsapp(e.target.value)}
+                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C9A646] outline-none transition-all"
+                                    placeholder="e.g. +91 98765 43210 (Defaults to Phone)"
+                                />
+                                <p className="text-xs text-gray-400 mt-1">Used for the "Order via WhatsApp" button.</p>
                             </div>
                         </div>
 

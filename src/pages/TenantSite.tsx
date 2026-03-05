@@ -9,7 +9,7 @@ import {
     ArrowRight, Wifi, Car, Coffee, Waves, X, Check, Clock,
     Quote, ExternalLink, ChevronLeft, ChevronRight, Plus, Minus,
     Shield, Sunrise, BadgeCheck, Camera, Navigation, Plane, Building2,
-    MessageCircle, UtensilsCrossed, Leaf
+    MessageCircle, UtensilsCrossed, Leaf, Wind, Sparkles
 } from 'lucide-react';
 
 // --- Types ---
@@ -226,6 +226,7 @@ export default function TenantSite() {
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
     const [activeMenuCat, setActiveMenuCat] = useState<number | null>(null);
     const [menuSearch, setMenuSearch] = useState('');
+    const [pageContent, setPageContent] = useState<any[]>([]);
 
     // Hero booking strip state
     const [heroCheckIn, setHeroCheckIn] = useState('');
@@ -253,6 +254,9 @@ export default function TenantSite() {
             const { data, error } = await supabase.rpc('get_tenant_site', { p_subdomain: subdomain });
             if (error || !data || !data.tenant) { setNotFound(true); setLoading(false); return; }
             setSiteData(data);
+
+            const { data: contentData } = await supabase.from('page_content').select('*').eq('tenant_id', data.tenant.id);
+            if (contentData) setPageContent(contentData);
 
             // Fetch menu data for restaurant/combined tenants
             const bType = data.tenant.business_type;
@@ -314,18 +318,34 @@ export default function TenantSite() {
     }
 
     const { tenant, rooms, testimonials, settings } = siteData;
-    const contactEmail = settings.contactEmail || '';
-    const contactPhone = settings.contactPhone || '';
-    const contactAddress = settings.contactAddress || '';
-    const heroTitle = settings.heroTitle || tenant.business_name;
-    const heroSubtitle = settings.heroSubtitle || 'Experience comfort and luxury';
-    const aboutText = settings.aboutText || '';
+
+    const getContent = (section: string, key: string, field: 'content_text' | 'image_url' = 'content_text') => {
+        const block = pageContent.find(p => p.section === section && p.block_key === key);
+        return block && block[field] ? block[field] : null;
+    };
+
+    const contactEmail = getContent('contact', 'email') || settings.contactEmail || '';
+    const contactPhone = getContent('contact', 'phone') || settings.contactPhone || '';
+    const contactAddress = getContent('contact', 'address') || settings.contactAddress || '';
+    const googleMapsUrl = settings.googleMapsUrl || '';
+    const heroTitle = getContent('hero', 'title') || settings.heroTitle || tenant.business_name;
+    const heroSubtitle = getContent('hero', 'subtitle') || settings.heroSubtitle || 'Experience comfort and luxury';
+    const aboutText = getContent('about', 'body') || settings.aboutText || '';
+
+    // Additional items that might be configurable inside pageContent
+    const heroBtn = getContent('hero', 'button_text') || 'Book now';
+    const aboutHeading = getContent('about', 'heading') || tenant.business_name;
+    const heroBgImage = getContent('hero', 'bgImage', 'image_url') || tenant.hero_image_url;
+    const optionalAboutImage = getContent('about', 'aboutImage', 'image_url');
+
     const vis = tenant.sections_visible || { hero: true, rooms: true, testimonials: true, about: true, contact: true, menu: true };
 
     const isHotel = tenant.business_type === 'hotel' || tenant.business_type === 'combined';
     const isRestaurant = tenant.business_type === 'restaurant' || tenant.business_type === 'combined';
 
-    const whatsappNumber = contactPhone.replace(/[\s\(\)\-\+]/g, '');
+    const whatsappNumberOverride = getContent('contact', 'whatsapp') || settings.whatsappNumber;
+    const whatsappBase = whatsappNumberOverride || contactPhone;
+    const whatsappNumber = whatsappBase.replace(/[\s\(\)\-\+]/g, '');
     const buildWhatsAppOrderUrl = () => {
         const text = encodeURIComponent(`Hi, I'd like to place an order from ${tenant.business_name}. Can I see the menu?`);
         return `https://wa.me/${whatsappNumber}?text=${text}`;
@@ -338,7 +358,7 @@ export default function TenantSite() {
     };
 
     return (
-        <div id="main-content" className="min-h-screen bg-background font-sans text-gray-900 antialiased">
+        <div id="main-content" className="min-h-screen bg-background font-sans text-gray-900 antialiased overflow-x-hidden">
             {/* ===== NAVBAR ===== */}
             <nav className="fixed top-0 inset-x-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-100/80">
                 <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -372,12 +392,12 @@ export default function TenantSite() {
 
             {/* ===== HERO ===== */}
             {vis.hero !== false && (
-                <section className="relative pt-16 min-h-[60vh] md:min-h-[75vh] flex flex-col">
+                <section className="relative pt-16 min-h-[65vh] flex flex-col justify-center">
                     {/* Background Wrapper */}
                     <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-                        {tenant.hero_image_url ? (
+                        {heroBgImage ? (
                             <>
-                                <img src={tenant.hero_image_url} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                                <img src={heroBgImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/20 to-transparent" />
                             </>
                         ) : (
@@ -410,7 +430,7 @@ export default function TenantSite() {
                             </p>
 
                             {/* Quick stats - Glass strip */}
-                            <div className="inline-flex justify-center md:justify-start items-center gap-4 md:gap-6 bg-white/10 backdrop-blur-md border border-white/20 shadow-lg shadow-black/5 rounded-full px-6 py-3">
+                            <div className="inline-flex flex-wrap justify-center md:justify-start items-center gap-4 md:gap-6 bg-white/10 backdrop-blur-md border border-white/20 shadow-lg shadow-black/5 rounded-2xl md:rounded-full px-6 py-3">
                                 {isHotel && rooms.length > 0 && (
                                     <div className="flex items-center gap-2">
                                         <span className="text-white font-semibold">{rooms.length}</span>
@@ -429,26 +449,32 @@ export default function TenantSite() {
                                 )}
                                 {testimonials.length > 0 && (
                                     <>
-                                        <span className="text-white/30">|</span>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-1.5 hidden md:flex">
+                                            <span className="text-white/30">|</span>
                                             <span className="text-accent">★</span>
-                                            <span className="text-white font-semibold">
+                                            <span className="text-white font-semibold flex items-center gap-1">
                                                 {(testimonials.reduce((s, t) => s + t.rating, 0) / testimonials.length).toFixed(1)}
+                                                <span className="text-white/80 font-normal text-xs">rating</span>
                                             </span>
-                                            <span className="text-white/80 text-sm hidden sm:inline">Rating</span>
                                         </div>
                                     </>
                                 )}
                                 {isHotel && rooms.length > 0 && (
                                     <>
-                                        <span className="text-white/30 hidden sm:inline">|</span>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-white/80 text-sm hidden sm:inline">From</span>
+                                        <div className="flex items-center gap-1.5 hidden md:flex">
+                                            <span className="text-white/30">|</span>
                                             <span className="text-white font-semibold flex items-center gap-1">
                                                 <span className="text-accent text-xs font-normal">₹</span>
                                                 {Math.min(...rooms.map(r => adjustedPrice(r.price_per_night))).toLocaleString()}
-                                                <span className="text-white/60 font-normal text-xs ml-0.5">/ night</span>
+                                                <span className="text-white/80 font-normal text-xs">starting</span>
                                             </span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 md:hidden">
+                                            <span className="text-white/30">|</span>
+                                            <span className="text-accent">★</span>
+                                            <span className="text-white font-semibold">{(testimonials.reduce((s, t) => s + t.rating, 0) / testimonials.length).toFixed(1)}</span>
+                                            <span className="text-white/30 ml-2">|</span>
+                                            <span className="text-white font-semibold">₹{Math.min(...rooms.map(r => adjustedPrice(r.price_per_night))).toLocaleString()}</span>
                                         </div>
                                     </>
                                 )}
@@ -465,57 +491,55 @@ export default function TenantSite() {
                             className="sticky top-[60px] md:relative z-40 w-full px-4 md:px-6 max-w-5xl mx-auto pb-6 md:pb-0 md:-mb-10 mt-6 md:mt-0"
                         >
                             <div className="bg-white/95 backdrop-blur-2xl rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.12)] border border-white/40 overflow-hidden">
-                                <div className="grid grid-cols-2 md:flex md:flex-row items-stretch divide-x md:divide-y-0 divide-y md:divide-x divide-gray-100">
+                                <div className="grid grid-cols-2 md:flex md:flex-row items-stretch">
                                     {/* Check-in */}
-                                    <div
-                                        className="col-span-1 p-3 md:p-5 flex flex-col gap-1 cursor-pointer hover:bg-gray-50/50 transition-colors relative border-b border-gray-100 md:border-b-0"
-                                        onClick={() => heroCheckInRef.current?.showPicker()}
-                                    >
-                                        <span className="text-[10px] tracking-[0.15em] text-gray-400 uppercase font-semibold">Check-in</span>
-                                        <div className="flex items-center gap-2 text-primary font-semibold">
-                                            <Calendar size={16} className="text-accent hidden sm:block" />
-                                            <span className="text-sm">{heroCheckIn ? new Date(heroCheckIn + 'T00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Select date'}</span>
+                                    <div className="col-span-1 min-w-0 p-3 md:p-5 flex flex-col gap-1 relative border-b border-r border-gray-100 md:border-b-0 hover:bg-gray-50/50 transition-colors cursor-pointer focus-within:bg-gray-50">
+                                        <label className="absolute inset-0 w-full h-full cursor-pointer z-10 shrink-0 select-none">
+                                            <input ref={heroCheckInRef} type="date" min={new Date().toISOString().split('T')[0]}
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                onChange={(e) => {
+                                                    setHeroCheckIn(e.target.value);
+                                                    if (heroCheckOut && new Date(e.target.value) >= new Date(heroCheckOut)) {
+                                                        const next = new Date(e.target.value); next.setDate(next.getDate() + 1);
+                                                        setHeroCheckOut(next.toISOString().split('T')[0]);
+                                                    }
+                                                }} />
+                                        </label>
+                                        <span className="text-[10px] tracking-[0.15em] text-gray-400 uppercase font-semibold truncate">Check-in</span>
+                                        <div className="flex items-center gap-2 text-primary font-semibold min-w-0">
+                                            <Calendar size={16} className="text-accent hidden sm:block shrink-0" />
+                                            <span className="text-sm truncate">{heroCheckIn ? new Date(heroCheckIn + 'T00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Select date'}</span>
                                         </div>
-                                        <input ref={heroCheckInRef} type="date" min={new Date().toISOString().split('T')[0]}
-                                            className="absolute opacity-0 pointer-events-none inset-0"
-                                            onChange={(e) => {
-                                                setHeroCheckIn(e.target.value);
-                                                if (heroCheckOut && new Date(e.target.value) >= new Date(heroCheckOut)) {
-                                                    const next = new Date(e.target.value); next.setDate(next.getDate() + 1);
-                                                    setHeroCheckOut(next.toISOString().split('T')[0]);
-                                                }
-                                            }} />
                                     </div>
 
                                     {/* Check-out */}
-                                    <div
-                                        className="col-span-1 p-3 md:p-5 flex flex-col gap-1 cursor-pointer hover:bg-gray-50/50 transition-colors relative border-b border-gray-100 md:border-b-0"
-                                        onClick={() => heroCheckOutRef.current?.showPicker()}
-                                    >
-                                        <span className="text-[10px] tracking-[0.15em] text-gray-400 uppercase font-semibold">Check-out</span>
-                                        <div className="flex items-center gap-2 text-primary font-semibold">
-                                            <Calendar size={16} className="text-accent hidden sm:block" />
-                                            <span className="text-sm">{heroCheckOut ? new Date(heroCheckOut + 'T00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Select date'}</span>
+                                    <div className="col-span-1 min-w-0 p-3 md:p-5 flex flex-col gap-1 relative border-b border-gray-100 md:border-b-0 md:border-r hover:bg-gray-50/50 transition-colors cursor-pointer focus-within:bg-gray-50">
+                                        <label className="absolute inset-0 w-full h-full cursor-pointer z-10 shrink-0 select-none">
+                                            <input ref={heroCheckOutRef} type="date" min={heroCheckIn || new Date().toISOString().split('T')[0]}
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                onChange={(e) => setHeroCheckOut(e.target.value)} />
+                                        </label>
+                                        <span className="text-[10px] tracking-[0.15em] text-gray-400 uppercase font-semibold truncate">Check-out</span>
+                                        <div className="flex items-center gap-2 text-primary font-semibold min-w-0">
+                                            <Calendar size={16} className="text-accent hidden sm:block shrink-0" />
+                                            <span className="text-sm truncate">{heroCheckOut ? new Date(heroCheckOut + 'T00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Select date'}</span>
                                         </div>
-                                        <input ref={heroCheckOutRef} type="date" min={heroCheckIn || new Date().toISOString().split('T')[0]}
-                                            className="absolute opacity-0 pointer-events-none inset-0"
-                                            onChange={(e) => setHeroCheckOut(e.target.value)} />
                                     </div>
 
                                     {/* Guests */}
-                                    <div className="col-span-2 md:flex-1 p-3 md:p-5 flex flex-row md:flex-col items-center md:items-start justify-between md:justify-start gap-1">
+                                    <div className="col-span-2 md:col-span-1 md:flex-1 p-3 md:p-5 flex flex-row md:flex-col items-center md:items-start justify-between md:justify-start gap-1 border-b border-gray-100 md:border-b-0 md:border-r">
                                         <span className="text-[10px] tracking-[0.15em] text-gray-400 uppercase font-semibold md:mb-1">Guests</span>
                                         <div className="flex items-center gap-3">
                                             <Users size={16} className="text-accent hidden md:block" />
                                             <div className="flex items-center gap-2">
                                                 <button type="button" onClick={() => setHeroGuests(Math.max(1, heroGuests - 1))}
-                                                    className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors text-gray-500">
+                                                    className="w-8 h-8 md:w-7 md:h-7 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors text-gray-500">
                                                     <Minus size={12} />
                                                 </button>
                                                 <span className="text-sm font-semibold text-primary w-12 text-center">{heroGuests} Guest{heroGuests > 1 ? 's' : ''}</span>
                                                 <button type="button" onClick={() => setHeroGuests(Math.min(16, heroGuests + 1))}
                                                     disabled={heroGuests >= 16}
-                                                    className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors text-gray-500 disabled:opacity-30 disabled:cursor-not-allowed">
+                                                    className="w-8 h-8 md:w-7 md:h-7 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors text-gray-500 disabled:opacity-30 disabled:cursor-not-allowed">
                                                     <Plus size={12} />
                                                 </button>
                                             </div>
@@ -523,7 +547,7 @@ export default function TenantSite() {
                                     </div>
 
                                     {/* CTA */}
-                                    <div className="col-span-2 p-3 md:p-4 flex items-center bg-gray-50/30">
+                                    <div className="col-span-2 md:col-span-1 p-3 md:p-4 flex items-center bg-gray-50/30">
                                         <button
                                             onClick={handleHeroBook}
                                             className="w-full md:w-auto bg-primary text-white font-semibold px-8 py-3.5 rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 text-sm flex items-center justify-center gap-2 whitespace-nowrap"
@@ -545,16 +569,39 @@ export default function TenantSite() {
                 </section>
             )}
 
+            {/* ===== QUICK HIGHLIGHTS / AMENITIES ===== */}
+            {isHotel && (
+                <section className="py-12 md:py-20 px-6 bg-white border-b border-gray-100 hidden md:block">
+                    <div className="max-w-5xl mx-auto grid grid-cols-3 md:grid-cols-6 gap-6">
+                        {[
+                            { label: 'Free WiFi', icon: Wifi },
+                            { label: 'Air Conditioned', icon: Wind },
+                            { label: 'Free Parking', icon: Car },
+                            { label: '24/7 Check-in', icon: Clock },
+                            { label: 'Room Service', icon: Coffee },
+                            { label: 'Daily Cleaning', icon: Sparkles }
+                        ].map((amenity, idx) => {
+                            const Icon = amenity.icon;
+                            return (
+                                <div key={idx} className="flex flex-col items-center text-center gap-2 p-4 rounded-xl hover:bg-gray-50 transition-colors">
+                                    <Icon size={24} className="text-gray-400 mb-1" />
+                                    <span className="text-xs font-semibold text-gray-700 tracking-wide">{amenity.label}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </section>
+            )}
+
             {/* ===== ROOMS (Hotel only) ===== */}
             {isHotel && vis.rooms !== false && rooms.length > 0 && (
-                <section id="rooms" className="py-28 px-6">
+                <section id="rooms" className="py-16 md:py-24 px-6">
                     <div className="max-w-6xl mx-auto">
-                        <div className="text-center mb-16">
-                            <p className="text-xs font-semibold text-accent uppercase tracking-[0.2em] mb-3">Accommodation</p>
-                            <h2 className="text-4xl md:text-5xl font-bold text-primary tracking-tight">Our rooms</h2>
+                        <div className="text-center mb-12">
+                            <h2 className="text-3xl md:text-5xl font-bold text-primary tracking-tight">Accommodation</h2>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                             {rooms.map((room, i) => (
                                 <motion.div
                                     key={room.id}
@@ -562,10 +609,10 @@ export default function TenantSite() {
                                     whileInView={{ opacity: 1, y: 0 }}
                                     viewport={{ once: true }}
                                     transition={{ delay: i * 0.1, duration: 0.6 }}
-                                    className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 hover:border-gray-200"
+                                    className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 hover:border-gray-200 flex flex-col"
                                 >
-                                    {/* Room image -- taller, with zoom */}
-                                    <div className="relative h-64 overflow-hidden">
+                                    {/* Room image -- 70% height aspect ratio via sizing */}
+                                    <div className="relative h-72 md:h-80 overflow-hidden shrink-0">
                                         {room.images?.[0] ? (
                                             <img src={room.images[0]} alt={room.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                                         ) : (
@@ -602,50 +649,34 @@ export default function TenantSite() {
                                         </div>
                                     </div>
 
-                                    <div className="p-5">
+                                    <div className="p-5 flex-1 flex flex-col">
                                         <div className="flex items-start justify-between mb-2">
                                             <div>
-                                                <h3 className="font-bold text-primary text-lg">{room.name}</h3>
-                                                <p className="text-xs text-gray-400 uppercase tracking-wider">{room.type}</p>
-                                            </div>
-                                            <div className="flex items-center gap-1 text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-md">
-                                                <Users size={12} />
-                                                <span>{room.max_occupancy}</span>
+                                                <h3 className="font-bold text-primary text-xl mb-1">{room.name}</h3>
+                                                <p className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                                                    <span>{room.max_occupancy} guests</span>
+                                                    {room.amenities && room.amenities.length > 0 && (
+                                                        <>
+                                                            <span className="text-gray-300">•</span>
+                                                            <span>{room.amenities.slice(0, 2).join(' • ')}</span>
+                                                        </>
+                                                    )}
+                                                </p>
                                             </div>
                                         </div>
 
-                                        {room.description && (
-                                            <p className="text-sm text-gray-500 leading-relaxed mb-4 line-clamp-2">{room.description}</p>
-                                        )}
-
-                                        {room.amenities?.length > 0 && (
-                                            <div className="flex flex-wrap gap-1.5 mb-5">
-                                                {room.amenities.slice(0, 4).map((amenity, j) => {
-                                                    const Icon = amenityIcons[amenity.toLowerCase()] || Coffee;
-                                                    return (
-                                                        <span key={j} className="inline-flex items-center gap-1 text-[11px] text-gray-500 bg-gray-50 px-2 py-1 rounded-md">
-                                                            <Icon size={10} /> {amenity}
-                                                        </span>
-                                                    );
-                                                })}
-                                                {room.amenities.length > 4 && (
-                                                    <span className="text-[11px] text-gray-400 px-2 py-1">+{room.amenities.length - 4} more</span>
-                                                )}
-                                            </div>
-                                        )}
-
-                                        <div className="flex gap-2">
+                                        <div className="mt-auto pt-6 flex gap-3">
                                             <Link
                                                 to={hostSubdomain ? `/room/${room.id}` : `/site/${subdomain}/room/${room.id}`}
-                                                className="flex-1 bg-white text-primary border-2 border-primary/15 font-semibold py-2.5 rounded-xl text-sm hover:border-primary/40 hover:bg-primary/5 transition-all text-center"
+                                                className="flex-1 bg-white text-primary font-semibold py-3 rounded-xl text-sm border-2 border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-all text-center"
                                             >
-                                                Explore room
+                                                Explore
                                             </Link>
                                             <button
                                                 onClick={() => setBookingRoom(room)}
-                                                className="flex-1 bg-primary text-white font-semibold py-2.5 rounded-xl text-sm hover:bg-primary-hover transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-lg hover:shadow-primary/15"
+                                                className="flex-1 bg-primary text-white font-semibold py-3 rounded-xl text-sm hover:bg-primary-hover transition-all flex items-center justify-center gap-2 shadow-sm"
                                             >
-                                                Book now <ArrowRight size={14} />
+                                                Book Now
                                             </button>
                                         </div>
                                     </div>
@@ -765,44 +796,31 @@ export default function TenantSite() {
                             )}
                         </div>
 
-                        {/* Grid -- up to 6, responsive */}
+                        {/* Grid -- up to 3 */}
                         <div className={`grid gap-6 ${testimonials.length === 1 ? 'grid-cols-1 max-w-2xl mx-auto' : testimonials.length === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
-                            {testimonials.slice(0, 6).map((t, i) => (
+                            {testimonials.slice(0, 3).map((t, i) => (
                                 <motion.div
                                     key={i}
                                     initial={{ opacity: 0, y: 30 }}
                                     whileInView={{ opacity: 1, y: 0 }}
                                     viewport={{ once: true }}
                                     transition={{ delay: i * 0.1, duration: 0.6 }}
-                                    className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-7 hover:bg-white/8 transition-colors duration-300"
+                                    className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-7 hover:bg-white/8 transition-colors duration-300 flex flex-col"
                                 >
                                     <div className="flex items-center justify-between mb-5">
                                         <Stars count={t.rating} />
-                                        <div className="flex items-center gap-1.5 text-[10px] text-emerald-400/80 font-semibold uppercase tracking-wider">
-                                            <BadgeCheck size={14} className="text-emerald-400" />
-                                            Verified stay
-                                        </div>
                                     </div>
 
-                                    <p className="text-white/75 text-sm leading-relaxed mb-6 line-clamp-4 italic">
+                                    <p className="text-white/90 text-[15px] leading-relaxed mb-6 line-clamp-4 italic flex-1">
                                         "{t.review_text}"
                                     </p>
 
-                                    <div className="flex items-center gap-3 pt-4 border-t border-white/5">
-                                        {t.avatar_url ? (
-                                            <img src={t.avatar_url} alt="" loading="lazy" className="w-10 h-10 rounded-full object-cover ring-2 ring-white/10" />
-                                        ) : (
-                                            <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center ring-2 ring-white/10">
-                                                <span className="text-accent font-bold">{t.guest_name.charAt(0)}</span>
-                                            </div>
-                                        )}
+                                    <div className="flex items-center gap-3 pt-5 border-t border-white/10 mt-auto">
+                                        <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center ring-2 ring-white/10 shrink-0">
+                                            <span className="text-accent font-bold">{t.guest_name.charAt(0)}</span>
+                                        </div>
                                         <div>
                                             <p className="text-white font-semibold text-sm">{t.guest_name}</p>
-                                            {t.guest_location && (
-                                                <p className="text-white/35 text-xs flex items-center gap-1">
-                                                    <MapPin size={10} /> {t.guest_location}
-                                                </p>
-                                            )}
                                         </div>
                                     </div>
                                 </motion.div>
@@ -810,15 +828,13 @@ export default function TenantSite() {
                         </div>
 
                         {/* Google Reviews link */}
-                        {tenant.google_review_url && (
-                            <div className="text-center mt-12">
-                                <a href={tenant.google_review_url} target="_blank" rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 text-white/40 hover:text-white/70 transition-colors text-sm border border-white/10 rounded-full px-5 py-2.5 hover:border-white/20">
-                                    <span>See all reviews on Google</span>
-                                    <ExternalLink size={14} />
-                                </a>
-                            </div>
-                        )}
+                        <div className="text-center mt-12">
+                            <a href={tenant.google_review_url || '#'} target="_blank" rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 text-white font-semibold text-sm bg-white/10 rounded-full px-8 py-3 hover:bg-white/20 transition-all border border-white/10">
+                                <span>View all reviews</span>
+                                <ArrowRight size={16} className="text-white" />
+                            </a>
+                        </div>
                     </div>
                 </section>
             )}
@@ -828,50 +844,46 @@ export default function TenantSite() {
                 <section id="about" className="py-28 px-6">
                     <div className="max-w-3xl mx-auto text-center">
                         <p className="text-xs font-semibold text-accent uppercase tracking-[0.2em] mb-3">About us</p>
-                        <h2 className="text-4xl md:text-5xl font-bold text-primary tracking-tight mb-8">{tenant.business_name}</h2>
-                        <p className="text-lg text-gray-500 leading-relaxed max-w-2xl mx-auto">{aboutText}</p>
+                        <h2 className="text-4xl md:text-5xl font-bold text-primary tracking-tight mb-8">{aboutHeading}</h2>
+                        <p className="text-lg text-gray-500 leading-relaxed max-w-2xl mx-auto whitespace-pre-wrap">{aboutText}</p>
                     </div>
                 </section>
             )}
 
             {/* ===== LOCATION + MAP ===== */}
-            <section id="location" className="py-28 px-6 bg-white">
+            <section id="location" className="py-16 md:py-24 px-6 bg-white border-t border-gray-100">
                 <div className="max-w-6xl mx-auto">
-                    <div className="text-center mb-16">
-                        <p className="text-xs font-semibold text-accent uppercase tracking-[0.2em] mb-3">Find us</p>
-                        <h2 className="text-4xl md:text-5xl font-bold text-primary tracking-tight">Perfectly located</h2>
+                    <div className="text-center mb-12">
+                        <h2 className="text-3xl md:text-5xl font-bold text-primary tracking-tight">Perfectly Located</h2>
                     </div>
 
-                    {/* Proximity stats */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-14 max-w-3xl mx-auto">
+                    {/* Proximity Distance Badges */}
+                    <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-4 mb-10 max-w-4xl mx-auto">
                         {[
-                            { icon: Waves, label: settings.locationStat1Label || 'Beach', value: settings.locationStat1Value || '500m', color: 'text-cyan-500' },
-                            { icon: Building2, label: settings.locationStat2Label || 'Town Center', value: settings.locationStat2Value || '2 km', color: 'text-accent' },
-                            { icon: Plane, label: settings.locationStat3Label || 'Airport', value: settings.locationStat3Value || '15 min', color: 'text-primary' },
-                        ].map((stat, i) => {
-                            const Icon = stat.icon;
-                            return (
-                                <motion.div
-                                    key={i}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    whileInView={{ opacity: 1, y: 0 }}
-                                    viewport={{ once: true }}
-                                    transition={{ delay: i * 0.1 }}
-                                    className="flex flex-col items-center bg-background rounded-2xl p-6 border border-gray-100"
-                                >
-                                    <div className={`w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center mb-3 ${stat.color}`}>
-                                        <Icon size={22} />
-                                    </div>
-                                    <p className="text-2xl font-bold text-primary mb-1">{stat.value}</p>
-                                    <p className="text-xs text-gray-400 uppercase tracking-wider font-medium">from {stat.label}</p>
-                                </motion.div>
-                            );
-                        })}
+                            { icon: '📍', value: '600m', label: settings.locationStat1Label || 'from Beach' },
+                            { icon: '🚗', value: '2km', label: settings.locationStat2Label || 'from Town Center' },
+                            { icon: '✈️', value: '15 min', label: settings.locationStat3Label || 'from Airport' },
+                        ].map((stat, i) => (
+                            <div key={i} className="flex items-center justify-center gap-2 bg-gray-50 border border-gray-100 rounded-full px-5 py-2.5">
+                                <span className="text-lg">{stat.icon}</span>
+                                <span className="font-bold text-[#0E2A38] text-sm">{stat.value}</span>
+                                <span className="text-gray-500 text-sm">{stat.label}</span>
+                            </div>
+                        ))}
                     </div>
 
                     {/* Map embed */}
-                    <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm h-[350px] md:h-[400px]">
-                        {tenant.google_place_id ? (
+                    <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm h-[300px] md:h-[400px]">
+                        {settings.googleMapsUrl ? (
+                            <iframe
+                                title="Location"
+                                className="w-full h-full border-0"
+                                loading="lazy"
+                                allowFullScreen
+                                referrerPolicy="no-referrer-when-downgrade"
+                                src={`https://maps.google.com/maps?q=${encodeURIComponent(settings.googleMapsUrl.startsWith('http') ? settings.googleMapsUrl.replace('https://maps.google.com/maps?q=', '').replace('https://www.google.com/maps?q=', '') : settings.googleMapsUrl)}&output=embed&z=15`}
+                            />
+                        ) : tenant.google_place_id ? (
                             <iframe
                                 src={`https://www.google.com/maps/embed/v1/place?key=${import.meta.env.VITE_GOOGLE_MAPS_KEY || ''}&q=place_id:${tenant.google_place_id}`}
                                 className="w-full h-full border-0"
@@ -905,10 +917,18 @@ export default function TenantSite() {
                             viewport={{ once: true }}
                             className="text-center mt-6"
                         >
-                            <p className="text-sm text-gray-500 flex items-center justify-center gap-2">
-                                <MapPin size={14} className="text-accent" />
-                                {contactAddress}
-                            </p>
+                            <a
+                                href={`https://maps.google.com/maps?q=${encodeURIComponent(contactAddress)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center justify-center gap-2 hover:bg-gray-50 px-4 py-2 rounded-xl transition-colors group"
+                            >
+                                <MapPin size={18} className="text-accent group-hover:scale-110 transition-transform shrink-0" />
+                                <span className="text-sm text-gray-600 whitespace-pre-wrap text-left leading-relaxed max-w-lg">
+                                    {contactAddress}
+                                </span>
+                                <ExternalLink size={14} className="text-gray-300 group-hover:text-primary ml-1 shrink-0" />
+                            </a>
                         </motion.div>
                     )}
                 </div>
@@ -1112,6 +1132,24 @@ export default function TenantSite() {
                         Chat with us
                     </span>
                 </motion.a>
+            )}
+
+            {/* ===== MOBILE STICKY BOOK NOW ===== */}
+            {isHotel && (
+                <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-50">
+                    <button
+                        onClick={handleHeroBook}
+                        className="w-full bg-primary text-white font-bold py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2"
+                    >
+                        Check Availability
+                        <ArrowRight size={16} />
+                    </button>
+                    {/* Padding utility to handle the fixed footer covering content below */}
+                    <style>{`
+                        #main-content { padding-bottom: 80px; }
+                        @media (min-width: 768px) { #main-content { padding-bottom: 0; } }
+                    `}</style>
+                </div>
             )}
         </div>
     );

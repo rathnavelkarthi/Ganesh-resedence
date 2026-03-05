@@ -81,7 +81,7 @@ export default function Signup() {
                         Check your email ({email}) for a confirmation link.
                     </p>
                     <p className="text-[#AAB8C5]/60 text-xs mb-8">
-                        Your subdomain: <span className="text-[#C9A646] font-medium">{subdomain}.hospitalityos.com</span>
+                        Your subdomain: <span className="text-[#C9A646] font-medium">{subdomain}.esaystay.com</span>
                     </p>
                     <button
                         onClick={() => navigate('/admin/login')}
@@ -136,7 +136,7 @@ export default function Signup() {
                         {businessName && (
                             <div className="mt-5 pt-4 border-t border-[#AAB8C5]/10">
                                 <p className="text-[10px] text-[#AAB8C5]/50 uppercase tracking-widest font-semibold mb-1">Your subdomain</p>
-                                <p className="text-sm text-[#C9A646] font-medium">{subdomain || '...'}.hospitalityos.com</p>
+                                <p className="text-sm text-[#C9A646] font-medium">{subdomain || '...'}.esaystay.com</p>
                             </div>
                         )}
                     </div>
@@ -276,7 +276,7 @@ export default function Signup() {
                                 {/* Subdomain preview */}
                                 <div className="bg-[#0E2A38]/30 border border-[#AAB8C5]/10 rounded-lg px-4 py-3">
                                     <p className="text-[10px] text-[#AAB8C5]/50 uppercase tracking-widest font-semibold mb-1">Your subdomain</p>
-                                    <p className="text-sm text-[#C9A646] font-mono">{subdomain}.hospitalityos.com</p>
+                                    <p className="text-sm text-[#C9A646] font-mono">{subdomain}.esaystay.com</p>
                                 </div>
 
                                 <motion.button
