@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Crown, ArrowRight, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -23,7 +24,7 @@ export default function UpgradeModal({ open, onClose, resource, plan, currentCou
 
     if (!open) return null;
 
-    return (
+    return createPortal(
         <AnimatePresence>
             <motion.div
                 initial={{ opacity: 0 }}
@@ -95,6 +96,7 @@ export default function UpgradeModal({ open, onClose, resource, plan, currentCou
                     </div>
                 </motion.div>
             </motion.div>
-        </AnimatePresence>
+        </AnimatePresence>,
+        document.body
     );
 }

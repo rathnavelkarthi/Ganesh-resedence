@@ -1,0 +1,574 @@
+{
+  "name": "EasyStay WhatsApp Cold Outreach",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-manual",
+      "name": "Run Outreach",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "stage",
+              "value": "day1"
+            },
+            {
+              "name": "evolution_api_url",
+              "value": "http://140.245.217.175:8080"
+            },
+            {
+              "name": "evolution_api_key",
+              "value": "desmond@123"
+            },
+            {
+              "name": "instance_name",
+              "value": "tenant-85e0fb25"
+            }
+          ],
+          "number": [
+            {
+              "name": "max_messages_per_run",
+              "value": 15
+            },
+            {
+              "name": "delay_seconds",
+              "value": 180
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "config",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [420, 300],
+      "notesInFlow": true,
+      "notes": "Change 'stage' to: day1, day2, day5, day10, day20"
+    },
+    {
+      "parameters": {
+        "operation": "fromFile",
+        "fileFormat": "xlsx",
+        "options": {
+          "sheetName": "Target Leads"
+        }
+      },
+      "id": "read-excel",
+      "name": "Read Leads Excel",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-phone-exists",
+              "leftValue": "={{ $json['WhatsApp Number'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isNotEmpty"
+              }
+            },
+            {
+              "id": "cond-not-contacted",
+              "leftValue": "={{ $json['Contact Status'] }}",
+              "rightValue": "NOT CONTACTED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-eligible",
+      "name": "Filter Eligible Leads",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [860, 300]
+    },
+    {
+      "parameters": {
+        "maxItems": "={{ $('Config').item.json.max_messages_per_run }}",
+        "options": {}
+      },
+      "id": "limit-batch",
+      "name": "Limit to Max per Run",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [1080, 300]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {
+          "reset": false
+        }
+      },
+      "id": "loop-leads",
+      "name": "Loop Over Leads",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1300, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "clean_phone",
+              "value": "={{ $json['WhatsApp Number'].replace(/[^0-9]/g, '').replace(/^0/, '91').replace(/^(?!91)/, '91') }}"
+            },
+            {
+              "name": "property_name",
+              "value": "={{ $json['Property Name'] }}"
+            },
+            {
+              "name": "lead_priority",
+              "value": "={{ $json['Lead Priority'] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "clean-phone",
+      "name": "Clean Phone Number",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1520, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.evolution_api_url }}/chat/whatsappNumbers/{{ $('Config').item.json.instance_name }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $('Config').item.json.evolution_api_key }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ numbers: [$json.clean_phone] }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "check-whatsapp",
+      "name": "Check WhatsApp Number",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1740, 300],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cond-on-whatsapp",
+              "leftValue": "={{ Array.isArray($json) ? $json.some(item => item.exists === true) : false }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "is-on-whatsapp",
+      "name": "Is on WhatsApp?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1960, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "message",
+              "value": "={{ (() => { const stage = $('Config').item.json.stage; const lead = $('Loop Over Leads').item.json; const colMap = { day1: 'Cold Message (Day 1)', day2: 'Follow-up (Day 2)', day5: 'Follow-up (Day 5)', day10: 'Follow-up (Day 10)', day20: 'Follow-up (Day 20)' }; return lead[colMap[stage]] || lead['Cold Message (Day 1)'] || ''; })() }}"
+            },
+            {
+              "name": "phone",
+              "value": "={{ $('Clean Phone Number').item.json.clean_phone }}"
+            },
+            {
+              "name": "property",
+              "value": "={{ $('Clean Phone Number').item.json.property_name }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "prepare-message",
+      "name": "Prepare Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2180, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.evolution_api_url }}/message/sendText/{{ $('Config').item.json.instance_name }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $('Config').item.json.evolution_api_key }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $json.phone, text: $json.message }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "send-whatsapp",
+      "name": "Send WhatsApp Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2400, 200],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "SENT ✅"
+            },
+            {
+              "name": "property",
+              "value": "={{ $('Clean Phone Number').item.json.property_name }}"
+            },
+            {
+              "name": "phone",
+              "value": "={{ $('Clean Phone Number').item.json.clean_phone }}"
+            },
+            {
+              "name": "stage",
+              "value": "={{ $('Config').item.json.stage }}"
+            },
+            {
+              "name": "sent_at",
+              "value": "={{ new Date().toISOString() }}"
+            },
+            {
+              "name": "message_id",
+              "value": "={{ $json.key?.id || 'unknown' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-sent",
+      "name": "Log: Sent ✅",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2620, 200]
+    },
+    {
+      "parameters": {
+        "amount": "={{ $('Config').item.json.delay_seconds }}",
+        "unit": "seconds"
+      },
+      "id": "wait-between",
+      "name": "Wait 3 Min",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [2840, 200]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "NOT ON WHATSAPP ❌"
+            },
+            {
+              "name": "property",
+              "value": "={{ $('Clean Phone Number').item.json.property_name }}"
+            },
+            {
+              "name": "phone",
+              "value": "={{ $('Clean Phone Number').item.json.clean_phone }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-not-whatsapp",
+      "name": "Log: Not on WhatsApp ❌",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2180, 440]
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "seconds"
+      },
+      "id": "short-wait",
+      "name": "Short Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [2400, 440]
+    }
+  ],
+  "connections": {
+    "Run Outreach": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Read Leads Excel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Leads Excel": {
+      "main": [
+        [
+          {
+            "node": "Filter Eligible Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Eligible Leads": {
+      "main": [
+        [
+          {
+            "node": "Limit to Max per Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit to Max per Run": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Leads": {
+      "main": [
+        null,
+        [
+          {
+            "node": "Clean Phone Number",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Phone Number": {
+      "main": [
+        [
+          {
+            "node": "Check WhatsApp Number",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check WhatsApp Number": {
+      "main": [
+        [
+          {
+            "node": "Is on WhatsApp?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is on WhatsApp?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log: Not on WhatsApp ❌",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Message": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp Message": {
+      "main": [
+        [
+          {
+            "node": "Log: Sent ✅",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log: Sent ✅": {
+      "main": [
+        [
+          {
+            "node": "Wait 3 Min",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 3 Min": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log: Not on WhatsApp ❌": {
+      "main": [
+        [
+          {
+            "node": "Short Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Short Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "WhatsApp",
+      "id": "1"
+    },
+    {
+      "name": "Outreach",
+      "id": "2"
+    },
+    {
+      "name": "EasyStay",
+      "id": "3"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2026-03-06T08:00:00.000Z",
+  "versionId": "1"
+}
