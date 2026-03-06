@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 import { Search, Plus, MoreVertical, Shield, Mail, Phone, X } from 'lucide-react';
 import { useCRM, StaffMember } from '../../context/CRMDataContext';
+import { usePlanLimits } from '../../lib/planLimits';
+import UpgradeModal from '../../components/crm/UpgradeModal';
 
 export default function Staff() {
   const { staff, addStaff, updateStaff, deleteStaff } = useCRM();
+  const { canAdd, limitFor, currentCount, plan } = usePlanLimits();
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
@@ -63,7 +67,7 @@ export default function Staff() {
           <p className="text-gray-500 mt-1">Manage employee access, roles, and profiles.</p>
         </div>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => canAdd('staff') ? setIsModalOpen(true) : setShowUpgrade(true)}
           className="flex items-center gap-2 bg-[var(--color-ocean-600)] hover:bg-[var(--color-ocean-800)] text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm"
         >
           <Plus size={16} />
@@ -295,6 +299,7 @@ export default function Staff() {
           </div>
         </div>
       )}
+      <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} resource="staff members" plan={plan} currentCount={currentCount('staff')} limit={limitFor('staff')} />
     </div>
   );
 }

@@ -81,6 +81,23 @@ export default function PricingRules() {
 
     const todayOccupancy = computeOccupancy(new Date());
 
+    // Compute real ADR and RevPAR from reservation data (last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const recentBookings = reservations.filter(r => {
+        const created = new Date(r.checkIn || r.created_at);
+        return created >= thirtyDaysAgo && r.status !== 'Cancelled';
+    });
+    const totalRevenue = recentBookings.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+    const totalNights = recentBookings.reduce((sum, r) => {
+        const ci = new Date(r.checkIn);
+        const co = new Date(r.checkOut);
+        const n = Math.max(1, Math.round((co.getTime() - ci.getTime()) / 86400000));
+        return sum + n;
+    }, 0);
+    const computedADR = totalNights > 0 ? Math.round(totalRevenue / totalNights) : 0;
+    const computedRevPAR = rooms.length > 0 ? Math.round((totalRevenue / 30) / rooms.length) : 0;
+
     // Pre-compute occupancy for the 14-day calendar window
     const occupancyByDate: Record<string, number> = {};
     dates.forEach(date => {
@@ -357,10 +374,10 @@ export default function PricingRules() {
                     </div>
                     <div className="relative z-10">
                         <p className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-1">RevPAR (Current)</p>
-                        <h3 className="text-3xl font-bold text-[#0E2A38]">₹3,450</h3>
+                        <h3 className="text-3xl font-bold text-[#0E2A38]">₹{computedRevPAR.toLocaleString()}</h3>
                         <div className="flex items-center gap-2 mt-2 text-green-600 text-sm font-medium">
                             <TrendingUp size={16} />
-                            <span>+12.5% vs last month</span>
+                            <span>{recentBookings.length} bookings (30d)</span>
                         </div>
                     </div>
                 </div>
@@ -371,10 +388,10 @@ export default function PricingRules() {
                     </div>
                     <div className="relative z-10">
                         <p className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-1">ADR (Average Daily Rate)</p>
-                        <h3 className="text-3xl font-bold text-[#0E2A38]">₹4,200</h3>
+                        <h3 className="text-3xl font-bold text-[#0E2A38]">₹{computedADR.toLocaleString()}</h3>
                         <div className="flex items-center gap-2 mt-2 text-green-600 text-sm font-medium">
                             <TrendingUp size={16} />
-                            <span>+5.2% vs last month</span>
+                            <span>{totalNights} room-nights (30d)</span>
                         </div>
                     </div>
                 </div>
@@ -386,11 +403,10 @@ export default function PricingRules() {
                     <div className="relative z-10">
                         <p className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-1">Occupancy Rate</p>
                         <h3 className="text-3xl font-bold text-[#0E2A38]">{todayOccupancy}%</h3>
-                        <div className={`flex items-center gap-2 mt-2 text-sm font-medium ${
-                            upsellEnabled && todayOccupancy >= UPSELL_THRESHOLD ? 'text-amber-600' :
+                        <div className={`flex items-center gap-2 mt-2 text-sm font-medium ${upsellEnabled && todayOccupancy >= UPSELL_THRESHOLD ? 'text-amber-600' :
                             downsellEnabled && todayOccupancy <= DOWNSELL_THRESHOLD ? 'text-blue-600' :
-                            'text-green-600'
-                        }`}>
+                                'text-green-600'
+                            }`}>
                             {upsellEnabled && todayOccupancy >= UPSELL_THRESHOLD ? (
                                 <><TrendingUp size={16} /><span>Upsell Active (+{upsellPercentage}%)</span></>
                             ) : downsellEnabled && todayOccupancy <= DOWNSELL_THRESHOLD ? (

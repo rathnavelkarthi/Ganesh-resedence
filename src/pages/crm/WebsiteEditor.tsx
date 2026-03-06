@@ -295,6 +295,7 @@ export default function WebsiteEditor() {
 
     const subdomain = tenant?.subdomain || '';
     const previewUrl = `/site/${subdomain}`;
+    const liveUrl = `https://${subdomain}.esaystay.com`;
 
     const previewWidths = { desktop: '100%', tablet: '768px', mobile: '375px' };
 
@@ -323,7 +324,7 @@ export default function WebsiteEditor() {
                         ))}
                     </div>
 
-                    <a href={previewUrl} target="_blank" rel="noopener noreferrer"
+                    <a href={liveUrl} target="_blank" rel="noopener noreferrer"
                         className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors" title="Open in new tab">
                         <ExternalLink size={16} />
                     </a>
@@ -501,28 +502,55 @@ export default function WebsiteEditor() {
                             <EditorInput label="About your property" value={settings.aboutText || ''} onChange={v => updateSetting('aboutText', v)} multiline placeholder="Tell guests about your property..." />
                         </SectionPanel>
 
-                        {/* CONTACT */}
-                        <SectionPanel title="Contact" icon={Phone} isOpen={!!openSections.contact} onToggle={() => toggleOpen('contact')}
+                        {/* CONTACT & LOCATION */}
+                        <SectionPanel title="Contact & Location" icon={Phone} isOpen={!!openSections.contact} onToggle={() => toggleOpen('contact')}
                             isVisible={visibility.contact} onToggleVisibility={() => toggleVis('contact')}>
-                            <EditorInput label="Phone" value={settings.contactPhone || ''} onChange={v => updateSetting('contactPhone', v)} placeholder="+91 98765 43210" />
-                            <EditorInput label="Email" value={settings.contactEmail || ''} onChange={v => updateSetting('contactEmail', v)} placeholder="stay@your-property.com" />
-                            <EditorInput label="Address" value={settings.contactAddress || ''} onChange={v => updateSetting('contactAddress', v)} multiline placeholder="123 Beach Road, City, State" />
-                            <div>
-                                <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Google Maps Link</label>
-                                <p className="text-[11px] text-gray-400 mb-2">Paste your Google Maps share link (or a plus code like W5JJ+FJJ Vellakkal, Chennai). We'll embed the map on your website.</p>
-                                <input
-                                    type="text"
-                                    value={settings.googleMapsUrl || ''}
-                                    onChange={e => updateSetting('googleMapsUrl', e.target.value)}
-                                    placeholder="https://maps.google.com/?q=..."
-                                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0E2A38]/10 focus:border-[#0E2A38]/30 outline-none transition-all"
-                                />
-                                {settings.googleMapsUrl && (
-                                    <a href={settings.googleMapsUrl} target="_blank" rel="noopener noreferrer"
-                                        className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-[#0E2A38] hover:underline">
-                                        <MapPin size={10} /> Preview on Google Maps
-                                    </a>
-                                )}
+                            <div className="space-y-6">
+                                <div>
+                                    <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Contact Details</h4>
+                                    <div className="space-y-4">
+                                        <EditorInput label="Phone" value={settings.contactPhone || ''} onChange={v => updateSetting('contactPhone', v)} placeholder="+91 98765 43210" />
+                                        <EditorInput label="Email" value={settings.contactEmail || ''} onChange={v => updateSetting('contactEmail', v)} placeholder="stay@your-property.com" />
+                                        <EditorInput label="Address" value={settings.contactAddress || ''} onChange={v => updateSetting('contactAddress', v)} multiline placeholder="123 Beach Road, City, State" />
+                                    </div>
+                                </div>
+
+                                <div className="border-t border-gray-100 pt-5">
+                                    <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-1">Location Badges</h4>
+                                    <p className="text-[11px] text-gray-500 mb-4">Highlight nearby attractions or transit (e.g., Beach, Airport).</p>
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <EditorInput label="Badge 1 Value" value={settings.locationStat1Value || ''} onChange={v => updateSetting('locationStat1Value', v)} placeholder="e.g. 600m" />
+                                            <EditorInput label="Badge 1 Label" value={settings.locationStat1Label || ''} onChange={v => updateSetting('locationStat1Label', v)} placeholder="e.g. from Beach" />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <EditorInput label="Badge 2 Value" value={settings.locationStat2Value || ''} onChange={v => updateSetting('locationStat2Value', v)} placeholder="e.g. 2km" />
+                                            <EditorInput label="Badge 2 Label" value={settings.locationStat2Label || ''} onChange={v => updateSetting('locationStat2Label', v)} placeholder="e.g. from Town Center" />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <EditorInput label="Badge 3 Value" value={settings.locationStat3Value || ''} onChange={v => updateSetting('locationStat3Value', v)} placeholder="e.g. 15 min" />
+                                            <EditorInput label="Badge 3 Label" value={settings.locationStat3Label || ''} onChange={v => updateSetting('locationStat3Label', v)} placeholder="e.g. from Airport" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="border-t border-gray-100 pt-5">
+                                    <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Google Maps Link</label>
+                                    <p className="text-[11px] text-gray-400 mb-2">Paste your Google Maps share link (or a plus code like W5JJ+FJJ Vellakkal, Chennai). We'll embed the map on your website.</p>
+                                    <input
+                                        type="text"
+                                        value={settings.googleMapsUrl || ''}
+                                        onChange={e => updateSetting('googleMapsUrl', e.target.value)}
+                                        placeholder="https://maps.google.com/?q=..."
+                                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0E2A38]/10 focus:border-[#0E2A38]/30 outline-none transition-all"
+                                    />
+                                    {settings.googleMapsUrl && (
+                                        <a href={settings.googleMapsUrl} target="_blank" rel="noopener noreferrer"
+                                            className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-[#0E2A38] hover:underline">
+                                            <MapPin size={10} /> Preview on Google Maps
+                                        </a>
+                                    )}
+                                </div>
                             </div>
                         </SectionPanel>
 

@@ -1,0 +1,121 @@
+{
+  "sent": {
+    "919823091733": {
+      "day1": {
+        "sentAt": "2026-03-06T06:56:39.664Z",
+        "messageId": "dry-run",
+        "property": "Goa Lodge (Panjim)"
+      }
+    },
+    "919822300701": {
+      "day1": {
+        "sentAt": "2026-03-06T06:59:00.254Z",
+        "messageId": "dry-run",
+        "property": "Soham Beach Resort"
+      }
+    },
+    "918799920194": {
+      "day1": {
+        "sentAt": "2026-03-06T07:02:28.916Z",
+        "messageId": "3EB08B128BBB1B5457A985",
+        "property": "The Banyan Soul"
+      }
+    },
+    "919829373518": {
+      "day1": {
+        "sentAt": "2026-03-06T07:06:19.885Z",
+        "messageId": "3EB029027E618E9CD09B3B",
+        "property": "Majorda Budget Guest House and PG"
+      }
+    }
+  },
+  "checked": {
+    "919823091733": {
+      "exists": true,
+      "jid": "919823091733@s.whatsapp.net",
+      "checkedAt": "2026-03-06T06:56:04.900Z"
+    },
+    "919822300701": {
+      "exists": true,
+      "jid": "919822300701@s.whatsapp.net",
+      "checkedAt": "2026-03-06T06:56:07.227Z"
+    },
+    "918799920194": {
+      "exists": true,
+      "jid": "918799920194@s.whatsapp.net",
+      "checkedAt": "2026-03-06T06:56:09.557Z"
+    },
+    "919829373518": {
+      "exists": true,
+      "jid": "919829373518@s.whatsapp.net",
+      "checkedAt": "2026-03-06T06:56:11.885Z"
+    },
+    "917306141453": {
+      "exists": true,
+      "jid": "917306141453@s.whatsapp.net",
+      "checkedAt": "2026-03-06T06:56:14.199Z"
+    },
+    "919890486333": {
+      "exists": true,
+      "jid": "919890486333@s.whatsapp.net",
+      "checkedAt": "2026-03-06T06:56:16.639Z"
+    },
+    "918984797999": {
+      "exists": true,
+      "jid": "918984797999@s.whatsapp.net",
+      "checkedAt": "2026-03-06T06:56:18.955Z"
+    },
+    "919900265668": {
+      "exists": true,
+      "jid": "919900265668@s.whatsapp.net",
+      "checkedAt": "2026-03-06T06:56:21.280Z"
+    },
+    "919074501306": {
+      "exists": true,
+      "jid": "919074501306@s.whatsapp.net",
+      "checkedAt": "2026-03-06T06:56:23.639Z"
+    },
+    "919004693930": {
+      "exists": true,
+      "jid": "919004693930@s.whatsapp.net",
+      "checkedAt": "2026-03-06T06:56:25.968Z"
+    },
+    "918322224889": {
+      "exists": false,
+      "jid": null,
+      "checkedAt": "2026-03-06T06:56:28.324Z"
+    },
+    "917620746299": {
+      "exists": true,
+      "jid": "917620746299@s.whatsapp.net",
+      "checkedAt": "2026-03-06T06:56:30.673Z"
+    },
+    "919495988080": {
+      "exists": true,
+      "jid": "919495988080@s.whatsapp.net",
+      "checkedAt": "2026-03-06T06:56:33.011Z"
+    },
+    "919008188595": {
+      "exists": true,
+      "jid": "919008188595@s.whatsapp.net",
+      "checkedAt": "2026-03-06T06:56:35.329Z"
+    },
+    "919739630919": {
+      "exists": true,
+      "jid": "919739630919@s.whatsapp.net",
+      "checkedAt": "2026-03-06T06:56:37.650Z"
+    },
+    "919902251007": {
+      "exists": true,
+      "jid": "919902251007@s.whatsapp.net",
+      "checkedAt": "2026-03-06T07:02:22.854Z"
+    },
+    "918277479962": {
+      "exists": true,
+      "jid": "918277479962@s.whatsapp.net",
+      "checkedAt": "2026-03-06T07:02:25.203Z"
+    }
+  },
+  "errors": [],
+  "lastRun": "2026-03-06T07:06:19.885Z"
+}

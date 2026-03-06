@@ -204,13 +204,28 @@ export default function PricingSection() {
                     ))}
                 </div>
 
+                {/* Add-ons teaser */}
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6, delay: 0.15 }}
+                    className="mt-10 text-center"
+                >
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-surface-50 border border-border rounded-full flex-wrap justify-center">
+                        <span className="text-xs font-medium text-text-secondary">Need more?</span>
+                        <span className="text-xs font-bold text-accent">Add-ons from ₹299/mo</span>
+                        <span className="text-[10px] text-text-secondary">— Extra rooms, WhatsApp, OTA sync & more</span>
+                    </div>
+                </motion.div>
+
                 {/* See full pricing link */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.7, delay: 0.2 }}
-                    className="mt-12 text-center"
+                    className="mt-6 text-center"
                 >
                     <Link
                         to="/pricing"

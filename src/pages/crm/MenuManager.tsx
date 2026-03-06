@@ -4,6 +4,8 @@ import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, GripVertical, Leaf, X,
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import { toast } from 'sonner';
+import { usePlanLimits } from '../../lib/planLimits';
+import UpgradeModal from '../../components/crm/UpgradeModal';
 
 export default function MenuManager() {
     const { tenant } = useAuth();
@@ -12,6 +14,8 @@ export default function MenuManager() {
         addMenuCategory, updateMenuCategory, deleteMenuCategory,
         addMenuItem, updateMenuItem, deleteMenuItem,
     } = useCRM();
+    const { canAdd, limitFor, currentCount, plan } = usePlanLimits();
+    const [showUpgrade, setShowUpgrade] = useState(false);
 
     const [expandedCats, setExpandedCats] = useState<Set<number>>(new Set(menuCategories.map(c => c.id)));
     const [showCatForm, setShowCatForm] = useState(false);
@@ -348,7 +352,7 @@ export default function MenuManager() {
                                             </div>
                                         ) : (
                                             <button
-                                                onClick={() => { resetItemForm(); setShowItemForm(cat.id); }}
+                                                onClick={() => canAdd('menu_items') ? (resetItemForm(), setShowItemForm(cat.id)) : setShowUpgrade(true)}
                                                 className="w-full px-5 py-3 text-sm text-gray-400 hover:text-[#0E2A38] hover:bg-gray-50 text-left flex items-center gap-2"
                                             >
                                                 <Plus size={14} /> Add item
@@ -361,6 +365,7 @@ export default function MenuManager() {
                     })}
                 </div>
             )}
+            <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} resource="menu items" plan={plan} currentCount={currentCount('menu_items')} limit={limitFor('menu_items')} />
         </div>
     );
 }

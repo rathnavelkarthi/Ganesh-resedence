@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useCRM, RestaurantTable } from '../../context/CRMDataContext';
 import { Plus, Pencil, Trash2, X, Users, Armchair } from 'lucide-react';
+import { usePlanLimits } from '../../lib/planLimits';
+import UpgradeModal from '../../components/crm/UpgradeModal';
 
 const SECTIONS = ['main', 'outdoor', 'private', 'bar', 'rooftop'];
 const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
@@ -11,7 +13,9 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }>
 
 export default function Tables() {
     const { restaurantTables, addRestaurantTable, updateRestaurantTable, deleteRestaurantTable } = useCRM();
+    const { canAdd, limitFor, currentCount, plan } = usePlanLimits();
     const [showForm, setShowForm] = useState(false);
+    const [showUpgrade, setShowUpgrade] = useState(false);
     const [editing, setEditing] = useState<RestaurantTable | null>(null);
     const [filterSection, setFilterSection] = useState('all');
 
@@ -64,7 +68,7 @@ export default function Tables() {
                     <h1 className="text-2xl font-bold text-gray-900">Table Management</h1>
                     <p className="text-sm text-gray-500 mt-1">{totalTables} tables, {totalSeats} total seats</p>
                 </div>
-                <button onClick={() => { resetForm(); setShowForm(true); }}
+                <button onClick={() => canAdd('tables') ? (resetForm(), setShowForm(true)) : setShowUpgrade(true)}
                     className="flex items-center gap-2 px-4 py-2.5 bg-[#0E2A38] text-white rounded-lg hover:bg-[#1a3d4f] transition-colors text-sm font-medium">
                     <Plus size={16} /> Add Table
                 </button>
@@ -163,6 +167,7 @@ export default function Tables() {
                     })}
                 </div>
             )}
+            <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} resource="tables" plan={plan} currentCount={currentCount('tables')} limit={limitFor('tables')} />
         </div>
     );
 }

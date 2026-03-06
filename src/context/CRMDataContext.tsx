@@ -165,6 +165,8 @@ interface CRMContextType {
     updateRoom: (id: number, room: Partial<Room>) => Promise<void>;
     deleteRoom: (id: number) => Promise<void>;
     updatePageContent: (section: string, blockKey: string, content: Partial<PageContent>) => Promise<void>;
+    checkInGuest: (reservationId: string, roomId?: number) => Promise<void>;
+    checkOutGuest: (reservationId: string, roomId?: number) => Promise<void>;
 
     // Restaurant
     menuCategories: MenuCategory[];
@@ -338,7 +340,13 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     };
 
     const addReservation = async (reservation: Omit<Reservation, 'id'>) => {
-        const newId = `RES-${String(reservations.length + 1).padStart(3, '0')}`;
+        const maxNum = reservations
+            .filter(r => r.id.startsWith('RES-'))
+            .reduce((max, r) => {
+                const num = parseInt(r.id.replace(/[^0-9]/g, ''), 10);
+                return isNaN(num) ? max : Math.max(max, num);
+            }, 0);
+        const newId = `RES-${String(maxNum + 1).padStart(3, '0')}`;
         const newReservation = { ...reservation, id: newId };
         const { error } = await supabase.from('reservations').insert([{
             id: newId, guest_name: reservation.guest, guest_email: reservation.guest_email,
@@ -423,6 +431,32 @@ export function CRMProvider({ children }: { children: ReactNode }) {
                 return [...prev, { section, block_key: blockKey, ...content } as PageContent];
             });
         }
+    };
+
+    const checkInGuest = async (reservationId: string, roomId?: number) => {
+        const { error: resError } = await supabase.from('reservations').update({ status: 'CHECKED_IN' }).eq('id', reservationId);
+        if (resError) throw resError;
+
+        if (roomId) {
+            const { error: roomError } = await supabase.from('rooms').update({ status: 'Occupied' }).eq('id', roomId);
+            if (roomError) throw roomError;
+            setRooms(prev => prev.map(r => r.id === roomId ? { ...r, status: 'Occupied' } : r));
+        }
+
+        setReservations(prev => prev.map(r => r.id === reservationId ? { ...r, status: 'Checked In' } : r));
+    };
+
+    const checkOutGuest = async (reservationId: string, roomId?: number) => {
+        const { error: resError } = await supabase.from('reservations').update({ status: 'CHECKED_OUT', payment_status: 'PAID' }).eq('id', reservationId);
+        if (resError) throw resError;
+
+        if (roomId) {
+            const { error: roomError } = await supabase.from('rooms').update({ status: 'Available', cleaning_status: 'Dirty' }).eq('id', roomId);
+            if (roomError) throw roomError;
+            setRooms(prev => prev.map(r => r.id === roomId ? { ...r, status: 'Available', cleaning_status: 'Dirty' } : r));
+        }
+
+        setReservations(prev => prev.map(r => r.id === reservationId ? { ...r, status: 'Checked Out', payment: 'Paid' } : r));
     };
 
     // ==================== RESTAURANT CRUD ====================
@@ -552,6 +586,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
             addStaff, deleteStaff, addReservation, deleteReservation,
             updateStaff, updateReservation, updateCMSSetting,
             addRoom, updateRoom, deleteRoom, updatePageContent,
+            checkInGuest, checkOutGuest,
             // Restaurant
             menuCategories, menuItems, restaurantTables, foodOrders, inventoryItems,
             addMenuCategory, updateMenuCategory, deleteMenuCategory,

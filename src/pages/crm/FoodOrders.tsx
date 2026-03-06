@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useCRM, FoodOrder, FoodOrderItem } from '../../context/CRMDataContext';
 import { Plus, Clock, ChefHat, CheckCircle2, UtensilsCrossed, X, ShoppingCart, Phone, User, FileText, Ban } from 'lucide-react';
+import { usePlanLimits } from '../../lib/planLimits';
+import UpgradeModal from '../../components/crm/UpgradeModal';
 
 const STATUS_COLS = [
     { key: 'pending', label: 'Pending', color: 'bg-amber-500', lightBg: 'bg-amber-50', icon: Clock },
@@ -28,6 +30,8 @@ export default function FoodOrders() {
         foodOrders, menuItems, menuCategories, restaurantTables,
         addFoodOrder, updateFoodOrder, refreshFoodOrders,
     } = useCRM();
+    const { canAdd, limitFor, currentCount, plan } = usePlanLimits();
+    const [showUpgrade, setShowUpgrade] = useState(false);
 
     const [showNewOrder, setShowNewOrder] = useState(false);
     const [form, setForm] = useState<NewOrderForm>({ ...emptyForm });
@@ -135,7 +139,7 @@ export default function FoodOrders() {
                         Refresh
                     </button>
                     <button
-                        onClick={() => setShowNewOrder(true)}
+                        onClick={() => canAdd('food_orders') ? setShowNewOrder(true) : setShowUpgrade(true)}
                         className="flex items-center gap-2 px-4 py-2.5 bg-[#0E2A38] text-white rounded-lg hover:bg-[#1a3d4f] transition-colors text-sm font-medium"
                     >
                         <Plus size={16} /> New Order
@@ -186,8 +190,8 @@ export default function FoodOrders() {
                                         <div className="flex items-center justify-between">
                                             <span className="text-xs font-bold text-gray-900">#{order.id}</span>
                                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${order.order_type === 'dine_in' ? 'bg-blue-100 text-blue-700' :
-                                                    order.order_type === 'takeaway' ? 'bg-orange-100 text-orange-700' :
-                                                        'bg-purple-100 text-purple-700'
+                                                order.order_type === 'takeaway' ? 'bg-orange-100 text-orange-700' :
+                                                    'bg-purple-100 text-purple-700'
                                                 }`}>
                                                 {order.order_type === 'dine_in' ? 'Dine In' : order.order_type === 'takeaway' ? 'Takeaway' : 'Delivery'}
                                             </span>
@@ -361,6 +365,7 @@ export default function FoodOrders() {
                     </div>
                 </div>
             )}
+            <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} resource="food orders this month" plan={plan} currentCount={currentCount('food_orders')} limit={limitFor('food_orders')} />
         </div>
     );
 }

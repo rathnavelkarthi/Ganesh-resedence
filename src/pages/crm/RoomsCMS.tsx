@@ -5,10 +5,14 @@ import { useCRM, Room } from '../../context/CRMDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import { toast } from 'sonner';
+import { usePlanLimits } from '../../lib/planLimits';
+import UpgradeModal from '../../components/crm/UpgradeModal';
 
 export default function RoomsCMS() {
     const { rooms, addRoom, updateRoom, deleteRoom } = useCRM();
     const { tenant } = useAuth();
+    const { canAdd, limitFor, currentCount, plan } = usePlanLimits();
+    const [showUpgrade, setShowUpgrade] = useState(false);
 
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -136,7 +140,7 @@ export default function RoomsCMS() {
                     <p className="text-gray-500 mt-1">Add or modify the rooms available for booking.</p>
                 </div>
                 <button
-                    onClick={() => handleOpenModal()}
+                    onClick={() => canAdd('rooms') ? handleOpenModal() : setShowUpgrade(true)}
                     className="flex items-center gap-2 bg-[#C9A646] hover:bg-[#b5953f] text-white px-4 py-2 rounded-xl transition-colors shadow-sm font-semibold"
                 >
                     <Plus size={20} />
@@ -417,6 +421,7 @@ export default function RoomsCMS() {
                     </div>
                 )}
             </AnimatePresence>
+            <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} resource="rooms" plan={plan} currentCount={currentCount('rooms')} limit={limitFor('rooms')} />
         </div>
     );
 }

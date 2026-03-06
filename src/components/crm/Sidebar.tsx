@@ -74,6 +74,7 @@ const navItems: NavItem[] = [
   { name: 'Website Editor', path: '/admin/website-editor', icon: Globe, roles: ['SUPER_ADMIN', 'MANAGER'], businessTypes: ['hotel', 'restaurant', 'combined'] },
   { name: 'WhatsApp', path: '/admin/whatsapp', icon: MessageSquare, roles: ['SUPER_ADMIN', 'MANAGER'], businessTypes: ['hotel', 'restaurant', 'combined'] },
   { name: 'Staff Management', path: '/admin/staff', icon: UserCog, roles: ['SUPER_ADMIN'], businessTypes: ['hotel', 'restaurant', 'combined'] },
+  { name: 'Billing', path: '/admin/billing', icon: CreditCard, roles: ['SUPER_ADMIN'], businessTypes: ['hotel', 'restaurant', 'combined'] },
 ];
 
 interface SidebarProps {
@@ -242,7 +243,14 @@ export default function Sidebar({ onClose }: SidebarProps) {
               <img src={user.avatar} alt={user.name} className="w-10 h-10 rounded-full border border-white/20 shadow-sm" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-white truncate">{user.name}</p>
-                <p className="text-[10px] text-[#C9A646] uppercase tracking-widest truncate">{user.role.replace('_', ' ')}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-[10px] text-[#C9A646] uppercase tracking-widest truncate">{user.role.replace('_', ' ')}</p>
+                  <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${(tenant?.plan || 'starter') === 'starter' ? 'bg-gray-500/20 text-gray-300' :
+                      (tenant?.plan) === 'growth' ? 'bg-blue-500/20 text-blue-300' :
+                        (tenant?.plan) === 'pro' ? 'bg-[#C9A646]/20 text-[#C9A646]' :
+                          'bg-purple-500/20 text-purple-300'
+                    }`}>{tenant?.plan || 'starter'}</span>
+                </div>
               </div>
             </div>
             <button

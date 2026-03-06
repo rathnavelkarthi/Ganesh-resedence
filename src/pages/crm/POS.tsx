@@ -5,6 +5,8 @@ import {
     UtensilsCrossed, ReceiptText, ChevronRight, Check
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { usePlanLimits } from '../../lib/planLimits';
+import UpgradeModal from '../../components/crm/UpgradeModal';
 
 type CartItem = {
     menuItem: MenuItem;
@@ -14,6 +16,8 @@ type CartItem = {
 
 export default function POS() {
     const { menuCategories, menuItems, restaurantTables, addFoodOrder } = useCRM();
+    const { canAdd, limitFor, currentCount, plan } = usePlanLimits();
+    const [showUpgrade, setShowUpgrade] = useState(false);
 
     const [activeCategory, setActiveCategory] = useState<number | 'all'>('all');
     const [searchQuery, setSearchQuery] = useState('');
@@ -76,6 +80,7 @@ export default function POS() {
     // Checkout Process
     const handleCheckout = async () => {
         if (cart.length === 0) return toast.error("Cart is empty");
+        if (!canAdd('food_orders')) { setShowUpgrade(true); return; }
         // No longer strictly requiring a table for dine-in, as some restaurants just bring the bill to the customer without formal table tracking.
 
         setIsProcessing(true);
@@ -418,6 +423,7 @@ export default function POS() {
                     <p>Please come again</p>
                 </div>
             </div>
+            <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} resource="food orders this month" plan={plan} currentCount={currentCount('food_orders')} limit={limitFor('food_orders')} />
         </>
     );
 }

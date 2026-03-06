@@ -16,7 +16,12 @@
       "mcp__plugin_playwright_playwright__browser_navigate",
       "mcp__plugin_playwright_playwright__browser_wait_for",
       "Bash(curl:*)",
-      "mcp__plugin_playwright_playwright__browser_take_screenshot"
+      "mcp__plugin_playwright_playwright__browser_take_screenshot",
+      "WebFetch(domain:api.apify.com)",
+      "WebFetch(domain:www.esaystay.com)",
+      "Bash(node:*)",
+      "Bash(npm:*)",
+      "Bash(mv:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

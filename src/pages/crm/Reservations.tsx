@@ -4,11 +4,14 @@ import { useSearchParams } from 'react-router-dom';
 import { useCRM, Reservation } from '../../context/CRMDataContext';
 import InvoicePrintTemplate, { InvoiceData } from '../../components/crm/InvoicePrintTemplate';
 import { printInvoice } from '../../components/crm/invoiceUtils';
+import { usePlanLimits } from '../../lib/planLimits';
+import UpgradeModal from '../../components/crm/UpgradeModal';
 
-type StatusFilter = 'All' | 'Confirmed' | 'Checked Out' | 'Pending' | 'Cancelled';
+type StatusFilter = 'All' | 'Confirmed' | 'Checked In' | 'Checked Out' | 'Pending' | 'Cancelled';
 
 export default function Reservations() {
-  const { reservations, addReservation, updateReservation, deleteReservation } = useCRM();
+  const { reservations, rooms, addReservation, updateReservation, deleteReservation, checkInGuest, checkOutGuest } = useCRM();
+  const { canAdd, limitFor, currentCount, plan } = usePlanLimits();
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -16,6 +19,7 @@ export default function Reservations() {
   const [editingReservationId, setEditingReservationId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('All');
   const [billRes, setBillRes] = useState<Reservation | null>(null);
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
   useEffect(() => {
     if (searchParams.get('action') === 'new') {
@@ -31,7 +35,7 @@ export default function Reservations() {
     checkIn: '',
     checkOut: '',
     source: 'Direct',
-    status: 'Pending' as 'Confirmed' | 'Pending' | 'Cancelled' | 'Checked Out',
+    status: 'Pending' as 'Confirmed' | 'Checked In' | 'Pending' | 'Cancelled' | 'Checked Out',
     payment: 'Unpaid' as 'Paid' | 'Unpaid' | 'Partial' | 'Refunded',
   });
 
@@ -49,7 +53,7 @@ export default function Reservations() {
 
   // Count reservations by status for the filter tabs
   const statusCounts = useMemo(() => {
-    const counts = { All: reservations.length, Confirmed: 0, 'Checked Out': 0, Pending: 0, Cancelled: 0 };
+    const counts = { All: reservations.length, Confirmed: 0, 'Checked In': 0, 'Checked Out': 0, Pending: 0, Cancelled: 0 };
     reservations.forEach(r => {
       if (r.status in counts) counts[r.status as keyof typeof counts]++;
     });
@@ -88,7 +92,13 @@ export default function Reservations() {
 
   const handleCheckout = async (res: Reservation) => {
     if (!window.confirm(`Check out ${res.guest} from ${res.room}?`)) return;
-    await updateReservation(res.id, { status: 'Checked Out', payment: 'Paid' });
+    await checkOutGuest(res.id, res.room_id);
+    setActiveMenuId(null);
+  };
+
+  const handleCheckIn = async (res: Reservation) => {
+    if (!window.confirm(`Check in ${res.guest} to ${res.room}?`)) return;
+    await checkInGuest(res.id, res.room_id);
     setActiveMenuId(null);
   };
 
@@ -113,7 +123,7 @@ export default function Reservations() {
     if (!billRes) return;
     const data = buildInvoiceData(billRes);
     printInvoice(data);
-    await updateReservation(billRes.id, { status: 'Checked Out', payment: 'Paid' });
+    await checkOutGuest(billRes.id, billRes.room_id);
     setBillRes(null);
   };
 
@@ -148,11 +158,12 @@ export default function Reservations() {
     setActiveMenuId(null);
   };
 
-  const statusTabs: StatusFilter[] = ['All', 'Confirmed', 'Pending', 'Checked Out', 'Cancelled'];
+  const statusTabs: StatusFilter[] = ['All', 'Confirmed', 'Checked In', 'Pending', 'Checked Out', 'Cancelled'];
 
   const getStatusStyle = (status: string) => {
     switch (status) {
-      case 'Confirmed': return 'bg-green-100 text-green-800';
+      case 'Confirmed': return 'bg-emerald-100 text-emerald-800';
+      case 'Checked In': return 'bg-amber-100 text-amber-800';
       case 'Checked Out': return 'bg-blue-100 text-blue-800';
       case 'Pending': return 'bg-yellow-100 text-yellow-800';
       case 'Cancelled': return 'bg-red-100 text-red-800';
@@ -170,7 +181,7 @@ export default function Reservations() {
           <p className="text-gray-500 mt-1">Manage bookings, check-ins, and check-outs.</p>
         </div>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => canAdd('reservations') ? setIsModalOpen(true) : setShowUpgrade(true)}
           className="flex items-center gap-2 bg-[var(--color-ocean-600)] hover:bg-[var(--color-ocean-800)] text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm"
         >
           <Plus size={16} />
@@ -299,6 +310,19 @@ export default function Reservations() {
                           </button>
 
                           {res.status === 'Confirmed' && (
+                            <>
+                              <div className="border-t border-gray-100" />
+                              <button
+                                onClick={() => handleCheckIn(res)}
+                                className="w-full text-left px-4 py-2.5 text-sm text-[var(--color-ocean-800)] hover:bg-[var(--color-ocean-50)] transition-colors flex items-center gap-2 font-medium"
+                              >
+                                <LogOut size={14} className="text-[#C9A646] rotate-180" />
+                                Check In
+                              </button>
+                            </>
+                          )}
+
+                          {(res.status === 'Confirmed' || res.status === 'Checked In') && (
                             <>
                               <div className="border-t border-gray-100" />
                               <button
@@ -452,16 +476,18 @@ export default function Reservations() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Room Type</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Room</label>
                   <select
                     value={formData.room}
                     onChange={(e) => setFormData({ ...formData, room: e.target.value })}
                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium focus:border-[var(--color-ocean-500)] focus:ring-2 focus:ring-[var(--color-ocean-100)] outline-none transition-all"
                   >
-                    <option value="Executive Double AC">Executive Double AC</option>
-                    <option value="Triple Room AC">Triple Room AC</option>
-                    <option value="Four Occupancy Room">Four Occupancy Room</option>
-                    <option value="Six Bed AC Room">Six Bed AC Room</option>
+                    {rooms.map(r => (
+                      <option key={r.id} value={r.room_number ? `Room ${r.room_number} - ${r.name}` : r.name}>
+                        {r.room_number ? `Room ${r.room_number} - ${r.name}` : r.name}
+                      </option>
+                    ))}
+                    {rooms.length === 0 && <option value="">No rooms added yet</option>}
                   </select>
                 </div>
               </div>
@@ -513,6 +539,7 @@ export default function Reservations() {
                   >
                     <option value="Pending">Pending</option>
                     <option value="Confirmed">Confirmed</option>
+                    <option value="Checked In">Checked In</option>
                     <option value="Checked Out">Checked Out</option>
                     <option value="Cancelled">Cancelled</option>
                   </select>
@@ -558,6 +585,7 @@ export default function Reservations() {
           </div>
         </div>
       )}
+      <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} resource="reservations this month" plan={plan} currentCount={currentCount('reservations')} limit={limitFor('reservations')} />
     </div>
   );
 }

@@ -1,0 +1,23 @@
+{
+    "mcp": {
+        "inputs": [
+            {
+                "type": "promptString",
+                "id": "razorpay_token",
+                "description": "Razorpay Merchant Token (Base64 of key:secret)",
+                "password": true
+            }
+        ],
+        "servers": {
+            "razorpay": {
+                "command": "npx",
+                "args": [
+                    "mcp-remote",
+                    "https://mcp.razorpay.com/mcp",
+                    "--header",
+                    "Authorization: Basic ${input:razorpay_token}"
+                ]
+            }
+        }
+    }
+}

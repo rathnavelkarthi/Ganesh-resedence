@@ -5,7 +5,7 @@ import type { Room } from '../../context/CRMDataContext';
 import { toast } from 'sonner';
 
 export default function Rooms() {
-  const { rooms, updateRoom, reservations } = useCRM();
+  const { rooms, updateRoom, reservations, checkInGuest, checkOutGuest } = useCRM();
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredRooms = rooms.filter(room =>
@@ -13,18 +13,49 @@ export default function Rooms() {
     room.type.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Find the current guest for a room by checking active reservations
-  // whose dates overlap today and have a relevant status
-  const getRoomGuest = (roomId: number) => {
+  // Find the active reservation for a room for today
+  const getActiveReservation = (roomId: number) => {
     const today = new Date();
-    const activeRes = reservations.find(r => {
-      if (r.room_id !== roomId) return false;
-      if (r.status !== 'Confirmed' && r.status !== 'Pending') return false;
+    today.setHours(0, 0, 0, 0); // Normalize to start of day
+
+    return reservations.find(r => {
+      // Must match room name or ID (fallback since some old data might not have room_id)
+      const matchesRoom = r.room_id === roomId || rooms.find(room => room.id === roomId)?.type === r.room;
+      if (!matchesRoom) return false;
+
+      if (r.status !== 'Confirmed' && r.status !== 'Checked In' && r.status !== 'Pending') return false;
+
       const checkIn = new Date(r.checkIn);
       const checkOut = new Date(r.checkOut);
+      checkIn.setHours(0, 0, 0, 0);
+      checkOut.setHours(23, 59, 59, 999);
+
       return today >= checkIn && today <= checkOut;
     });
-    return activeRes ? activeRes.guest : null;
+  };
+
+  const handleCheckIn = async (reservationId: string) => {
+    if (!window.confirm("Check in this guest?")) return;
+    try {
+      const res = reservations.find(r => r.id === reservationId);
+      const room = rooms.find(r => r.id === res?.room_id || r.type === res?.room);
+      await checkInGuest(reservationId, room?.id);
+      toast.success("Guest checked in successfully");
+    } catch (error) {
+      toast.error("Failed to check in guest");
+    }
+  };
+
+  const handleCheckOut = async (reservationId: string) => {
+    if (!window.confirm("Check out this guest?")) return;
+    try {
+      const res = reservations.find(r => r.id === reservationId);
+      const room = rooms.find(r => r.id === res?.room_id || r.type === res?.room);
+      await checkOutGuest(reservationId, room?.id);
+      toast.success("Guest checked out successfully");
+    } catch (error) {
+      toast.error("Failed to check out guest");
+    }
   };
 
   const handleUpdateStatus = async (id: number, status: string) => {
@@ -89,17 +120,26 @@ export default function Rooms() {
             </thead>
             <tbody className="text-sm divide-y divide-gray-50">
               {filteredRooms.map((room) => {
-                const guestName = getRoomGuest(room.id);
+                const activeRes = getActiveReservation(room.id);
+                const guestName = activeRes ? activeRes.guest : null;
+
+                // Derive actual status
+                let displayStatus = room.status; // 'Available' or 'Maintenance'
+                if (activeRes && room.status !== 'Maintenance') {
+                  displayStatus = activeRes.status === 'Checked In' ? 'Occupied' : 'Reserved';
+                }
+
                 return (
                   <tr key={room.id} className="hover:bg-gray-50 transition-colors group">
                     <td className="p-4 font-bold text-gray-900 text-lg">{room.room_number || 'N/A'}</td>
                     <td className="p-4 text-gray-600 font-medium">{room.type}</td>
                     <td className="p-4">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${room.status === 'Available' ? 'bg-green-100 text-green-800' :
-                          room.status === 'Occupied' ? 'bg-blue-100 text-blue-800' :
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${displayStatus === 'Available' ? 'bg-green-100 text-green-800' :
+                        displayStatus === 'Occupied' ? 'bg-blue-100 text-blue-800' :
+                          displayStatus === 'Reserved' ? 'bg-amber-100 text-amber-800' :
                             'bg-red-100 text-red-800'
                         }`}>
-                        {room.status}
+                        {displayStatus}
                       </span>
                     </td>
                     <td className="p-4">
@@ -111,23 +151,23 @@ export default function Rooms() {
                     </td>
                     <td className="p-4 text-gray-600">
                       {guestName ? (
-                        <span className="font-medium text-[var(--color-ocean-900)]">{guestName}</span>
+                        <span className="font-medium text-[var(--color-ocean-900)]">{guestName} <span className="text-xs text-gray-400 ml-1">({activeRes?.id})</span></span>
                       ) : (
                         <span className="text-gray-400 italic">None</span>
                       )}
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {room.status === 'Available' && (
+                        {activeRes && activeRes.status !== 'Checked In' && (
                           <button
-                            onClick={() => handleUpdateStatus(room.id, 'Occupied')}
+                            onClick={() => handleCheckIn(activeRes.id)}
                             className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Check In">
                             <LogIn size={18} />
                           </button>
                         )}
-                        {room.status === 'Occupied' && (
+                        {activeRes && activeRes.status === 'Checked In' && (
                           <button
-                            onClick={() => handleUpdateStatus(room.id, 'Available')}
+                            onClick={() => handleCheckOut(activeRes.id)}
                             className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors" title="Check Out">
                             <LogOut size={18} />
                           </button>

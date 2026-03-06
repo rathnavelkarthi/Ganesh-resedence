@@ -324,13 +324,13 @@ export default function TenantSite() {
         return block && block[field] ? block[field] : null;
     };
 
-    const contactEmail = getContent('contact', 'email') || settings.contactEmail || '';
-    const contactPhone = getContent('contact', 'phone') || settings.contactPhone || '';
-    const contactAddress = getContent('contact', 'address') || settings.contactAddress || '';
+    const contactEmail = settings.contactEmail || getContent('contact', 'email') || '';
+    const contactPhone = settings.contactPhone || getContent('contact', 'phone') || '';
+    const contactAddress = settings.contactAddress || getContent('contact', 'address') || '';
     const googleMapsUrl = settings.googleMapsUrl || '';
-    const heroTitle = getContent('hero', 'title') || settings.heroTitle || tenant.business_name;
-    const heroSubtitle = getContent('hero', 'subtitle') || settings.heroSubtitle || 'Experience comfort and luxury';
-    const aboutText = getContent('about', 'body') || settings.aboutText || '';
+    const heroTitle = settings.heroTitle || getContent('hero', 'title') || tenant.business_name;
+    const heroSubtitle = settings.heroSubtitle || getContent('hero', 'subtitle') || 'Experience comfort and luxury';
+    const aboutText = settings.aboutText || getContent('about', 'body') || '';
 
     // Additional items that might be configurable inside pageContent
     const heroBtn = getContent('hero', 'button_text') || 'Book now';
@@ -860,9 +860,9 @@ export default function TenantSite() {
                     {/* Proximity Distance Badges */}
                     <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-4 mb-10 max-w-4xl mx-auto">
                         {[
-                            { icon: '📍', value: '600m', label: settings.locationStat1Label || 'from Beach' },
-                            { icon: '🚗', value: '2km', label: settings.locationStat2Label || 'from Town Center' },
-                            { icon: '✈️', value: '15 min', label: settings.locationStat3Label || 'from Airport' },
+                            { icon: '📍', value: settings.locationStat1Value || '600m', label: settings.locationStat1Label || 'from Beach' },
+                            { icon: '🚗', value: settings.locationStat2Value || '2km', label: settings.locationStat2Label || 'from Town Center' },
+                            { icon: '✈️', value: settings.locationStat3Value || '15 min', label: settings.locationStat3Label || 'from Airport' },
                         ].map((stat, i) => (
                             <div key={i} className="flex items-center justify-center gap-2 bg-gray-50 border border-gray-100 rounded-full px-5 py-2.5">
                                 <span className="text-lg">{stat.icon}</span>

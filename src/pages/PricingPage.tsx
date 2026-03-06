@@ -1,12 +1,19 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Shield, Zap, Receipt, Building2 } from 'lucide-react';
 import BillingToggle from '../components/pricing/BillingToggle';
 import PricingCard from '../components/pricing/PricingCard';
 import FAQAccordion from '../components/pricing/FAQAccordion';
+import { useAuth } from '../context/AuthContext';
+import { initiatePayment } from '../lib/razorpay';
+import { toast } from 'sonner';
 
 export default function PricingPage() {
     const [isYearly, setIsYearly] = useState(true);
+    const { user, tenant, refreshTenant } = useAuth();
+    const navigate = useNavigate();
+    const [loading, setLoading] = useState<string | null>(null);
 
     const starterPrice = "Free";
     const growthPrice = isYearly ? "₹23,999" : "₹2,499";
@@ -15,6 +22,28 @@ export default function PricingPage() {
     const proPeriod = isYearly ? "/ year" : "/ month";
     const enterprisePrice = isYearly ? "₹95,999" : "₹9,999";
     const enterprisePeriod = isYearly ? "/ year" : "/ month";
+
+    const handlePlanClick = async (planId: string) => {
+        if (!user || !tenant) {
+            navigate('/signup');
+            return;
+        }
+        if (planId === 'starter') {
+            navigate('/admin/billing');
+            return;
+        }
+        setLoading(planId);
+        const billingCycle = isYearly ? 'yearly' : 'monthly';
+        const result = await initiatePayment(planId, billingCycle as 'monthly' | 'yearly', tenant.id, user.email, tenant.business_name);
+        setLoading(null);
+        if (result.success) {
+            toast.success(`Upgraded to ${planId.charAt(0).toUpperCase() + planId.slice(1)}!`);
+            await refreshTenant();
+            navigate('/admin/billing');
+        } else if (result.error !== 'Payment cancelled') {
+            toast.error(result.error || 'Payment failed');
+        }
+    };
 
     return (
         <div className="bg-[#F8FAFC] min-h-screen pt-32 pb-24 relative overflow-hidden text-[#0E2A38]">
@@ -62,7 +91,8 @@ export default function PricingPage() {
                         isFree={true}
                         price={starterPrice}
                         description="Try HospitalityOS with zero commitment."
-                        ctaText="Start Free"
+                        ctaText={loading === 'starter' ? 'Loading...' : 'Start Free'}
+                        onCtaClick={() => handlePlanClick('starter')}
                         features={[
                             "Basic Booking Page",
                             "Up to 5 Rooms",
@@ -77,7 +107,8 @@ export default function PricingPage() {
                         price={growthPrice}
                         period={growthPeriod}
                         description="For independent hotels going digital."
-                        ctaText="Get Started"
+                        ctaText={loading === 'growth' ? 'Processing...' : 'Get Started'}
+                        onCtaClick={() => handlePlanClick('growth')}
                         features={[
                             "Everything in Starter, plus:",
                             "Custom Booking Website",
@@ -95,7 +126,8 @@ export default function PricingPage() {
                         price={proPrice}
                         period={proPeriod}
                         description="Complete hotel + restaurant platform."
-                        ctaText="Start Pro Plan"
+                        ctaText={loading === 'pro' ? 'Processing...' : 'Start Pro Plan'}
+                        onCtaClick={() => handlePlanClick('pro')}
                         features={[
                             "Everything in Growth, plus:",
                             "OTA Booking Sync",
@@ -112,7 +144,8 @@ export default function PricingPage() {
                         price={enterprisePrice}
                         period={enterprisePeriod}
                         description="For hotel groups and chains."
-                        ctaText="Contact Sales"
+                        ctaText={loading === 'enterprise' ? 'Processing...' : 'Contact Sales'}
+                        onCtaClick={() => handlePlanClick('enterprise')}
                         features={[
                             "Everything in Pro, plus:",
                             "Unlimited Rooms",

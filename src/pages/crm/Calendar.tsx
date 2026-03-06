@@ -29,7 +29,7 @@ type FilterState = {
 };
 
 export default function Calendar() {
-  const { reservations: rawReservations, rooms: crmRooms } = useCRM();
+  const { reservations: rawReservations, rooms: crmRooms, checkInGuest, checkOutGuest } = useCRM();
   const navigate = useNavigate();
 
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -546,17 +546,46 @@ export default function Calendar() {
               {/* Footer Actions */}
               <div className="p-6 border-t border-gray-100 bg-gray-50/50 flex gap-3">
                 <button
-                  onClick={() => toast.info(`Editing booking ${selectedBooking.id} for ${selectedBooking.guest}...`)}
+                  onClick={() => {
+                    navigate(`/admin/reservations?id=${selectedBooking.id}`);
+                    setSelectedBooking(null);
+                  }}
                   className="flex-1 px-4 py-3 bg-white border border-gray-200 text-gray-700 font-bold text-sm rounded-xl shadow-sm hover:bg-gray-50 transition-colors"
                 >
-                  Edit Booking
+                  Edit
                 </button>
-                <button
-                  onClick={() => toast.success(`Initiating Check Out for ${selectedBooking.guest}. Amount due: ₹${selectedBooking.amount.toLocaleString('en-IN')}`)}
-                  className="flex-1 px-4 py-3 bg-[#0E2A38] text-[#C9A646] border border-[#0E2A38] font-bold uppercase tracking-widest text-xs rounded-xl shadow-md hover:shadow-lg hover:bg-[#091b24] transition-all"
-                >
-                  Check Out
-                </button>
+
+                {selectedBooking.status !== 'Checked In' && selectedBooking.status !== 'Checked Out' && (
+                  <button
+                    onClick={async () => {
+                      if (window.confirm(`Check in ${selectedBooking.guest}?`)) {
+                        const room = crmRooms.find(r => r.room_number === selectedBooking.roomId || r.id === Number(selectedBooking.roomId));
+                        await checkInGuest(selectedBooking.id, room?.id);
+                        toast.success(`Checked in ${selectedBooking.guest}`);
+                        setSelectedBooking(null);
+                      }
+                    }}
+                    className="flex-1 px-4 py-3 bg-emerald-600 text-white font-bold uppercase tracking-widest text-xs rounded-xl shadow-md hover:shadow-lg hover:bg-emerald-700 transition-all border border-emerald-600"
+                  >
+                    Check In
+                  </button>
+                )}
+
+                {selectedBooking.status === 'Checked In' && (
+                  <button
+                    onClick={async () => {
+                      if (window.confirm(`Check out ${selectedBooking.guest}?`)) {
+                        const room = crmRooms.find(r => r.room_number === selectedBooking.roomId || r.id === Number(selectedBooking.roomId));
+                        await checkOutGuest(selectedBooking.id, room?.id);
+                        toast.success(`Checked out ${selectedBooking.guest}`);
+                        setSelectedBooking(null);
+                      }
+                    }}
+                    className="flex-1 px-4 py-3 bg-[#0E2A38] text-[#C9A646] border border-[#0E2A38] font-bold uppercase tracking-widest text-xs rounded-xl shadow-md hover:shadow-lg hover:bg-[#091b24] transition-all"
+                  >
+                    Check Out
+                  </button>
+                )}
               </div>
             </motion.div>
           </>

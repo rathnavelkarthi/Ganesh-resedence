@@ -29,6 +29,7 @@ import POS from '../../pages/crm/POS';
 import FoodOrders from '../../pages/crm/FoodOrders';
 import Tables from '../../pages/crm/Tables';
 import FoodInventory from '../../pages/crm/FoodInventory';
+import Billing from '../../pages/crm/Billing';
 
 export default function CRMApp() {
   const { user, loading } = useAuth();
@@ -178,6 +179,13 @@ export default function CRMApp() {
             <Route path="inventory" element={
               <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
                 <FoodInventory />
+              </RoleGuard>
+            } />
+
+            {/* Billing */}
+            <Route path="billing" element={
+              <RoleGuard allowedRoles={['SUPER_ADMIN']}>
+                <Billing />
               </RoleGuard>
             } />
 
