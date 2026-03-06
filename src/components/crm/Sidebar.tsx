@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { NavLink } from 'react-router-dom';
 import { useAuth, Role } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
+import UpgradeModal from './UpgradeModal';
 import {
   LayoutDashboard,
   CalendarDays,
@@ -94,6 +95,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState<BusinessType>('hotel');
   const [adding, setAdding] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
 
   // Close switcher on outside click
@@ -186,7 +188,14 @@ export default function Sidebar({ onClose }: SidebarProps) {
                 </div>
                 <div className="border-t border-white/5 p-2">
                   <button
-                    onClick={() => { setAddModalOpen(true); setSwitcherOpen(false); }}
+                    onClick={() => {
+                      if ((tenant?.plan === 'starter' || !tenant?.plan) && properties.length >= 1) {
+                        setShowUpgradeModal(true);
+                      } else {
+                        setAddModalOpen(true);
+                      }
+                      setSwitcherOpen(false);
+                    }}
                     className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-white/40 hover:text-white hover:bg-white/5 transition-colors"
                   >
                     <Plus size={14} />
@@ -246,9 +255,9 @@ export default function Sidebar({ onClose }: SidebarProps) {
                 <div className="flex items-center gap-2 mt-0.5">
                   <p className="text-[10px] text-[#C9A646] uppercase tracking-widest truncate">{user.role.replace('_', ' ')}</p>
                   <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${(tenant?.plan || 'starter') === 'starter' ? 'bg-gray-500/20 text-gray-300' :
-                      (tenant?.plan) === 'growth' ? 'bg-blue-500/20 text-blue-300' :
-                        (tenant?.plan) === 'pro' ? 'bg-[#C9A646]/20 text-[#C9A646]' :
-                          'bg-purple-500/20 text-purple-300'
+                    (tenant?.plan) === 'growth' ? 'bg-blue-500/20 text-blue-300' :
+                      (tenant?.plan) === 'pro' ? 'bg-[#C9A646]/20 text-[#C9A646]' :
+                        'bg-purple-500/20 text-purple-300'
                     }`}>{tenant?.plan || 'starter'}</span>
                 </div>
               </div>
@@ -272,6 +281,14 @@ export default function Sidebar({ onClose }: SidebarProps) {
         onClose={() => setAddModalOpen(false)}
         tenant={tenant}
         onAdd={addProperty}
+      />
+      <UpgradeModal
+        open={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        resource="properties"
+        plan={tenant?.plan || 'starter'}
+        currentCount={properties.length}
+        limit={1}
       />
     </>
   );
