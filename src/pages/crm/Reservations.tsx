@@ -244,7 +244,7 @@ export default function Reservations() {
               <tr className="bg-gray-50/50 border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wider">
                 <th className="p-4 font-semibold">Booking ID</th>
                 <th className="p-4 font-semibold">Guest Name</th>
-                <th className="p-4 font-semibold">Room Type</th>
+                <th className="p-4 font-semibold">Room</th>
                 <th className="p-4 font-semibold">Dates</th>
                 <th className="p-4 font-semibold">Source</th>
                 <th className="p-4 font-semibold">Status</th>
@@ -259,7 +259,13 @@ export default function Reservations() {
                     }`}>
                     <td className="p-4 font-medium text-gray-900">{res.id}</td>
                     <td className="p-4 font-semibold text-[var(--color-ocean-900)]">{res.guest}</td>
-                    <td className="p-4 text-gray-600">{res.room}</td>
+                    <td className="p-4 text-gray-600">
+                      {(() => {
+                        const linkedRoom = res.room_id ? rooms.find(r => r.id === res.room_id) : null;
+                        if (linkedRoom) return `Room ${linkedRoom.room_number} (${linkedRoom.type})`;
+                        return res.room || '—';
+                      })()}
+                    </td>
                     <td className="p-4 text-gray-600">
                       <div className="flex flex-col">
                         <span>{res.checkIn}</span>

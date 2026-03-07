@@ -10,16 +10,16 @@ interface Props {
 }
 
 export default function QuickCheckoutModal({ isOpen, onClose }: Props) {
-    const { reservations, updateReservation } = useCRM();
+    const { reservations, updateReservation, rooms } = useCRM();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedRes, setSelectedRes] = useState<Reservation | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [checkoutDone, setCheckoutDone] = useState(false);
 
-    // Filter to active stays: Confirmed reservations
+    // Filter to active stays: Confirmed OR already Checked In (not yet checked out)
     const activeStays = useMemo(() => {
         return reservations.filter(r =>
-            r.status === 'Confirmed' &&
+            (r.status === 'Confirmed' || r.status === 'Checked In') &&
             (r.guest.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 r.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 r.room.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -142,7 +142,7 @@ export default function QuickCheckoutModal({ isOpen, onClose }: Props) {
                                                     <div>
                                                         <p className="font-semibold text-gray-900 text-sm">{res.guest}</p>
                                                         <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                                                            <MapPin size={10} /> {res.room}
+                                                            <MapPin size={10} /> Room: {rooms.find(r => r.id === res.room_id)?.room_number || rooms.find(r => r.name === res.room || r.type === res.room)?.room_number || res.room}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -185,7 +185,7 @@ export default function QuickCheckoutModal({ isOpen, onClose }: Props) {
                                         <LogOut size={28} className="text-green-600" />
                                     </div>
                                     <h3 className="font-serif text-xl font-bold text-gray-900 mb-1">Checked Out</h3>
-                                    <p className="text-gray-500 text-sm">{selectedRes.guest} has been checked out from {selectedRes.room}.</p>
+                                    <p className="text-gray-500 text-sm">{selectedRes.guest} has been checked out from {rooms.find(r => r.id === selectedRes.room_id)?.room_number || rooms.find(r => r.name === selectedRes.room || r.type === selectedRes.room)?.room_number || selectedRes.room}.</p>
                                 </div>
                             ) : (
                                 <>
@@ -212,7 +212,7 @@ export default function QuickCheckoutModal({ isOpen, onClose }: Props) {
                                                 <MapPin size={14} className="text-gray-400 mt-0.5 shrink-0" />
                                                 <div>
                                                     <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Room</p>
-                                                    <p className="text-gray-900 font-medium">{selectedRes.room}</p>
+                                                    <p className="text-gray-900 font-medium">{rooms.find(r => r.id === selectedRes.room_id)?.room_number || rooms.find(r => r.name === selectedRes.room || r.type === selectedRes.room)?.room_number || selectedRes.room}</p>
                                                 </div>
                                             </div>
                                             <div className="flex items-start gap-2">

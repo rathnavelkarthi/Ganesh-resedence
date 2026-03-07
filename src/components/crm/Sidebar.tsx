@@ -27,6 +27,7 @@ import {
   Armchair,
   Package,
   ChevronDown,
+  ChevronRight,
   Check,
   Plus,
   Building2,
@@ -34,6 +35,7 @@ import {
 } from 'lucide-react';
 
 type BusinessType = 'hotel' | 'restaurant' | 'combined';
+type NavGroup = 'Overview' | 'Hotel' | 'Restaurant' | 'Finance' | 'Settings';
 
 interface NavItem {
   name: string;
@@ -41,41 +43,41 @@ interface NavItem {
   icon: React.ElementType;
   roles: Role[];
   businessTypes: BusinessType[];
+  group: NavGroup;
 }
 
 const navItems: NavItem[] = [
-  // Shared
-  { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard, roles: ['SUPER_ADMIN', 'MANAGER', 'RECEPTION', 'HOUSEKEEPING', 'ACCOUNTANT'], businessTypes: ['hotel', 'restaurant', 'combined'] },
+  // Overview
+  { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard, roles: ['SUPER_ADMIN', 'MANAGER', 'RECEPTION', 'HOUSEKEEPING', 'ACCOUNTANT'], businessTypes: ['hotel', 'restaurant', 'combined'], group: 'Overview' },
+  { name: 'Guests', path: '/admin/guests', icon: Users, roles: ['SUPER_ADMIN', 'MANAGER', 'RECEPTION'], businessTypes: ['hotel', 'restaurant', 'combined'], group: 'Overview' },
 
-  // Hotel-only
-  { name: 'Channel Manager', path: '/admin/channels', icon: Waypoints, roles: ['SUPER_ADMIN', 'MANAGER'], businessTypes: ['hotel', 'combined'] },
-  { name: 'Reservations', path: '/admin/reservations', icon: ListTodo, roles: ['SUPER_ADMIN', 'MANAGER', 'RECEPTION'], businessTypes: ['hotel', 'combined'] },
-  { name: 'Calendar View', path: '/admin/calendar', icon: CalendarDays, roles: ['SUPER_ADMIN', 'MANAGER', 'RECEPTION'], businessTypes: ['hotel', 'combined'] },
-  { name: 'Rooms', path: '/admin/rooms', icon: BedDouble, roles: ['SUPER_ADMIN', 'MANAGER', 'RECEPTION', 'HOUSEKEEPING'], businessTypes: ['hotel', 'combined'] },
+  // Hotel
+  { name: 'Channel Manager', path: '/admin/channels', icon: Waypoints, roles: ['SUPER_ADMIN', 'MANAGER'], businessTypes: ['hotel', 'combined'], group: 'Hotel' },
+  { name: 'Reservations', path: '/admin/reservations', icon: ListTodo, roles: ['SUPER_ADMIN', 'MANAGER', 'RECEPTION'], businessTypes: ['hotel', 'combined'], group: 'Hotel' },
+  { name: 'Calendar View', path: '/admin/calendar', icon: CalendarDays, roles: ['SUPER_ADMIN', 'MANAGER', 'RECEPTION'], businessTypes: ['hotel', 'combined'], group: 'Hotel' },
+  { name: 'Rooms', path: '/admin/rooms', icon: BedDouble, roles: ['SUPER_ADMIN', 'MANAGER', 'RECEPTION', 'HOUSEKEEPING'], businessTypes: ['hotel', 'combined'], group: 'Hotel' },
 
-  // Restaurant-only
-  { name: 'Point of Sale', path: '/admin/pos', icon: Calculator, roles: ['SUPER_ADMIN', 'MANAGER', 'RECEPTION'], businessTypes: ['restaurant', 'combined'] },
-  { name: 'Menu Manager', path: '/admin/menu', icon: UtensilsCrossed, roles: ['SUPER_ADMIN', 'MANAGER'], businessTypes: ['restaurant', 'combined'] },
-  { name: 'Food Orders', path: '/admin/food-orders', icon: ClipboardList, roles: ['SUPER_ADMIN', 'MANAGER', 'RECEPTION'], businessTypes: ['restaurant', 'combined'] },
-  { name: 'Tables', path: '/admin/tables', icon: Armchair, roles: ['SUPER_ADMIN', 'MANAGER', 'RECEPTION'], businessTypes: ['restaurant', 'combined'] },
-  { name: 'Inventory', path: '/admin/inventory', icon: Package, roles: ['SUPER_ADMIN', 'MANAGER'], businessTypes: ['restaurant', 'combined'] },
+  // Restaurant
+  { name: 'Server Orders', path: '/admin/server-orders', icon: ListTodo, roles: ['SUPER_ADMIN', 'MANAGER', 'SERVER'], businessTypes: ['restaurant', 'combined'], group: 'Restaurant' },
+  { name: 'Point of Sale', path: '/admin/pos', icon: Calculator, roles: ['SUPER_ADMIN', 'MANAGER', 'RECEPTION', 'SERVER'], businessTypes: ['restaurant', 'combined'], group: 'Restaurant' },
+  { name: 'Menu Manager', path: '/admin/menu', icon: UtensilsCrossed, roles: ['SUPER_ADMIN', 'MANAGER'], businessTypes: ['restaurant', 'combined'], group: 'Restaurant' },
+  { name: 'Food Orders', path: '/admin/food-orders', icon: ClipboardList, roles: ['SUPER_ADMIN', 'MANAGER', 'RECEPTION', 'SERVER'], businessTypes: ['restaurant', 'combined'], group: 'Restaurant' },
+  { name: 'Tables', path: '/admin/tables', icon: Armchair, roles: ['SUPER_ADMIN', 'MANAGER', 'RECEPTION', 'SERVER'], businessTypes: ['restaurant', 'combined'], group: 'Restaurant' },
+  { name: 'Inventory', path: '/admin/inventory', icon: Package, roles: ['SUPER_ADMIN', 'MANAGER'], businessTypes: ['restaurant', 'combined'], group: 'Restaurant' },
 
-  // Shared
-  { name: 'Guests', path: '/admin/guests', icon: Users, roles: ['SUPER_ADMIN', 'MANAGER', 'RECEPTION'], businessTypes: ['hotel', 'restaurant', 'combined'] },
-  { name: 'Payments', path: '/admin/payments', icon: CreditCard, roles: ['SUPER_ADMIN', 'ACCOUNTANT'], businessTypes: ['hotel', 'restaurant', 'combined'] },
-  { name: 'Invoices', path: '/admin/invoices', icon: FileText, roles: ['SUPER_ADMIN', 'RECEPTION', 'ACCOUNTANT'], businessTypes: ['hotel', 'restaurant', 'combined'] },
-  { name: 'Reports', path: '/admin/reports', icon: BarChart3, roles: ['SUPER_ADMIN', 'ACCOUNTANT'], businessTypes: ['hotel', 'restaurant', 'combined'] },
+  // Finance
+  { name: 'Payments', path: '/admin/payments', icon: CreditCard, roles: ['SUPER_ADMIN', 'ACCOUNTANT'], businessTypes: ['hotel', 'restaurant', 'combined'], group: 'Finance' },
+  { name: 'Invoices', path: '/admin/invoices', icon: FileText, roles: ['SUPER_ADMIN', 'RECEPTION', 'ACCOUNTANT'], businessTypes: ['hotel', 'restaurant', 'combined'], group: 'Finance' },
+  { name: 'Reports', path: '/admin/reports', icon: BarChart3, roles: ['SUPER_ADMIN', 'ACCOUNTANT'], businessTypes: ['hotel', 'restaurant', 'combined'], group: 'Finance' },
 
-  // CMS & Config — Hotel
-  { name: 'Rooms CMS', path: '/admin/rooms-cms', icon: Layers, roles: ['SUPER_ADMIN', 'MANAGER'], businessTypes: ['hotel', 'combined'] },
-  { name: 'Pricing Rules', path: '/admin/pricing', icon: Tag, roles: ['SUPER_ADMIN', 'MANAGER'], businessTypes: ['hotel', 'combined'] },
-  { name: 'Booking Settings', path: '/admin/booking-settings', icon: CalendarCheck, roles: ['SUPER_ADMIN', 'MANAGER'], businessTypes: ['hotel', 'combined'] },
-
-  // Shared CMS & Config
-  { name: 'Website Editor', path: '/admin/website-editor', icon: Globe, roles: ['SUPER_ADMIN', 'MANAGER'], businessTypes: ['hotel', 'restaurant', 'combined'] },
-  { name: 'WhatsApp', path: '/admin/whatsapp', icon: MessageSquare, roles: ['SUPER_ADMIN', 'MANAGER'], businessTypes: ['hotel', 'restaurant', 'combined'] },
-  { name: 'Staff Management', path: '/admin/staff', icon: UserCog, roles: ['SUPER_ADMIN'], businessTypes: ['hotel', 'restaurant', 'combined'] },
-  { name: 'Billing', path: '/admin/billing', icon: CreditCard, roles: ['SUPER_ADMIN'], businessTypes: ['hotel', 'restaurant', 'combined'] },
+  // Settings
+  { name: 'Website Editor', path: '/admin/website-editor', icon: Globe, roles: ['SUPER_ADMIN', 'MANAGER'], businessTypes: ['hotel', 'restaurant', 'combined'], group: 'Settings' },
+  { name: 'Rooms CMS', path: '/admin/rooms-cms', icon: Layers, roles: ['SUPER_ADMIN', 'MANAGER'], businessTypes: ['hotel', 'combined'], group: 'Settings' },
+  { name: 'Pricing Rules', path: '/admin/pricing', icon: Tag, roles: ['SUPER_ADMIN', 'MANAGER'], businessTypes: ['hotel', 'combined'], group: 'Settings' },
+  { name: 'Booking Settings', path: '/admin/booking-settings', icon: CalendarCheck, roles: ['SUPER_ADMIN', 'MANAGER'], businessTypes: ['hotel', 'combined'], group: 'Settings' },
+  { name: 'WhatsApp', path: '/admin/whatsapp', icon: MessageSquare, roles: ['SUPER_ADMIN', 'MANAGER'], businessTypes: ['hotel', 'restaurant', 'combined'], group: 'Settings' },
+  { name: 'Staff Management', path: '/admin/staff', icon: UserCog, roles: ['SUPER_ADMIN'], businessTypes: ['hotel', 'restaurant', 'combined'], group: 'Settings' },
+  { name: 'Billing', path: '/admin/billing', icon: CreditCard, roles: ['SUPER_ADMIN'], businessTypes: ['hotel', 'restaurant', 'combined'], group: 'Settings' },
 ];
 
 interface SidebarProps {
@@ -98,6 +100,21 @@ export default function Sidebar({ onClose }: SidebarProps) {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
 
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
+    Overview: true,
+    Hotel: true,
+    Restaurant: true,
+    Finance: true,
+    Settings: false
+  });
+
+  const toggleGroup = (group: string) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [group]: !prev[group]
+    }));
+  };
+
   // Close switcher on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -116,6 +133,16 @@ export default function Sidebar({ onClose }: SidebarProps) {
   const filteredNavItems = navItems.filter(item =>
     hasPermission(item.roles) && item.businessTypes.includes(businessType as BusinessType)
   );
+
+  // Group filtered items
+  const groupedItems = filteredNavItems.reduce((acc, item) => {
+    if (!acc[item.group]) acc[item.group] = [];
+    acc[item.group].push(item);
+    return acc;
+  }, {} as Record<string, NavItem[]>);
+
+  // Define group order
+  const groupOrder: NavGroup[] = ['Overview', 'Hotel', 'Restaurant', 'Finance', 'Settings'];
 
   const handleAddProperty = async () => {
     if (!newName.trim()) return;
@@ -213,36 +240,70 @@ export default function Sidebar({ onClose }: SidebarProps) {
           </button>
         )}
 
-        <nav className="flex-1 overflow-y-auto px-4 py-2 space-y-2 custom-scrollbar relative">
-          {filteredNavItems.map((item) => (
-            <NavLink
-              key={item.name}
-              to={item.path}
-              onClick={onClose}
-              className={({ isActive }) =>
-                `flex items-center gap-4 px-4 py-3 rounded-lg font-medium transition-all duration-300 relative group overflow-hidden ${isActive
-                  ? 'text-white bg-white/5 shadow-inner'
-                  : 'text-white/50 hover:bg-white/5 hover:text-white/90'
-                }`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  {isActive && (
+        <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-4 custom-scrollbar relative">
+          {groupOrder.map((groupName) => {
+            const itemsInGroup = groupedItems[groupName];
+            if (!itemsInGroup || itemsInGroup.length === 0) return null;
+
+            const isExpanded = expandedGroups[groupName];
+
+            return (
+              <div key={groupName} className="space-y-1 block">
+                <button
+                  onClick={() => toggleGroup(groupName)}
+                  className="w-full flex items-center justify-between px-3 py-1.5 text-xs font-bold text-white/30 uppercase tracking-[0.1em] hover:text-white/60 transition-colors"
+                >
+                  {groupName}
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}`}
+                  />
+                </button>
+
+                <AnimatePresence initial={false}>
+                  {isExpanded && (
                     <motion.div
-                      layoutId="active-sidebar-indicator"
-                      className="absolute left-0 top-1/4 bottom-1/4 w-[3px] bg-[#C9A646] rounded-r-lg shadow-[0_0_12px_rgba(201,166,70,0.8)]"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                    />
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden space-y-1 block"
+                    >
+                      {itemsInGroup.map((item) => (
+                        <NavLink
+                          key={item.name}
+                          to={item.path}
+                          onClick={onClose}
+                          className={({ isActive }) =>
+                            `flex items-center gap-3 px-3 py-2.5 mx-1 rounded-lg font-medium transition-all duration-200 relative group overflow-hidden ${isActive
+                              ? 'text-white bg-white/10 shadow-inner'
+                              : 'text-white/50 hover:bg-white/5 hover:text-white/90'
+                            }`
+                          }
+                        >
+                          {({ isActive }) => (
+                            <>
+                              {isActive && (
+                                <motion.div
+                                  layoutId="active-sidebar-indicator"
+                                  className="absolute left-0 top-1/4 bottom-1/4 w-[3px] bg-[#C9A646] rounded-r-lg shadow-[0_0_12px_rgba(201,166,70,0.8)]"
+                                  initial={{ opacity: 0 }}
+                                  animate={{ opacity: 1 }}
+                                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                                />
+                              )}
+                              <item.icon size={16} className={`transition-colors duration-200 ${isActive ? 'text-[#C9A646]' : 'text-white/40 group-hover:text-white/80'}`} />
+                              <span className="text-[13px] tracking-wide">{item.name}</span>
+                            </>
+                          )}
+                        </NavLink>
+                      ))}
+                    </motion.div>
                   )}
-                  <item.icon size={18} className={`transition-colors duration-300 ${isActive ? 'text-[#C9A646]' : 'text-white/40 group-hover:text-white/80'}`} />
-                  <span className="text-sm tracking-wide">{item.name}</span>
-                </>
-              )}
-            </NavLink>
-          ))}
+                </AnimatePresence>
+              </div>
+            );
+          })}
         </nav>
 
         {/* User Card */}

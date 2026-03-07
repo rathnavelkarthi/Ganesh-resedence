@@ -7,6 +7,7 @@ import RoleGuard from './RoleGuard';
 
 // Hotel pages
 import Dashboard from '../../pages/crm/Dashboard';
+import RestaurantDashboard from '../../pages/crm/RestaurantDashboard';
 import ChannelManager from '../../pages/crm/ChannelManager';
 import Reservations from '../../pages/crm/Reservations';
 import Calendar from '../../pages/crm/Calendar';
@@ -30,9 +31,10 @@ import FoodOrders from '../../pages/crm/FoodOrders';
 import Tables from '../../pages/crm/Tables';
 import FoodInventory from '../../pages/crm/FoodInventory';
 import Billing from '../../pages/crm/Billing';
+import ServerOrders from '../../pages/crm/ServerOrders';
 
 export default function CRMApp() {
-  const { user, loading } = useAuth();
+  const { user, tenant, loading } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
 
@@ -55,6 +57,8 @@ export default function CRMApp() {
     return <Navigate to="/admin/login" replace />;
   }
 
+  const isRestaurantOnly = tenant?.business_type === 'restaurant';
+
   return (
     <div className="flex h-screen bg-gradient-to-b from-[#F8F9FB] to-[#EEF1F5] overflow-hidden font-sans text-gray-900 relative">
 
@@ -76,7 +80,12 @@ export default function CRMApp() {
         <Topbar onMenuClick={() => setIsSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <Routes>
-            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="dashboard" element={isRestaurantOnly ? <RestaurantDashboard /> : <Dashboard />} />
+            <Route path="server-orders" element={
+              <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER', 'SERVER']}>
+                <ServerOrders />
+              </RoleGuard>
+            } />
 
             {/* Hotel routes */}
             <Route path="channels" element={
@@ -157,7 +166,7 @@ export default function CRMApp() {
 
             {/* Restaurant routes */}
             <Route path="pos" element={
-              <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER', 'RECEPTION']}>
+              <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER', 'RECEPTION', 'SERVER']}>
                 <POS />
               </RoleGuard>
             } />
@@ -167,12 +176,12 @@ export default function CRMApp() {
               </RoleGuard>
             } />
             <Route path="food-orders" element={
-              <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER', 'RECEPTION']}>
+              <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER', 'RECEPTION', 'SERVER']}>
                 <FoodOrders />
               </RoleGuard>
             } />
             <Route path="tables" element={
-              <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER', 'RECEPTION']}>
+              <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER', 'RECEPTION', 'SERVER']}>
                 <Tables />
               </RoleGuard>
             } />

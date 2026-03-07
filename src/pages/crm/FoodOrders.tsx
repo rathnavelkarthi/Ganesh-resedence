@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useCRM, FoodOrder, FoodOrderItem } from '../../context/CRMDataContext';
 import { Plus, Clock, ChefHat, CheckCircle2, UtensilsCrossed, X, ShoppingCart, Phone, User, FileText, Ban } from 'lucide-react';
+import { toast } from 'sonner';
 import { usePlanLimits } from '../../lib/planLimits';
 import UpgradeModal from '../../components/crm/UpgradeModal';
 
@@ -8,7 +9,9 @@ const STATUS_COLS = [
     { key: 'pending', label: 'Pending', color: 'bg-amber-500', lightBg: 'bg-amber-50', icon: Clock },
     { key: 'preparing', label: 'Preparing', color: 'bg-blue-500', lightBg: 'bg-blue-50', icon: ChefHat },
     { key: 'ready', label: 'Ready', color: 'bg-green-500', lightBg: 'bg-green-50', icon: CheckCircle2 },
-    { key: 'served', label: 'Served', color: 'bg-gray-400', lightBg: 'bg-gray-50', icon: UtensilsCrossed },
+    { key: 'served', label: 'Served', color: 'bg-purple-500', lightBg: 'bg-purple-50', icon: UtensilsCrossed },
+    { key: 'bill_requested', label: 'Bill Requested', color: 'bg-orange-500', lightBg: 'bg-orange-50', icon: FileText },
+    { key: 'billed', label: 'Billed', color: 'bg-emerald-500', lightBg: 'bg-emerald-50', icon: CheckCircle2 },
 ] as const;
 
 type NewOrderForm = {
@@ -28,7 +31,7 @@ const emptyForm: NewOrderForm = {
 export default function FoodOrders() {
     const {
         foodOrders, menuItems, menuCategories, restaurantTables,
-        addFoodOrder, updateFoodOrder, refreshFoodOrders,
+        addFoodOrder, updateFoodOrderStatus, refreshFoodOrders,
     } = useCRM();
     const { canAdd, limitFor, currentCount, plan } = usePlanLimits();
     const [showUpgrade, setShowUpgrade] = useState(false);
@@ -45,8 +48,8 @@ export default function FoodOrders() {
     const ordersByStatus = (status: string) =>
         filteredOrders.filter(o => o.status === status);
 
-    const moveOrder = async (order: FoodOrder, newStatus: FoodOrder['status']) => {
-        await updateFoodOrder(order.id, { status: newStatus });
+    const moveOrder = async (orderId: number, newStatus: FoodOrder['status']) => {
+        await updateFoodOrderStatus(orderId, newStatus);
     };
 
     const addItemToOrder = (menuItemId: number) => {
@@ -119,7 +122,7 @@ export default function FoodOrders() {
         return d === new Date().toDateString();
     });
     const todayRevenue = todayOrders.reduce((s, o) => s + (o.total_amount || 0), 0);
-    const activeOrders = foodOrders.filter(o => ['pending', 'preparing', 'ready'].includes(o.status)).length;
+    const activeOrders = foodOrders.filter(o => ['pending', 'preparing', 'ready', 'bill_requested'].includes(o.status)).length;
 
     const formatTime = (ts: string) => {
         const d = new Date(ts);
@@ -173,12 +176,12 @@ export default function FoodOrders() {
             </div>
 
             {/* Kanban Board */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin">
                 {STATUS_COLS.map(col => {
                     const orders = ordersByStatus(col.key);
                     const Icon = col.icon;
                     return (
-                        <div key={col.key} className="space-y-3">
+                        <div key={col.key} className="flex-shrink-0 w-80 space-y-3">
                             <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${col.lightBg}`}>
                                 <Icon size={16} />
                                 <span className="text-sm font-semibold">{col.label}</span>
@@ -213,18 +216,25 @@ export default function FoodOrders() {
                                         <div className="flex gap-1.5 pt-1">
                                             {col.key === 'pending' && (
                                                 <>
-                                                    <button onClick={() => moveOrder(order, 'preparing')} className="flex-1 text-[11px] py-1.5 bg-blue-500 text-white rounded-md hover:bg-blue-600 font-medium">Start</button>
-                                                    <button onClick={() => moveOrder(order, 'cancelled')} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md"><Ban size={14} /></button>
+                                                    <button onClick={() => moveOrder(order.id, 'preparing')} className="flex-1 text-[11px] py-1.5 bg-blue-500 text-white rounded-md hover:bg-blue-600 font-medium">Start</button>
+                                                    <button onClick={() => moveOrder(order.id, 'cancelled')} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md"><Ban size={14} /></button>
                                                 </>
                                             )}
                                             {col.key === 'preparing' && (
-                                                <button onClick={() => moveOrder(order, 'ready')} className="flex-1 text-[11px] py-1.5 bg-green-500 text-white rounded-md hover:bg-green-600 font-medium">Mark Ready</button>
+                                                <button onClick={() => moveOrder(order.id, 'ready')} className="flex-1 text-[11px] py-1.5 bg-green-500 text-white rounded-md hover:bg-green-600 font-medium">Mark Ready</button>
                                             )}
                                             {col.key === 'ready' && (
-                                                <button onClick={() => moveOrder(order, 'served')} className="flex-1 text-[11px] py-1.5 bg-gray-700 text-white rounded-md hover:bg-gray-800 font-medium">Mark Served</button>
+                                                <button onClick={() => moveOrder(order.id, 'served')} className="flex-1 text-[11px] py-1.5 bg-gray-700 text-white rounded-md hover:bg-gray-800 font-medium">Mark Served</button>
                                             )}
-                                            {col.key === 'served' && order.payment_status === 'unpaid' && (
-                                                <button onClick={() => updateFoodOrder(order.id, { payment_status: 'paid' })} className="flex-1 text-[11px] py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium">Mark Paid</button>
+                                            {col.key === 'served' && (
+                                                <button onClick={() => moveOrder(order.id, 'bill_requested')} className="flex-1 text-[11px] py-1.5 bg-orange-500 text-white rounded-md hover:bg-orange-600 font-medium">Request Bill</button>
+                                            )}
+                                            {col.key === 'bill_requested' && (
+                                                <button onClick={() => {
+                                                    moveOrder(order.id, 'billed');
+                                                    // Actual print would need a dedicated print component or window.print logic
+                                                    toast.success("Printing bill...");
+                                                }} className="flex-1 text-[11px] py-1.5 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 font-medium">Print & Finalize</button>
                                             )}
                                         </div>
                                     </div>

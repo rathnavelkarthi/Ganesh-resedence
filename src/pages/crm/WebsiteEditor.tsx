@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import {
     Eye, Save, Upload, Trash2, Plus, GripVertical, ChevronDown, ChevronUp,
     Image as ImageIcon, Type, MapPin, Phone, Mail, Star, Quote, Globe,
-    EyeOff, ExternalLink, Loader2, Check, Sparkles, X, UtensilsCrossed
+    EyeOff, ExternalLink, Loader2, Check, Sparkles, X, UtensilsCrossed, Clock, Camera
 } from 'lucide-react';
 
 // --- Types ---
@@ -19,6 +19,12 @@ type EditorRoom = {
     id: number; name: string; type: string; description: string;
     price_per_night: number; max_occupancy: number; amenities: string[]; images: string[];
     show_on_website: boolean;
+};
+type EditorMenuItem = {
+    id: number; name: string; price: number; image_url: string | null; is_veg: boolean; is_chef_special: boolean;
+};
+type GalleryImage = {
+    id?: number; image_url: string; caption: string; sort_order: number; tenant_id?: string;
 };
 
 // --- Section panel wrapper ---
@@ -123,6 +129,9 @@ export default function WebsiteEditor() {
     const [uploading, setUploading] = useState('');
     const [hasChanges, setHasChanges] = useState(false);
     const [previewDevice, setPreviewDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+    // Restaurant-specific state
+    const [menuItemsList, setMenuItemsList] = useState<EditorMenuItem[]>([]);
+    const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
 
     // Load tenant data
     useEffect(() => {
@@ -162,6 +171,22 @@ export default function WebsiteEditor() {
                 .from('rooms').select('id, name, type, description, price_per_night, max_occupancy, amenities, images, show_on_website')
                 .eq('tenant_id', tenant.id).order('price_per_night', { ascending: true });
             if (roomsData) setRooms(roomsData);
+        }
+
+        // Load menu items (restaurant/combined only) for chef specials toggle
+        if (bType === 'restaurant' || bType === 'combined') {
+            const { data: menuData } = await supabase
+                .from('menu_items').select('id, name, price, image_url, is_veg, is_chef_special')
+                .eq('tenant_id', tenant.id).eq('is_available', true).order('sort_order');
+            if (menuData) setMenuItemsList(menuData);
+        }
+
+        // Load gallery images
+        if (bType === 'restaurant' || bType === 'combined') {
+            const { data: galleryData } = await supabase
+                .from('gallery_images').select('*')
+                .eq('tenant_id', tenant.id).order('sort_order');
+            if (galleryData) setGalleryImages(galleryData);
         }
     };
 
@@ -235,6 +260,36 @@ export default function WebsiteEditor() {
         setHasChanges(true);
     };
 
+    // Toggle chef special
+    const toggleChefSpecial = (itemId: number) => {
+        setMenuItemsList(prev => prev.map(m => m.id === itemId ? { ...m, is_chef_special: !m.is_chef_special } : m));
+        setHasChanges(true);
+    };
+
+    // Upload gallery image
+    const handleGalleryUpload = async (file: File) => {
+        if (!tenant?.id) return;
+        setUploading('gallery');
+        const url = await uploadImage(file, 'gallery');
+        if (url) {
+            const newImg: GalleryImage = { image_url: url, caption: '', sort_order: galleryImages.length, tenant_id: tenant.id };
+            // Save to DB immediately
+            const { data } = await supabase.from('gallery_images').insert(newImg).select().single();
+            if (data) setGalleryImages(prev => [...prev, data]);
+            setHasChanges(true);
+        }
+        setUploading('');
+    };
+
+    // Delete gallery image
+    const deleteGalleryImage = async (img: GalleryImage) => {
+        if (img.id) {
+            await supabase.from('gallery_images').delete().eq('id', img.id);
+        }
+        setGalleryImages(prev => prev.filter(g => g.id !== img.id));
+        setHasChanges(true);
+    };
+
     // Save all changes
     const handleSave = async () => {
         if (!tenant?.id) return;
@@ -245,7 +300,7 @@ export default function WebsiteEditor() {
             for (const [key, value] of Object.entries(settings)) {
                 await supabase.from('settings').upsert(
                     { setting_key: key, setting_value: value, tenant_id: tenant.id },
-                    { onConflict: 'setting_key' }
+                    { onConflict: 'tenant_id,setting_key' }
                 );
             }
 
@@ -277,6 +332,13 @@ export default function WebsiteEditor() {
                 await supabase.from('rooms').update({
                     show_on_website: room.show_on_website,
                 }).eq('id', room.id);
+            }
+
+            // Save chef specials toggles
+            for (const item of menuItemsList) {
+                await supabase.from('menu_items').update({
+                    is_chef_special: item.is_chef_special,
+                }).eq('id', item.id);
             }
 
             // Refresh preview
@@ -460,6 +522,149 @@ export default function WebsiteEditor() {
                             </SectionPanel>
                         )}
 
+                        {/* RESTAURANT SETTINGS (Restaurant/Combined only) */}
+                        {(tenant?.business_type === 'restaurant' || tenant?.business_type === 'combined') && (
+                            <SectionPanel title="Restaurant settings" icon={Clock} isOpen={!!openSections.restaurantSettings} onToggle={() => toggleOpen('restaurantSettings')}
+                                isVisible={true} onToggleVisibility={() => { }}>
+                                <div className="space-y-4">
+                                    {/* Booking Mode */}
+                                    <div>
+                                        <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Table booking method</label>
+                                        <div className="space-y-2">
+                                            {[
+                                                { value: 'whatsapp', label: 'WhatsApp', desc: 'Opens WhatsApp with prefilled message' },
+                                                { value: 'builtin', label: 'Built-in form', desc: 'Reservation form on your website' },
+                                                { value: 'external', label: 'External link', desc: 'Redirect to Zomato, Dineout, etc.' },
+                                            ].map(opt => (
+                                                <label key={opt.value}
+                                                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${settings.bookingMode === opt.value || (!settings.bookingMode && opt.value === 'whatsapp') ? 'border-[#0E2A38] bg-[#0E2A38]/5' : 'border-gray-100 hover:border-gray-200'}`}>
+                                                    <input type="radio" name="bookingMode" value={opt.value}
+                                                        checked={settings.bookingMode === opt.value || (!settings.bookingMode && opt.value === 'whatsapp')}
+                                                        onChange={() => updateSetting('bookingMode', opt.value)}
+                                                        className="mt-0.5" />
+                                                    <div>
+                                                        <p className="text-sm font-semibold text-gray-900">{opt.label}</p>
+                                                        <p className="text-[11px] text-gray-400">{opt.desc}</p>
+                                                    </div>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* External URL (shown when mode = external) */}
+                                    {settings.bookingMode === 'external' && (
+                                        <EditorInput label="External booking URL" value={settings.externalBookingUrl || ''} onChange={v => updateSetting('externalBookingUrl', v)} placeholder="https://zomato.com/your-restaurant/book" />
+                                    )}
+
+                                    {/* Operating Hours */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <EditorInput label="Opening time" value={settings.operatingHoursOpen || ''} onChange={v => updateSetting('operatingHoursOpen', v)} placeholder="12:00 PM" />
+                                        <EditorInput label="Closing time" value={settings.operatingHoursClose || ''} onChange={v => updateSetting('operatingHoursClose', v)} placeholder="11:00 PM" />
+                                    </div>
+
+                                    {/* Price Range */}
+                                    <div>
+                                        <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Price range</label>
+                                        <div className="flex gap-2">
+                                            {['₹', '₹₹', '₹₹₹', '₹₹₹₹'].map(range => (
+                                                <button key={range} type="button"
+                                                    onClick={() => updateSetting('priceRange', range)}
+                                                    className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${(settings.priceRange || '₹₹') === range ? 'bg-[#0E2A38] text-white' : 'bg-gray-50 text-gray-500 border border-gray-100 hover:border-gray-200'}`}>
+                                                    {range}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Cuisine Type */}
+                                    <EditorInput label="Cuisine type" value={settings.cuisineType || ''} onChange={v => updateSetting('cuisineType', v)} placeholder="South Indian Coastal" />
+                                </div>
+                            </SectionPanel>
+                        )}
+
+                        {/* CHEF'S SPECIALS (Restaurant/Combined only) */}
+                        {(tenant?.business_type === 'restaurant' || tenant?.business_type === 'combined') && menuItemsList.length > 0 && (
+                            <SectionPanel title="Chef's specials" icon={Star} isOpen={!!openSections.chefSpecials} onToggle={() => toggleOpen('chefSpecials')}
+                                isVisible={true} onToggleVisibility={() => { }}>
+                                <div className="space-y-3">
+                                    <p className="text-xs text-gray-500 leading-relaxed">
+                                        Toggle the items you want to highlight as chef's specials on your website.
+                                    </p>
+                                    {menuItemsList.map(item => (
+                                        <div key={item.id} className={`rounded-lg border transition-all ${item.is_chef_special ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}>
+                                            <div className="flex items-center gap-3 p-2.5">
+                                                <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-gray-100">
+                                                    {item.image_url ? (
+                                                        <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center">
+                                                            <span className="text-base">{item.is_veg ? '🥬' : '🍗'}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <h4 className="text-xs font-bold text-gray-900 truncate">{item.name}</h4>
+                                                    <span className="text-[10px] text-gray-400">₹{item.price}</span>
+                                                </div>
+                                                <button
+                                                    onClick={() => toggleChefSpecial(item.id)}
+                                                    className={`w-10 h-6 rounded-full transition-colors relative shrink-0 ${item.is_chef_special ? 'bg-amber-500' : 'bg-gray-300'}`}>
+                                                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform shadow-sm ${item.is_chef_special ? 'left-5' : 'left-1'}`} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <div className="bg-amber-50/50 border border-amber-100 rounded-lg p-2.5 flex items-start gap-2">
+                                        <Star size={12} className="text-amber-500 mt-0.5 shrink-0" />
+                                        <p className="text-[11px] text-amber-700 leading-relaxed">
+                                            {menuItemsList.filter(m => m.is_chef_special).length} of {menuItemsList.length} items marked as specials (max 6 shown on site).
+                                        </p>
+                                    </div>
+                                </div>
+                            </SectionPanel>
+                        )}
+
+                        {/* GALLERY (Restaurant/Combined only) */}
+                        {(tenant?.business_type === 'restaurant' || tenant?.business_type === 'combined') && (
+                            <SectionPanel title="Gallery" icon={Camera} isOpen={!!openSections.gallery} onToggle={() => toggleOpen('gallery')}
+                                isVisible={true} onToggleVisibility={() => { }}>
+                                <div className="space-y-3">
+                                    <p className="text-xs text-gray-500 leading-relaxed">
+                                        Upload photos of your food, interior, and ambience to showcase on your website.
+                                    </p>
+                                    {/* Upload button */}
+                                    <label className="w-full flex items-center justify-center gap-2 py-3 border border-dashed border-gray-300 rounded-lg text-xs text-gray-500 hover:border-[#0E2A38] hover:text-[#0E2A38] transition-colors cursor-pointer">
+                                        {uploading === 'gallery' ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                                        {uploading === 'gallery' ? 'Uploading...' : 'Upload photo'}
+                                        <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleGalleryUpload(e.target.files[0])} />
+                                    </label>
+                                    {/* Gallery grid */}
+                                    {galleryImages.length > 0 && (
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {galleryImages.map((img) => (
+                                                <div key={img.id} className="relative group rounded-lg overflow-hidden aspect-square bg-gray-100">
+                                                    <img src={img.image_url} alt={img.caption || ''} className="w-full h-full object-cover" />
+                                                    <button
+                                                        onClick={() => deleteGalleryImage(img)}
+                                                        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
+                                                        <X size={12} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {galleryImages.length > 0 && (
+                                        <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-2.5 flex items-start gap-2">
+                                            <Camera size={12} className="text-blue-400 mt-0.5 shrink-0" />
+                                            <p className="text-[11px] text-blue-600 leading-relaxed">
+                                                {galleryImages.length} photo{galleryImages.length !== 1 ? 's' : ''} in gallery. Photos appear in a masonry grid on your site.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </SectionPanel>
+                        )}
+
                         {/* TESTIMONIALS */}
                         <SectionPanel title="Reviews & testimonials" icon={Quote} isOpen={!!openSections.testimonials} onToggle={() => toggleOpen('testimonials')}
                             isVisible={visibility.testimonials} onToggleVisibility={() => toggleVis('testimonials')}>
@@ -504,9 +709,19 @@ export default function WebsiteEditor() {
 
                         {/* CONTACT & LOCATION */}
                         <SectionPanel title="Contact & Location" icon={Phone} isOpen={!!openSections.contact} onToggle={() => toggleOpen('contact')}
-                            isVisible={visibility.contact} onToggleVisibility={() => toggleVis('contact')}>
+                            isVisible={visibility.contact !== false} onToggleVisibility={() => toggleVis('contact')}>
                             <div className="space-y-6">
                                 <div>
+                                    <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Property Settings</h4>
+                                    <div className="space-y-4">
+                                        <EditorInput label="Property Public name" value={settings.hotelName || ''} onChange={v => updateSetting('hotelName', v)} placeholder={tenant?.business_name || 'Your Hotel Name'} />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <EditorInput label="GST Rate (%)" value={settings.gstRate || ''} onChange={v => updateSetting('gstRate', v)} placeholder="18" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="border-t border-gray-100 pt-5">
                                     <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Contact Details</h4>
                                     <div className="space-y-4">
                                         <EditorInput label="Phone" value={settings.contactPhone || ''} onChange={v => updateSetting('contactPhone', v)} placeholder="+91 98765 43210" />
@@ -545,7 +760,8 @@ export default function WebsiteEditor() {
                                         className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0E2A38]/10 focus:border-[#0E2A38]/30 outline-none transition-all"
                                     />
                                     {settings.googleMapsUrl && (
-                                        <a href={settings.googleMapsUrl} target="_blank" rel="noopener noreferrer"
+                                        <a href={settings.googleMapsUrl.startsWith('http') ? settings.googleMapsUrl : `https://www.google.com/maps/search/${encodeURIComponent(settings.googleMapsUrl)}`}
+                                            target="_blank" rel="noopener noreferrer"
                                             className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-[#0E2A38] hover:underline">
                                             <MapPin size={10} /> Preview on Google Maps
                                         </a>

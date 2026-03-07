@@ -46,14 +46,26 @@ export function generateSubdomain(businessName: string): string {
 }
 
 /** Map DB reservation status to UI status. */
-export function mapReservationStatus(dbStatus: string | null | undefined): 'Confirmed' | 'Pending' | 'Cancelled' | 'Checked Out' {
-  const statusMap: Record<string, 'Confirmed' | 'Pending' | 'Cancelled' | 'Checked Out'> = {
+export function mapReservationStatus(dbStatus: string | null | undefined): 'Confirmed' | 'Pending' | 'Cancelled' | 'Checked In' | 'Checked Out' {
+  const statusMap: Record<string, 'Confirmed' | 'Pending' | 'Cancelled' | 'Checked In' | 'Checked Out'> = {
     'CONFIRMED': 'Confirmed',
     'PENDING': 'Pending',
     'CANCELLED': 'Cancelled',
+    'CHECKED_IN': 'Checked In',
     'CHECKED_OUT': 'Checked Out',
   };
-  return statusMap[dbStatus?.toUpperCase() ?? ''] || 'Pending';
+  const mapped = statusMap[dbStatus?.toUpperCase() ?? ''] || 'Pending';
+  console.log('booking.ts: mapping status', dbStatus, 'to', mapped);
+  return mapped;
+}
+
+/** Map UI reservation status back to DB format. */
+export function mapUIToDBStatus(uiStatus: string | undefined | null): string {
+  if (!uiStatus) return 'PENDING';
+  const status = uiStatus.toUpperCase().trim();
+  if (status === 'CHECKED IN') return 'CHECKED_IN';
+  if (status === 'CHECKED OUT') return 'CHECKED_OUT';
+  return status;
 }
 
 /** Map DB payment status to UI payment status. */

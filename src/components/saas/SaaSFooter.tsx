@@ -1,10 +1,20 @@
 import { Link } from 'react-router-dom';
 
-const footerLinks = {
-    Product: ['Features', 'Pricing', 'Dashboard', 'Integrations', 'API'],
-    Company: ['About', 'Blog', 'Careers', 'Contact'],
-    Resources: ['Documentation', 'Help Center', 'Changelog', 'Status'],
-    Legal: ['Privacy Policy', 'Terms of Service', 'Security'],
+type FooterLink = { label: string; href: string; isRoute?: boolean };
+
+const footerLinks: Record<string, FooterLink[]> = {
+    Product: [
+        { label: 'Features', href: '/#features' },
+        { label: 'Pricing', href: '/pricing', isRoute: true },
+        { label: 'How It Works', href: '/#how-it-works' },
+    ],
+    Company: [
+        { label: 'Contact', href: 'mailto:hello@easystay.com' },
+    ],
+    Legal: [
+        { label: 'Privacy Policy', href: '/privacy' },
+        { label: 'Terms of Service', href: '/terms' },
+    ],
 };
 
 export default function SaaSFooter() {
@@ -17,10 +27,10 @@ export default function SaaSFooter() {
                     <div className="col-span-2 md:col-span-1">
                         <Link to="/" className="flex items-center gap-2 mb-4">
                             <div className="w-7 h-7 bg-accent rounded-lg flex items-center justify-center">
-                                <span className="text-white font-bold text-xs">H</span>
+                                <span className="text-white font-bold text-xs">E</span>
                             </div>
                             <span className="text-base font-bold text-background tracking-tight">
-                                Hospitality<span className="text-accent">OS</span>
+                                Easy<span className="text-accent">Stay</span>
                             </span>
                         </Link>
                         <p className="text-xs text-background/25 leading-relaxed max-w-[200px]">
@@ -34,13 +44,22 @@ export default function SaaSFooter() {
                             <p className="text-[10px] uppercase tracking-widest font-semibold text-background/30 mb-4">{category}</p>
                             <ul className="space-y-2.5">
                                 {links.map((link) => (
-                                    <li key={link}>
-                                        <a
-                                            href="#"
-                                            className="text-xs text-background/40 hover:text-background/70 transition-colors duration-200"
-                                        >
-                                            {link}
-                                        </a>
+                                    <li key={link.label}>
+                                        {link.isRoute ? (
+                                            <Link
+                                                to={link.href}
+                                                className="text-xs text-background/40 hover:text-background/70 transition-colors duration-200"
+                                            >
+                                                {link.label}
+                                            </Link>
+                                        ) : (
+                                            <a
+                                                href={link.href}
+                                                className="text-xs text-background/40 hover:text-background/70 transition-colors duration-200"
+                                            >
+                                                {link.label}
+                                            </a>
+                                        )}
                                     </li>
                                 ))}
                             </ul>
@@ -51,7 +70,7 @@ export default function SaaSFooter() {
                 {/* Bottom */}
                 <div className="pt-8 border-t border-background/[0.06] flex flex-col md:flex-row justify-between items-center gap-4">
                     <p className="text-[10px] text-background/20 tracking-wider">
-                        &copy; {new Date().getFullYear()} HospitalityOS. All rights reserved.
+                        &copy; {new Date().getFullYear()} EasyStay. All rights reserved.
                     </p>
                     <Link
                         to="/admin/login"

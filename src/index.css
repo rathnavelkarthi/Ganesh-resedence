@@ -1,9 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Playfair+Display:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Playfair Display", ui-serif, Georgia, Cambria, serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
 
   --color-primary: #0E2A38;
   --color-primary-hover: #0a1f29;
@@ -60,7 +60,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-serif);
 }
 
@@ -79,14 +84,28 @@ h1, h2, h3, h4, h5, h6 {
   body * {
     visibility: hidden !important;
   }
+
   .invoice-print-area,
-  .invoice-print-area * {
+  .invoice-print-area *,
+  .pos-print-area,
+  .pos-print-area * {
     visibility: visible !important;
   }
-  .invoice-print-area {
+
+  .invoice-print-area,
+  .pos-print-area {
     position: absolute;
     left: 0;
     top: 0;
+  }
+
+  .invoice-print-area {
     width: 100%;
+  }
+
+  .pos-print-area {
+    width: 80mm;
+    /* Standard thermal receipt width */
+    margin: 0 auto;
   }
 }

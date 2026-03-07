@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { MessageCircle, CheckCircle, XCircle, Loader2, ExternalLink, Zap, Wifi, WifiOff, QrCode, Smartphone, RefreshCw, Unplug } from 'lucide-react';
+import { MessageCircle, CheckCircle, XCircle, Loader2, ExternalLink, Zap, Wifi, WifiOff, QrCode, Smartphone, RefreshCw, Unplug, Clock, Send, AlertCircle, Calendar } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 
@@ -17,6 +17,22 @@ interface WhatsAppConfig {
 }
 
 type ConnectionState = 'idle' | 'creating' | 'scanning' | 'connected' | 'error';
+
+interface MessageStat {
+    total: number;
+    sent: number;
+    pending: number;
+    failed: number;
+}
+
+interface MessageLog {
+    id: number;
+    phone: string;
+    message_type: string;
+    sent: boolean;
+    error: string | null;
+    created_at: string;
+}
 
 const DEFAULT_TEMPLATES = {
     confirmation: `✅ *Booking Confirmed!*\n\nDear {guest_name}, your stay is confirmed.\n\n🏠 Room: {room_type}\n📅 Check-in: {check_in} (after 12:00 PM)\n📅 Check-out: {check_out} (before 11:00 AM)\n🔖 Booking ID: {booking_id}\n\nFor assistance: {hotel_phone}`,
@@ -54,6 +70,12 @@ export default function WhatsAppSettings() {
     const [testError, setTestError] = useState('');
     const [loading, setLoading] = useState(true);
     const [isDisconnecting, setDisconnecting] = useState(false);
+
+    // Dashboard Stats State
+    const [stats, setStats] = useState<MessageStat>({ total: 0, sent: 0, pending: 0, failed: 0 });
+    const [recentMessages, setRecentMessages] = useState<MessageLog[]>([]);
+    const [statsLoading, setStatsLoading] = useState(false);
+
     const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const mountedRef = useRef(true);
 
@@ -121,6 +143,48 @@ export default function WhatsAppSettings() {
             // Silently handle - will retry on next poll
         }
     }, [tenant?.id]);
+
+    const fetchDashboardStats = useCallback(async () => {
+        if (!tenant?.id) return;
+        setStatsLoading(true);
+        try {
+            // Get stats
+            const { data: allMessages, error: statsError } = await supabase
+                .from('whatsapp_scheduled_messages')
+                .select('sent, error')
+                .eq('tenant_id', tenant.id);
+
+            if (!statsError && allMessages) {
+                const total = allMessages.length;
+                const sent = allMessages.filter(m => m.sent).length;
+                const failed = allMessages.filter(m => m.error).length;
+                const pending = total - sent - failed; // simplistic pending calc
+                setStats({ total, sent, pending, failed });
+            }
+
+            // Get recent logs
+            const { data: logsData, error: logsError } = await supabase
+                .from('whatsapp_scheduled_messages')
+                .select('id, phone, message_type, sent, error, created_at')
+                .eq('tenant_id', tenant.id)
+                .order('created_at', { ascending: false })
+                .limit(5);
+
+            if (!logsError && logsData) {
+                setRecentMessages(logsData as MessageLog[]);
+            }
+        } catch (err) {
+            console.error("Error fetching whatsapp stats", err);
+        } finally {
+            if (mountedRef.current) setStatsLoading(false);
+        }
+    }, [tenant?.id]);
+
+    useEffect(() => {
+        if (connectionState === 'connected') {
+            fetchDashboardStats();
+        }
+    }, [connectionState, fetchDashboardStats]);
 
     const stopPolling = () => {
         if (pollingRef.current) {
@@ -448,6 +512,104 @@ export default function WhatsAppSettings() {
                                 <span key={i} className={`px-2.5 py-1 rounded-lg text-xs font-medium ${item.color}`}>{item.label}</span>
                             ))}
                         </div>
+                    </div>
+
+                    {/* Dashboard Metrics */}
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">Message Dashboard</h4>
+                            <button
+                                onClick={fetchDashboardStats}
+                                className="text-gray-400 hover:text-green-600 transition-colors"
+                                title="Refresh stats"
+                            >
+                                <RefreshCw size={16} className={statsLoading ? "animate-spin" : ""} />
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm flex flex-col">
+                                <span className="text-xs text-gray-500 font-medium mb-1">Total Msgs</span>
+                                <div className="flex items-center gap-2">
+                                    <MessageCircle className="text-gray-400" size={20} />
+                                    <span className="text-2xl font-bold text-gray-900">{stats.total}</span>
+                                </div>
+                            </div>
+                            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex flex-col">
+                                <span className="text-xs text-emerald-600 font-medium mb-1">Sent</span>
+                                <div className="flex items-center gap-2">
+                                    <Send className="text-emerald-500" size={20} />
+                                    <span className="text-2xl font-bold text-emerald-900">{stats.sent}</span>
+                                </div>
+                            </div>
+                            <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex flex-col">
+                                <span className="text-xs text-amber-600 font-medium mb-1">Pending</span>
+                                <div className="flex items-center gap-2">
+                                    <Clock className="text-amber-500" size={20} />
+                                    <span className="text-2xl font-bold text-amber-900">{stats.pending}</span>
+                                </div>
+                            </div>
+                            <div className="bg-rose-50 border border-rose-100 rounded-xl p-4 flex flex-col">
+                                <span className="text-xs text-rose-600 font-medium mb-1">Failed</span>
+                                <div className="flex items-center gap-2">
+                                    <AlertCircle className="text-rose-500" size={20} />
+                                    <span className="text-2xl font-bold text-rose-900">{stats.failed}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Recent Messages Log */}
+                        {recentMessages.length > 0 && (
+                            <div className="mt-4 bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm">
+                                <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
+                                    <h5 className="text-xs font-semibold text-gray-600">Recent Activity</h5>
+                                </div>
+                                <div className="divide-y divide-gray-50">
+                                    {recentMessages.map((msg) => (
+                                        <div key={msg.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-gray-50/50 transition-colors">
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${msg.message_type === 'confirmation' ? 'bg-blue-100 text-blue-700' :
+                                                            msg.message_type === 'reminder' ? 'bg-amber-100 text-amber-700' :
+                                                                'bg-purple-100 text-purple-700'
+                                                        }`}>
+                                                        {msg.message_type}
+                                                    </span>
+                                                    <span className="text-sm font-medium text-gray-900">{msg.phone}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                                                    <Calendar size={12} />
+                                                    {new Date(msg.created_at).toLocaleString(undefined, {
+                                                        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                                                    })}
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center justify-end">
+                                                {msg.sent ? (
+                                                    <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
+                                                        <CheckCircle size={12} /> Delivered
+                                                    </span>
+                                                ) : msg.error ? (
+                                                    <div className="flex flex-col items-end">
+                                                        <span className="flex items-center gap-1 text-xs font-medium text-rose-600 bg-rose-50 px-2 py-1 rounded mb-1">
+                                                            <XCircle size={12} /> Failed
+                                                        </span>
+                                                        <span className="text-[10px] text-rose-400 max-w-[150px] truncate" title={msg.error}>
+                                                            {msg.error}
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded">
+                                                        <Clock size={12} /> Pending
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Google Review URL */}

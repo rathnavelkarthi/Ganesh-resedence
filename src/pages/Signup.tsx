@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'motion/react';
 import { Building, UtensilsCrossed, Layers, ArrowRight, Check } from 'lucide-react';
@@ -96,6 +97,16 @@ export default function Signup() {
 
     return (
         <div className="min-h-screen w-full flex flex-col md:flex-row bg-[#0C2230] relative overflow-hidden font-sans">
+            <Helmet>
+                <title>Sign Up Free - EasyStay | Hotel & Restaurant Management</title>
+                <meta name="description" content="Create your free EasyStay account. Set up your hotel or restaurant in minutes with bookings, POS, website, and analytics — all in one platform." />
+                <link rel="canonical" href="https://easystay.com/signup" />
+                <meta property="og:title" content="Sign Up Free - EasyStay" />
+                <meta property="og:description" content="Create your free account. Set up your hotel or restaurant in minutes." />
+                <meta property="og:url" content="https://easystay.com/signup" />
+                <meta property="og:type" content="website" />
+                <meta name="twitter:card" content="summary" />
+            </Helmet>
             {/* Background */}
             <div className="absolute inset-0 bg-gradient-to-br from-[#0E2A38] to-[#071A24] z-0" />
             <div className="absolute left-0 md:left-[5%] top-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#0E2A38] rounded-full blur-[100px] opacity-40 pointer-events-none z-0" />

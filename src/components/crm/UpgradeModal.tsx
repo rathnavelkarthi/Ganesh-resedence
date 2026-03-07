@@ -1,7 +1,11 @@
+import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Crown, ArrowRight, Sparkles } from 'lucide-react';
+import { X, Crown, ArrowRight, Sparkles, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { initiatePayment } from '../../lib/razorpay';
+import { toast } from 'sonner';
 
 const NEXT_PLAN: Record<string, string> = {
     starter: 'growth',
@@ -20,9 +24,45 @@ interface UpgradeModalProps {
 
 export default function UpgradeModal({ open, onClose, resource, plan, currentCount, limit }: UpgradeModalProps) {
     const navigate = useNavigate();
+    const { tenant, user } = useAuth();
+    const [loading, setLoading] = useState(false);
+
     const nextPlan = NEXT_PLAN[plan] || 'growth';
 
     if (!open) return null;
+
+    const handleUpgrade = async () => {
+        if (!tenant || !user) {
+            toast.error('Authentication required');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const result = await initiatePayment(
+                nextPlan,
+                'monthly', // Default billing cycle for quick upgrades from the modal
+                tenant.id,
+                user.email || '',
+                tenant.business_name,
+                20 // Pass 20 for the 20% discount!
+            );
+
+            if (result.success) {
+                toast.success(`Successfully upgraded to ${nextPlan.charAt(0).toUpperCase() + nextPlan.slice(1)} plan!`);
+                onClose();
+                window.location.reload(); // Refresh to apply new limits
+            } else {
+                if (result.error !== 'Payment cancelled by user') {
+                    toast.error(result.error || 'Payment failed');
+                }
+            }
+        } catch (error) {
+            toast.error('An unexpected error occurred');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return createPortal(
         <AnimatePresence>
@@ -88,10 +128,12 @@ export default function UpgradeModal({ open, onClose, resource, plan, currentCou
                             Maybe later
                         </button>
                         <button
-                            onClick={() => { onClose(); navigate(`/admin/billing?upgrade=${nextPlan}&discount=20`); }}
-                            className="flex-1 py-3 rounded-xl text-sm font-semibold text-white bg-[#0E2A38] hover:bg-[#1a3d4f] transition-colors flex items-center justify-center gap-2"
+                            onClick={handleUpgrade}
+                            disabled={loading}
+                            className="flex-1 py-3 rounded-xl text-sm font-semibold text-white bg-[#0E2A38] hover:bg-[#1a3d4f] transition-colors flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                         >
-                            Upgrade <ArrowRight size={14} />
+                            {loading ? <Loader2 size={14} className="animate-spin" /> : 'Upgrade'}
+                            {!loading && <ArrowRight size={14} />}
                         </button>
                     </div>
                 </motion.div>

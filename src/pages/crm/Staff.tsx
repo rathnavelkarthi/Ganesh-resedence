@@ -3,6 +3,7 @@ import { Search, Plus, MoreVertical, Shield, Mail, Phone, X } from 'lucide-react
 import { useCRM, StaffMember } from '../../context/CRMDataContext';
 import { usePlanLimits } from '../../lib/planLimits';
 import UpgradeModal from '../../components/crm/UpgradeModal';
+import { toast } from 'sonner';
 
 export default function Staff() {
   const { staff, addStaff, updateStaff, deleteStaff } = useCRM();
@@ -13,13 +14,13 @@ export default function Staff() {
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
 
-  // Form State
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    role: 'RECEPTION',
+    role: 'RECEPTION' as 'RECEPTION' | 'MANAGER' | 'HOUSEKEEPING' | 'ACCOUNTANT' | 'SUPER_ADMIN' | 'SERVER',
     status: 'Active' as 'Active' | 'Inactive',
+    password: '',
   });
 
   const filteredStaff = staff.filter(member =>
@@ -28,22 +29,34 @@ export default function Staff() {
     member.role.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.phone) {
-      alert("Please fill in all required fields.");
+    if (!formData.name || !formData.email || !formData.phone || (!editingStaffId && !formData.password)) {
+      toast.error("Please fill in all required fields.");
       return;
     }
 
-    if (editingStaffId) {
-      updateStaff(editingStaffId, formData);
-    } else {
-      addStaff(formData);
-    }
+    try {
+      if (editingStaffId) {
+        await toast.promise(updateStaff(editingStaffId, formData), {
+          loading: 'Updating staff...',
+          success: 'Staff updated successfully',
+          error: (err) => err.message || 'Failed to update staff'
+        });
+      } else {
+        await toast.promise(addStaff(formData), {
+          loading: 'Creating staff member...',
+          success: 'Staff created successfully',
+          error: (err) => err.message || 'Failed to create staff'
+        });
+      }
 
-    setIsModalOpen(false);
-    setEditingStaffId(null);
-    setFormData({ name: '', email: '', phone: '', role: 'RECEPTION', status: 'Active' });
+      setIsModalOpen(false);
+      setEditingStaffId(null);
+      setFormData({ name: '', email: '', phone: '', role: 'RECEPTION', status: 'Active', password: '' });
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   const openEditModal = (member: StaffMember) => {
@@ -54,6 +67,7 @@ export default function Staff() {
       phone: member.phone,
       role: member.role,
       status: member.status,
+      password: '', // Don't populate password on edit
     });
     setIsModalOpen(true);
     setActiveMenuId(null);
@@ -248,6 +262,20 @@ export default function Staff() {
                 </div>
               </div>
 
+              {!editingStaffId && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:border-[var(--color-ocean-500)] focus:ring-2 focus:ring-[var(--color-ocean-100)] outline-none transition-all"
+                    placeholder="Enter a secure password for this staff member"
+                  />
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Role</label>
@@ -258,6 +286,7 @@ export default function Staff() {
                   >
                     <option value="RECEPTION">Reception</option>
                     <option value="MANAGER">Manager</option>
+                    <option value="SERVER">Server</option>
                     <option value="HOUSEKEEPING">Housekeeping</option>
                     <option value="ACCOUNTANT">Accountant</option>
                     <option value="SUPER_ADMIN">Super Admin</option>
@@ -282,7 +311,7 @@ export default function Staff() {
                   onClick={() => {
                     setIsModalOpen(false);
                     setEditingStaffId(null);
-                    setFormData({ name: '', email: '', phone: '', role: 'RECEPTION', status: 'Active' });
+                    setFormData({ name: '', email: '', phone: '', role: 'RECEPTION', status: 'Active', password: '' });
                   }}
                   className="px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
                 >

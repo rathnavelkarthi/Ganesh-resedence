@@ -1,20 +1,16 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useCRM } from '../../context/CRMDataContext';
-import { isDemoAccount } from '../../lib/booking';
 import { UtensilsCrossed as UtensilsIcon, ClipboardList, Armchair } from 'lucide-react';
 import { motion } from 'motion/react';
 import {
   IndianRupee,
-  Users,
-  BedDouble,
-  CalendarCheck,
-  TrendingUp,
-  AlertCircle,
-  Clock,
-  CheckCircle2,
-  ArrowRight,
-  BarChart3
+  BarChart3,
+  Search,
+  MoreHorizontal,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
 } from 'lucide-react';
 import {
   BarChart,
@@ -24,179 +20,141 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell
 } from 'recharts';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Badge } from '../../components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../../components/ui/table';
 
-// --- Demo account hardcoded showcase data ---
-const DEMO_REVENUE_DATA = [
-  { name: 'Jan', total: 400000 },
-  { name: 'Feb', total: 300000 },
-  { name: 'Mar', total: 500000 },
-  { name: 'Apr', total: 450000 },
-  { name: 'May', total: 600000 },
-  { name: 'Jun', total: 550000 },
-];
-
-const DEMO_OCCUPANCY_DATA = [
-  { name: 'Mon', rate: 65 },
-  { name: 'Tue', rate: 70 },
-  { name: 'Wed', rate: 68 },
-  { name: 'Thu', rate: 85 },
-  { name: 'Fri', rate: 95 },
-  { name: 'Sat', rate: 100 },
-  { name: 'Sun', rate: 90 },
-];
-
-const DEMO_SOURCE_DATA = [
-  { name: 'Direct', value: 45 },
-  { name: 'Agoda', value: 25 },
-  { name: 'MakeMyTrip', value: 20 },
-  { name: 'Goibibo', value: 10 },
-];
-
-const COLORS = ['#0E2A38', '#C9A646', '#10b981', '#64748b'];
+// ─── Constants ────────────────────────────────────────────────────────────────
+const CHART_COLORS = ['#0E2A38', '#C9A646', '#10b981', '#64748b', '#f59e0b', '#6366f1'];
+const OCC_COLORS = { available: '#c8e6c9', occupied: '#4caf50', notReady: '#e0e0e0' };
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1
-    }
-  }
+  show: { opacity: 1, transition: { staggerChildren: 0.08 } },
 };
-
 const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } }
+  hidden: { opacity: 0, y: 16 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } },
 };
 
-function formatINRDisplay(amount: number): string {
-  if (amount === 0) return '₹0';
+function formatINR(amount: number): string {
+  if (!amount) return '₹0';
   return `₹${amount.toLocaleString('en-IN')}`;
 }
 
-export default function Dashboard() {
-  const { user, tenant } = useAuth();
-  const { reservations, rooms, foodOrders, restaurantTables, menuItems } = useCRM();
-  const [dateFilter, setDateFilter] = useState('Yearly');
-  const isDemo = isDemoAccount(user?.email);
+function timeAgo(dateStr: string | undefined): string {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins} minute${mins !== 1 ? 's' : ''} ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hour${hrs !== 1 ? 's' : ''} ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days} day${days !== 1 ? 's' : ''} ago`;
+}
 
-  const isHotel = tenant?.business_type === 'hotel' || tenant?.business_type === 'combined';
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+export default function Dashboard() {
+  const { tenant } = useAuth();
+  const { reservations, rooms, foodOrders, restaurantTables, menuItems } = useCRM();
+
+  const isHotel = !tenant?.business_type || tenant?.business_type === 'hotel' || tenant?.business_type === 'combined';
   const isRestaurant = tenant?.business_type === 'restaurant' || tenant?.business_type === 'combined';
 
-  // Compute real dashboard data from reservations and rooms
-  const dashboardData = useMemo(() => {
-    if (isDemo) {
-      return {
-        totalRevenue: '₹24,50,000',
-        occupancyRate: '85%',
-        totalBookings: '342',
-        pendingPayments: '₹1,25,000',
-        revenueData: DEMO_REVENUE_DATA,
-        occupancyData: DEMO_OCCUPANCY_DATA,
-        sourceData: DEMO_SOURCE_DATA,
-        onlinePercent: '82%',
-      };
-    }
-
-    // Real data computed from tenant's actual reservations
-    const totalRevenue = reservations.reduce((sum, r) => sum + (r.amount || 0), 0);
+  // ── Hotel KPI data ───────────────────────────────────────────────────────
+  const hotelStats = useMemo(() => {
     const totalBookings = reservations.length;
-    const pendingPayments = reservations
-      .filter(r => r.payment === 'Unpaid' || r.payment === 'Partial')
-      .reduce((sum, r) => sum + (r.amount || 0), 0);
+    const checkIns = reservations.filter(r => r.status === 'Checked In' || r.status === 'Confirmed').length;
+    const checkOuts = reservations.filter(r => r.status === 'Checked Out').length;
+    const totalRevenue = reservations.reduce((s, r) => s + (r.amount || 0), 0);
+    const offlineRevenue = reservations
+      .filter(r => !r.source || r.source === 'Direct' || r.source === 'Walk-in')
+      .reduce((s, r) => s + (r.amount || 0), 0);
+    const platformRevenue = totalRevenue - offlineRevenue;
 
-    const totalRooms = rooms.length;
-    const occupiedRooms = rooms.filter(r => r.status === 'Occupied').length;
-    const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
+    return { totalBookings, checkIns, checkOuts, totalRevenue, offlineRevenue, platformRevenue };
+  }, [reservations]);
 
-    // Group revenue by month
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const revenueByMonth: Record<string, number> = {};
+  // ── Occupancy bar chart (daily for last 30 days) ─────────────────────────
+  const occupancyBarData = useMemo(() => {
+    const total = Math.max(rooms.length, 1);
+    // Build day buckets for the last 30 days
+    return Array.from({ length: 30 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - 29 + i);
+      const label = String(d.getDate()).padStart(2, '0');
+      const dayStr = d.toISOString().slice(0, 10);
+
+      const occupied = reservations.filter(r => {
+        const ci = r.checkIn?.slice(0, 10);
+        const co = r.checkOut?.slice(0, 10);
+        return ci && co && dayStr >= ci && dayStr < co;
+      }).length;
+      const notReady = rooms.filter(r => r.status === 'Cleaning' || r.status === 'Maintenance').length;
+      const available = Math.max(0, total - occupied - notReady);
+
+      return { name: label, available, occupied, notReady };
+    });
+  }, [reservations, rooms]);
+
+  // ── Revenue by month ─────────────────────────────────────────────────────
+  const revenueByMonth = useMemo(() => {
+    const months: Record<string, number> = {};
+    const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     reservations.forEach(r => {
       if (r.checkIn && r.amount) {
-        const month = monthNames[new Date(r.checkIn).getMonth()];
-        revenueByMonth[month] = (revenueByMonth[month] || 0) + (r.amount || 0);
+        const m = names[new Date(r.checkIn).getMonth()];
+        months[m] = (months[m] || 0) + r.amount;
       }
     });
-    const revenueData = Object.entries(revenueByMonth).map(([name, total]) => ({ name, total }));
+    return Object.entries(months).map(([name, total]) => ({ name, total }));
+  }, [reservations]);
 
-    // Compute source distribution
-    const sourceCounts: Record<string, number> = {};
+  // ── Booking sources ──────────────────────────────────────────────────────
+  const bookingSources = useMemo(() => {
+    const counts: Record<string, number> = {};
     reservations.forEach(r => {
       const src = r.source || 'Direct';
-      sourceCounts[src] = (sourceCounts[src] || 0) + 1;
+      counts[src] = (counts[src] || 0) + 1;
     });
-    const sourceData = Object.entries(sourceCounts).map(([name, value]) => ({ name, value }));
+    const total = reservations.length || 1;
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, count], i) => ({
+        name,
+        pct: Math.round((count / total) * 100),
+        color: CHART_COLORS[i % CHART_COLORS.length],
+      }));
+  }, [reservations]);
 
-    // Occupancy by day of week (from recent reservations)
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const dayBookings: Record<string, number> = {};
-    const dayCounts: Record<string, number> = {};
-    reservations.forEach(r => {
-      if (r.checkIn) {
-        const day = dayNames[new Date(r.checkIn).getDay()];
-        dayBookings[day] = (dayBookings[day] || 0) + 1;
-        dayCounts[day] = (dayCounts[day] || 0) + 1;
-      }
-    });
-    const occupancyData = totalRooms > 0
-      ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => ({
-        name: day,
-        rate: Math.min(100, Math.round(((dayBookings[day] || 0) / totalRooms) * 100))
-      }))
-      : [];
+  // ── Recent arrivals ──────────────────────────────────────────────────────
+  const recentArrivals = useMemo(() => {
+    return [...reservations]
+      .sort((a, b) => new Date(b.checkIn || 0).getTime() - new Date(a.checkIn || 0).getTime())
+      .slice(0, 6)
+      .map((r, i) => ({
+        roomNo: r.room ? `#${r.room.replace(/\D/g, '')}` : `#${100 + i}`,
+        name: r.guest || 'Guest',
+        avatar: (r.guest || 'G').charAt(0).toUpperCase(),
+        color: CHART_COLORS[i % CHART_COLORS.length],
+        time: timeAgo(r.checkIn),
+      }));
+  }, [reservations]);
 
-    const onlineBookings = reservations.filter(r => r.source && r.source !== 'Direct' && r.source !== 'Walk-in').length;
-    const onlinePercent = totalBookings > 0 ? `${Math.round((onlineBookings / totalBookings) * 100)}%` : '0%';
-
-    return {
-      totalRevenue: formatINRDisplay(totalRevenue),
-      occupancyRate: `${occupancyRate}%`,
-      totalBookings: String(totalBookings),
-      pendingPayments: formatINRDisplay(pendingPayments),
-      revenueData,
-      occupancyData,
-      sourceData,
-      onlinePercent,
-    };
-  }, [reservations, rooms, isDemo]);
-
-  // Recent activity from actual reservations (last 4)
-  const recentActivity = useMemo(() => {
-    if (isDemo) {
-      return [
-        { type: 'booking', title: 'New Booking from Agoda', desc: 'Room 102 - Executive Double AC', time: '10 mins ago' },
-        { type: 'payment', title: 'Payment Received', desc: '₹12,400 via UPI (TXN-8821)', time: '25 mins ago' },
-        { type: 'room', title: 'Room Marked Clean', desc: 'Housekeeping finished Room 205', time: '1 hr ago' },
-        { type: 'checkin', title: 'Guest Check-in', desc: 'Sarah Jenkins arrived', time: '2 hrs ago' },
-      ];
-    }
-
-    return reservations.slice(0, 4).map(r => {
-      const checkInDate = r.checkIn ? new Date(r.checkIn) : null;
-      const daysAgo = checkInDate ? Math.floor((Date.now() - checkInDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
-      const timeStr = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${daysAgo}d ago`;
-
-      if (r.status === 'Confirmed') {
-        return { type: 'booking', title: `Booking: ${r.guest}`, desc: `${r.room} via ${r.source}`, time: timeStr };
-      }
-      if (r.payment === 'Paid') {
-        return { type: 'payment', title: `Payment from ${r.guest}`, desc: `${formatINRDisplay(r.amount || 0)}`, time: timeStr };
-      }
-      return { type: 'booking', title: `Reservation: ${r.guest}`, desc: `${r.room} - ${r.status}`, time: timeStr };
-    });
-  }, [reservations, isDemo]);
-
-  // Restaurant-specific dashboard data
+  // ── Restaurant data ──────────────────────────────────────────────────────
   const restaurantData = useMemo(() => {
     if (!isRestaurant) return null;
-    const todayOrders = foodOrders.filter(o => new Date(o.created_at).toDateString() === new Date().toDateString());
+    const today = new Date().toDateString();
+    const todayOrders = foodOrders.filter(o => new Date(o.created_at).toDateString() === today);
     const todayRevenue = todayOrders.reduce((s, o) => s + (o.total_amount || 0), 0);
     const activeOrders = foodOrders.filter(o => ['pending', 'preparing', 'ready'].includes(o.status)).length;
     const totalTables = restaurantTables.length;
@@ -206,326 +164,416 @@ export default function Dashboard() {
     return { todayOrders: todayOrders.length, todayRevenue, activeOrders, tableUtilization, avgOrder, menuItemCount: menuItems.length };
   }, [foodOrders, restaurantTables, menuItems, isRestaurant]);
 
-  const renderEmptyState = () => (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-8">
-      <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-md p-12 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100 text-center">
-        <div className="w-20 h-20 rounded-full bg-[#F8F9FB] flex items-center justify-center border border-gray-100 mx-auto mb-6">
-          <BarChart3 size={36} className="text-gray-300" />
-        </div>
-        <h3 className="font-serif text-2xl font-bold text-[#0E2A38] mb-3">Welcome to your Dashboard</h3>
-        <p className="text-gray-500 font-medium max-w-md mx-auto mb-8">
-          {isRestaurant && !isHotel
-            ? 'Your dashboard will come alive once you set up your menu and start taking orders. Head over to Menu Manager to add your first category.'
-            : 'Your dashboard will come alive once you start adding rooms and bookings. Head over to Rooms to add your first room, then create your first reservation.'
-          }
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 xl:gap-8 mt-8">
-          <StatCard title="Total Revenue" value="₹0" icon={IndianRupee} />
-          <StatCard title="Occupancy Rate" value="0%" icon={BedDouble} />
-          <StatCard title="Total Bookings" value="0" icon={CalendarCheck} />
-          <StatCard title="Pending Payments" value="₹0" icon={AlertCircle} />
-        </div>
-      </motion.div>
-    </motion.div>
-  );
+  // ── Calendar rooms ───────────────────────────────────────────────────────
+  const calendarRooms = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return rooms.slice(0, 4).map(room => {
+      const roomReservations = reservations.filter(r => {
+        const rNum = r.room?.replace(/\D/g, '');
+        const mNum = (room.number || room.room_number || '')?.toString().replace(/\D/g, '');
+        return rNum && mNum && rNum === mNum;
+      });
+      const activeGuests = roomReservations
+        .filter(r => r.checkIn?.slice(0, 10) <= today && (!r.checkOut || r.checkOut.slice(0, 10) >= today))
+        .map((r, i) => ({
+          name: r.guest || 'Guest',
+          avatar: (r.guest || 'G').charAt(0).toUpperCase(),
+          color: CHART_COLORS[i % CHART_COLORS.length],
+          checkIn: r.checkIn ? new Date(r.checkIn).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '',
+          checkOut: r.checkOut ? new Date(r.checkOut).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '',
+        }));
+      return {
+        number: `Room #${room.number || room.room_number || (room.id ? String(room.id).slice(0, 4) : '')}`,
+        guests: activeGuests,
+      };
+    });
+  }, [rooms, reservations]);
 
-  const renderSuperAdmin = () => (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-8">
+  const hasData = reservations.length > 0 || rooms.length > 0;
 
-      {/* Restaurant KPI Row */}
-      {isRestaurant && restaurantData && (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 xl:gap-8">
-            <motion.div variants={itemVariants}><StatCard title="Today's Orders" value={String(restaurantData.todayOrders)} icon={ClipboardList} /></motion.div>
-            <motion.div variants={itemVariants}><StatCard title="Today's Revenue" value={formatINRDisplay(restaurantData.todayRevenue)} icon={IndianRupee} /></motion.div>
-            <motion.div variants={itemVariants}><StatCard title="Avg Order Value" value={formatINRDisplay(restaurantData.avgOrder)} icon={UtensilsIcon} /></motion.div>
-            <motion.div variants={itemVariants}><StatCard title="Table Utilization" value={`${restaurantData.tableUtilization}%`} icon={Armchair} /></motion.div>
-          </div>
+  return (
+    <div className="max-w-[1600px] mx-auto pb-10 px-1">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="font-serif text-2xl font-bold text-[#0E2A38]">Dashboard</h1>
+      </div>
 
-          <div className="grid grid-cols-1 gap-6 xl:gap-8 mt-8 mb-8">
-            <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-md p-6 lg:p-8 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="font-serif text-xl lg:text-2xl font-bold text-[#0E2A38]">Live Kitchen Orders</h3>
-                <span className="text-xs font-bold uppercase tracking-widest text-[#C9A646] px-3 py-1 bg-[#C9A646]/10 rounded-full">
-                  {restaurantData.activeOrders} Active
-                </span>
-              </div>
-              <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
-                {foodOrders.filter(o => ['pending', 'preparing'].includes(o.status)).length > 0 ? (
-                  foodOrders
-                    .filter(o => ['pending', 'preparing'].includes(o.status))
-                    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-                    .map(order => (
-                      <div key={order.id} className="min-w-[300px] border border-gray-100 bg-[#F8F9FB] rounded-xl p-4 snap-start shrink-0">
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <p className="font-bold text-[#0E2A38] uppercase tracking-wider text-xs">{order.order_type.replace('_', ' ')}</p>
-                            <p className="text-sm font-medium text-gray-600">
-                              {order.table_id ? `Table ${restaurantTables.find(t => t.id === order.table_id)?.table_number}` : (order.customer_name || 'Walk-in')}
-                            </p>
-                          </div>
-                          <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded-md tracking-wider ${order.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
-                            }`}>
-                            {order.status}
-                          </span>
-                        </div>
-                        <div className="space-y-1.5 mt-4">
-                          {order.items?.map((item: any, idx: number) => (
-                            <div key={idx} className="flex justify-between text-sm">
-                              <span className="text-gray-700"><span className="font-semibold text-gray-900 pr-2">{item.quantity}x</span> {item.item_name}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))
-                ) : (
-                  <div className="w-full py-8 text-center text-gray-400 text-sm">
-                    No active kitchen orders at the moment.
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </div>
-        </>
-      )}
+      {!hasData ? (
+        <EmptyState isRestaurant={isRestaurant && !isHotel} />
+      ) : (
+        <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-5">
 
-      {/* Hotel KPI Row */}
-      {isHotel && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 xl:gap-8">
-          <motion.div variants={itemVariants}><StatCard title="Total Revenue" value={dashboardData.totalRevenue} icon={IndianRupee} trend={isDemo ? "+12.5%" : undefined} /></motion.div>
-          <motion.div variants={itemVariants}><StatCard title="Occupancy Rate" value={dashboardData.occupancyRate} icon={BedDouble} trend={isDemo ? "+5.2%" : undefined} /></motion.div>
-          <motion.div variants={itemVariants}><StatCard title="Total Bookings" value={dashboardData.totalBookings} icon={CalendarCheck} trend={isDemo ? "+18.1%" : undefined} /></motion.div>
-          <motion.div variants={itemVariants}><StatCard title="Pending Payments" value={dashboardData.pendingPayments} icon={AlertCircle} trend={isDemo ? "-2.4%" : undefined} trendDown={isDemo} /></motion.div>
-        </div>
-      )}
-
-      {/* Charts Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 xl:gap-8">
-        <motion.div variants={itemVariants} className="lg:col-span-2 bg-white/80 backdrop-blur-md p-6 lg:p-8 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100">
-          <div className="flex justify-between items-center mb-8">
-            <h3 className="font-serif text-xl lg:text-2xl font-bold text-[#0E2A38]">Revenue Overview</h3>
-            <span className="text-xs font-bold uppercase tracking-widest text-[#C9A646] px-3 py-1 bg-[#C9A646]/10 rounded-full">
-              {dateFilter === 'Yearly' ? 'YTD 2026' : (dateFilter === 'Custom' ? 'Custom Range' : `This ${dateFilter.replace('ly', '')}`)}
-            </span>
-          </div>
-          <div className="h-72">
-            {dashboardData.revenueData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dashboardData.revenueData}>
-                  <defs>
-                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#0E2A38" stopOpacity={0.9} />
-                      <stop offset="95%" stopColor="#0E2A38" stopOpacity={0.6} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12, fontWeight: 500 }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12, fontWeight: 500 }} tickFormatter={(value) => `₹${value / 1000}k`} dx={-10} />
-                  <Tooltip cursor={{ fill: '#F3F4F6', opacity: 0.4 }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', padding: '12px 16px', fontWeight: 600, color: '#0E2A38' }} />
-                  <Bar dataKey="total" fill="url(#colorRevenue)" radius={[6, 6, 0, 0]} animationDuration={1500} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center text-gray-400">
-                <p className="text-sm font-medium">No revenue data yet. Create your first booking to see charts.</p>
-              </div>
-            )}
-          </div>
-        </motion.div>
-
-        <motion.div variants={itemVariants} className="lg:col-span-1 bg-white/80 backdrop-blur-md p-6 lg:p-8 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100 flex flex-col">
-          <h3 className="font-serif text-xl lg:text-2xl font-bold text-[#0E2A38] mb-8">Booking Sources</h3>
-          {dashboardData.sourceData.length > 0 ? (
+          {/* Restaurant KPIs */}
+          {isRestaurant && restaurantData && (
             <>
-              <div className="flex-1 min-h-[200px] relative flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={dashboardData.sourceData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={85}
-                      stroke="none"
-                      paddingAngle={5}
-                      dataKey="value"
-                      animationDuration={1500}
-                    >
-                      {dashboardData.sourceData.map((_entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 600 }} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-2">
-                  <span className="text-3xl font-serif font-bold text-[#0E2A38]">{dashboardData.onlinePercent}</span>
-                  <span className="text-[9px] uppercase tracking-widest text-gray-400 font-bold">Online</span>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <motion.div variants={itemVariants}><KpiCard label="Today's Orders" value={String(restaurantData.todayOrders)} sublabel="today" /></motion.div>
+                <motion.div variants={itemVariants}><KpiCard label="Today's Revenue" value={formatINR(restaurantData.todayRevenue)} sublabel="today" /></motion.div>
+                <motion.div variants={itemVariants}><KpiCard label="Avg Order Value" value={formatINR(restaurantData.avgOrder)} sublabel="today" /></motion.div>
+                <motion.div variants={itemVariants}><KpiCard label="Table Utilization" value={`${restaurantData.tableUtilization}%`} sublabel="today" /></motion.div>
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-y-3">
-                {dashboardData.sourceData.map((source, i) => (
-                  <div key={source.name} className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                    <span className="text-xs font-semibold text-gray-600">{source.name}</span>
-                  </div>
-                ))}
-              </div>
+              <motion.div variants={itemVariants}>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-center">
+                      <CardTitle className="font-serif text-lg text-[#0E2A38]">Live Kitchen Orders</CardTitle>
+                      <Badge variant="warning">{restaurantData.activeOrders} Active</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
+                      {foodOrders.filter(o => ['pending', 'preparing'].includes(o.status)).length > 0 ? (
+                        foodOrders
+                          .filter(o => ['pending', 'preparing'].includes(o.status))
+                          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                          .map(order => (
+                            <div key={order.id} className="min-w-[280px] border border-gray-100 bg-gray-50 rounded-xl p-4 snap-start shrink-0">
+                              <div className="flex justify-between items-start mb-3">
+                                <div>
+                                  <p className="font-bold text-[#0E2A38] uppercase tracking-wider text-xs">{order.order_type?.replace('_', ' ')}</p>
+                                  <p className="text-sm font-medium text-gray-600">
+                                    {order.table_id
+                                      ? `Table ${restaurantTables.find(t => t.id === order.table_id)?.table_number}`
+                                      : (order.customer_name || 'Walk-in')}
+                                  </p>
+                                </div>
+                                <Badge variant={order.status === 'pending' ? 'warning' : 'secondary'}>{order.status}</Badge>
+                              </div>
+                              <div className="space-y-1.5 mt-4">
+                                {order.items?.map((item: any, idx: number) => (
+                                  <div key={idx} className="flex justify-between text-sm">
+                                    <span className="text-gray-700"><span className="font-semibold text-gray-900 pr-2">{item.quantity}x</span>{item.item_name}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))
+                      ) : (
+                        <p className="w-full py-8 text-center text-gray-400 text-sm">No active kitchen orders.</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
             </>
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-gray-400">
-              <p className="text-sm font-medium text-center">No bookings yet. Sources will appear here.</p>
+          )}
+
+          {/* Hotel KPI Row */}
+          {isHotel && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <motion.div variants={itemVariants}>
+                <KpiCard label="Total Bookings" value={hotelStats.totalBookings.toLocaleString('en-IN')} sublabel="All reservations" />
+              </motion.div>
+              <motion.div variants={itemVariants}>
+                <KpiCard label="Check In" value={hotelStats.checkIns.toLocaleString('en-IN')} sublabel="Confirmed / Checked In" arrow="down-left" />
+              </motion.div>
+              <motion.div variants={itemVariants}>
+                <KpiCard label="Check Out" value={hotelStats.checkOuts.toLocaleString('en-IN')} sublabel="Checked Out" arrow="up-right" />
+              </motion.div>
             </div>
           )}
-        </motion.div>
-      </div>
 
-      {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 xl:gap-8">
-        <motion.div variants={itemVariants} className="lg:col-span-2 bg-white/80 backdrop-blur-md p-6 lg:p-8 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100">
-          <h3 className="font-serif text-xl lg:text-2xl font-bold text-[#0E2A38] mb-8">Weekly Occupancy Rate</h3>
-          <div className="h-72">
-            {dashboardData.occupancyData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={dashboardData.occupancyData}>
-                  <defs>
-                    <linearGradient id="colorOccupancy" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12, fontWeight: 500 }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12, fontWeight: 500 }} tickFormatter={(value) => `${value}%`} dx={-10} />
-                  <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 600, color: '#0E2A38' }} />
-                  <Line type="monotone" dataKey="rate" stroke="#10b981" strokeWidth={4} dot={{ r: 5, fill: '#10b981', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 7, strokeWidth: 0, fill: '#0E2A38' }} animationDuration={1500} />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center text-gray-400">
-                <p className="text-sm font-medium">Add rooms and bookings to see occupancy trends.</p>
-              </div>
-            )}
+          {/* Occupancy Chart + Calendar */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+            <motion.div variants={itemVariants} className="lg:col-span-3">
+              <Card>
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-center">
+                    <CardTitle className="font-serif text-lg text-[#0E2A38]">Occupancy</CardTitle>
+                    <button className="w-7 h-7 border border-gray-200 rounded-md flex items-center justify-center hover:bg-gray-50">
+                      <Filter size={13} className="text-gray-500" />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-4 mt-2">
+                    {[
+                      { label: 'Available', color: OCC_COLORS.available },
+                      { label: 'Occupied', color: OCC_COLORS.occupied },
+                      { label: 'Not Ready', color: OCC_COLORS.notReady },
+                    ].map(l => (
+                      <span key={l.label} className="flex items-center gap-1.5 text-xs text-gray-500">
+                        <span className="w-3 h-3 rounded-sm inline-block" style={{ background: l.color }} />
+                        {l.label}
+                      </span>
+                    ))}
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-2">
+                  {rooms.length > 0 ? (
+                    <div className="h-56">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={occupancyBarData} barSize={8} barCategoryGap="30%">
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 11 }} dy={6} interval={4} />
+                          <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 11 }} dx={-4} />
+                          <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: 12 }} cursor={{ fill: '#F9FAFB' }} />
+                          <Bar dataKey="available" stackId="a" fill={OCC_COLORS.available} />
+                          <Bar dataKey="occupied" stackId="a" fill={OCC_COLORS.occupied} />
+                          <Bar dataKey="notReady" stackId="a" fill={OCC_COLORS.notReady} radius={[3, 3, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <EmptyChart message="Add rooms to see occupancy data." />
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div variants={itemVariants} className="lg:col-span-2">
+              <CalendarPanel rooms={rooms} calendarRooms={calendarRooms} />
+            </motion.div>
           </div>
-        </motion.div>
 
-        {/* Recent Activity Feed */}
-        <motion.div variants={itemVariants} className="lg:col-span-1 bg-white/80 backdrop-blur-md p-6 lg:p-8 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100 flex flex-col">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-serif text-xl lg:text-2xl font-bold text-[#0E2A38]">Recent Activity</h3>
-            {recentActivity.length > 0 && (
-              <button className="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-[#C9A646] transition-colors flex items-center gap-1">
-                View All <ArrowRight size={12} />
-              </button>
-            )}
+          {/* Revenue Overview + Recent Arrivals */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+            <motion.div variants={itemVariants} className="lg:col-span-2">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="font-serif text-lg text-[#0E2A38]">Revenue Overview</CardTitle>
+                  <p className="text-xs text-gray-400 mt-0.5">Total Revenue</p>
+                  <p className="text-2xl font-bold text-[#0E2A38] font-serif">{formatINR(hotelStats.totalRevenue)}</p>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  {/* Revenue split */}
+                  <div className="grid grid-cols-2 gap-3 mb-5">
+                    <div className="flex flex-col items-center justify-center bg-gray-50 rounded-xl py-4 border border-gray-100">
+                      <svg width="20" height="20" fill="none" viewBox="0 0 24 24" className="mb-1 text-gray-400"><rect x="3" y="11" width="18" height="10" rx="2" stroke="currentColor" strokeWidth="1.5" /><path d="M7 11V7a5 5 0 0110 0v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+                      <p className="text-[10px] text-gray-400 mt-1">Offline Revenue</p>
+                      <p className="text-base font-bold text-[#0E2A38]">{formatINR(hotelStats.offlineRevenue)}</p>
+                    </div>
+                    <div className="flex flex-col items-center justify-center bg-gray-50 rounded-xl py-4 border border-gray-100">
+                      <svg width="20" height="20" fill="none" viewBox="0 0 24 24" className="mb-1 text-gray-400"><rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.5" /><path d="M2 9h20" stroke="currentColor" strokeWidth="1.5" /></svg>
+                      <p className="text-[10px] text-gray-400 mt-1">Platform Revenue</p>
+                      <p className="text-base font-bold text-[#0E2A38]">{formatINR(hotelStats.platformRevenue)}</p>
+                    </div>
+                  </div>
+
+                  {/* Booking source bars */}
+                  {bookingSources.length > 0 ? (
+                    <div className="space-y-3">
+                      {bookingSources.map(src => (
+                        <div key={src.name} className="flex items-center gap-3">
+                          <span className="text-xs text-gray-500 w-24 shrink-0 truncate">{src.name}</span>
+                          <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${src.pct}%`, backgroundColor: src.color }} />
+                          </div>
+                          <span className="text-xs font-semibold text-gray-600 w-8 text-right">{src.pct}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-400 text-center py-4">No booking sources yet.</p>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div variants={itemVariants} className="lg:col-span-3">
+              <Card>
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-center">
+                    <CardTitle className="font-serif text-lg text-[#0E2A38]">Recent Arrivals</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0 px-0">
+                  {recentArrivals.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-b border-gray-100">
+                          <TableHead className="text-xs text-gray-400 pl-6 w-16">R. No</TableHead>
+                          <TableHead className="text-xs text-gray-400">Name</TableHead>
+                          <TableHead className="text-xs text-gray-400">Time</TableHead>
+                          <TableHead className="text-xs text-gray-400 text-right pr-6">Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {recentArrivals.map((arrival, i) => (
+                          <TableRow key={i} className="border-b border-gray-50 hover:bg-gray-50/60">
+                            <TableCell className="pl-6 py-3">
+                              <span className="text-xs font-semibold text-gray-600">{arrival.roomNo}</span>
+                            </TableCell>
+                            <TableCell className="py-3">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ backgroundColor: arrival.color }}>
+                                  {arrival.avatar}
+                                </div>
+                                <span className="text-sm font-medium text-gray-800">{arrival.name}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-3">
+                              <span className="text-xs text-gray-500">{arrival.time}</span>
+                            </TableCell>
+                            <TableCell className="py-3 text-right pr-6">
+                              <button className="text-gray-400 hover:text-gray-600 transition-colors">
+                                <MoreHorizontal size={16} />
+                              </button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <p className="text-sm text-gray-400 text-center py-10">No recent arrivals yet.</p>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
           </div>
-          <div className="flex-1 space-y-6">
-            {recentActivity.length > 0 ? recentActivity.map((item, i) => {
-              const iconConfig = {
-                booking: { icon: <CalendarCheck size={14} className="text-blue-600" />, bg: 'bg-blue-50', border: 'border-blue-100' },
-                payment: { icon: <IndianRupee size={14} className="text-emerald-600" />, bg: 'bg-emerald-50', border: 'border-emerald-100' },
-                room: { icon: <CheckCircle2 size={14} className="text-amber-600" />, bg: 'bg-amber-50', border: 'border-amber-100' },
-                checkin: { icon: <Users size={14} className="text-purple-600" />, bg: 'bg-purple-50', border: 'border-purple-100' },
-              }[item.type] || { icon: <CalendarCheck size={14} className="text-blue-600" />, bg: 'bg-blue-50', border: 'border-blue-100' };
 
-              return (
-                <ActivityItem
-                  key={i}
-                  icon={iconConfig.icon}
-                  bg={iconConfig.bg}
-                  border={iconConfig.border}
-                  title={item.title}
-                  time={item.time}
-                  desc={item.desc}
-                />
-              );
-            }) : (
-              <div className="flex-1 flex items-center justify-center text-gray-400">
-                <p className="text-sm font-medium text-center">No recent activity. Your bookings and updates will appear here.</p>
-              </div>
-            )}
-          </div>
         </motion.div>
-      </div>
-
-    </motion.div>
-  );
-
-  return (
-    <div className="max-w-[1600px] mx-auto pb-12">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 lg:mb-12 gap-6">
-        <div>
-          <h1 className="font-serif text-3xl lg:text-4xl font-bold text-[#0E2A38] mb-2 tracking-tight">Dashboard Overview</h1>
-          <p className="text-gray-500 font-medium text-sm lg:text-base">Real-time metrics and operations for {tenant?.business_name || 'your property'}.</p>
-        </div>
-
-        {/* Global Date Filter */}
-        <div className="flex bg-white/80 backdrop-blur-md rounded-full p-1 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 overflow-x-auto max-w-full no-scrollbar">
-          {['Daily', 'Monthly', 'Yearly', 'Custom'].map(f => (
-            <button
-              key={f}
-              onClick={() => setDateFilter(f)}
-              className={`px-5 py-2 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${dateFilter === f
-                ? 'bg-[#0E2A38] text-[#C9A646] shadow-md'
-                : 'text-gray-500 hover:text-[#0E2A38] hover:bg-gray-50'
-                }`}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {user?.role === 'SUPER_ADMIN' ? (
-        renderSuperAdmin()
-      ) : (
-        <div className="bg-white p-8 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100 text-center">
-          <p className="text-gray-500 font-medium">Your role-specific dashboard is coming soon.</p>
-        </div>
       )}
     </div>
   );
 }
 
-function StatCard({ title, value, icon: Icon, trend, trendDown }: any) {
+// ─── Empty state ──────────────────────────────────────────────────────────────
+function EmptyState({ isRestaurant }: { isRestaurant: boolean }) {
   return (
-    <motion.div
-      whileHover={{ scale: 1.02 }}
-      className="bg-white/80 backdrop-blur-md p-6 lg:p-8 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100 flex flex-col relative overflow-hidden group cursor-pointer"
-    >
-      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-gray-50 to-transparent rounded-bl-full -z-10 transition-colors group-hover:from-gray-100/80" />
-      <div className="flex justify-between items-start mb-6 w-full">
-        <div className="w-14 h-14 rounded-full bg-[#F8F9FB] flex items-center justify-center border border-gray-100 shadow-inner group-hover:scale-110 transition-transform duration-500">
-          <Icon size={24} className="text-[#0E2A38]" />
-        </div>
-        {trend && (
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] uppercase tracking-wider font-bold shadow-sm ${trendDown ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
-            {trendDown ? <TrendingUp size={12} className="rotate-180" /> : <TrendingUp size={12} />}
-            {trend}
-          </div>
-        )}
+    <Card className="p-12 text-center">
+      <div className="w-20 h-20 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100 mx-auto mb-6">
+        <BarChart3 size={36} className="text-gray-300" />
       </div>
-      <h4 className="text-gray-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-2">{title}</h4>
-      <p className="text-3xl lg:text-[32px] font-serif font-bold text-[#0E2A38] tracking-tight">{value}</p>
-    </motion.div>
+      <h3 className="font-serif text-2xl font-bold text-[#0E2A38] mb-3">Welcome to your Dashboard</h3>
+      <p className="text-gray-500 text-sm max-w-md mx-auto">
+        {isRestaurant
+          ? 'Set up your menu and start taking orders — your metrics will appear here.'
+          : 'Add rooms and create reservations — your metrics will appear here.'}
+      </p>
+    </Card>
   );
 }
 
-function ActivityItem({ icon, bg, border, title, time, desc }: any) {
+// ─── Empty chart placeholder ──────────────────────────────────────────────────
+function EmptyChart({ message }: { message: string }) {
   return (
-    <div className="flex items-start gap-4">
-      <div className={`w-9 h-9 rounded-full ${bg} ${border} border flex items-center justify-center shrink-0 shadow-sm mt-0.5`}>
-        {icon}
-      </div>
-      <div>
-        <div className="flex items-center justify-between gap-4 mb-1">
-          <p className="font-bold text-sm text-[#0E2A38]">{title}</p>
-          <span className="flex items-center gap-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
-            <Clock size={10} /> {time}
-          </span>
-        </div>
-        <p className="text-xs text-gray-500 font-medium">{desc}</p>
-      </div>
+    <div className="h-56 flex items-center justify-center text-gray-400">
+      <p className="text-sm font-medium">{message}</p>
     </div>
+  );
+}
+
+// ─── KPI Card ─────────────────────────────────────────────────────────────────
+function KpiCard({ label, value, sublabel, arrow }: {
+  label: string;
+  value: string;
+  sublabel?: string;
+  arrow?: 'down-left' | 'up-right';
+}) {
+  return (
+    <Card className="p-5 hover:shadow-md transition-shadow">
+      <p className="text-xs text-gray-500 mb-1">{label}</p>
+      <div className="flex items-end justify-between mt-1">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-bold text-[#0E2A38] tracking-tight">{value}</span>
+            {arrow === 'down-left' && (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-[#4caf50]">
+                <path d="M17 7L7 17M7 17H17M7 17V7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+            {arrow === 'up-right' && (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-red-500">
+                <path d="M7 17L17 7M17 7H7M17 7v10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+          </div>
+          {sublabel && <p className="text-xs text-gray-400 mt-1">{sublabel}</p>}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// ─── Calendar Panel ───────────────────────────────────────────────────────────
+function CalendarPanel({ rooms, calendarRooms }: {
+  rooms: any[];
+  calendarRooms: { number: string; guests: { name: string; avatar: string; color: string; checkIn: string; checkOut: string }[] }[];
+}) {
+  const today = new Date();
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  // 7-day window starting Monday of current week
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(today);
+    const monday = d.getDate() - ((d.getDay() + 6) % 7);
+    d.setDate(monday + i);
+    return d;
+  });
+
+  return (
+    <Card className="h-full flex flex-col overflow-hidden">
+      <CardHeader className="pb-2 border-b border-gray-50">
+        <div className="flex justify-between items-center">
+          <div>
+            <CardTitle className="font-serif text-lg text-[#0E2A38]">Calendar</CardTitle>
+            <p className="text-xs text-gray-400 mt-0.5">Recent activities of {rooms.length} rooms</p>
+          </div>
+          <div className="flex items-center gap-1 text-xs text-gray-400">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" /><path d="M12 7v5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+            Check-out at 12:00 PM
+          </div>
+        </div>
+
+        {/* Week navigation */}
+        <div className="flex items-center justify-between mt-2">
+          <button className="w-6 h-6 rounded flex items-center justify-center hover:bg-gray-100"><ChevronLeft size={14} className="text-gray-500" /></button>
+          <span className="text-xs font-semibold text-[#0E2A38]">
+            {today.toLocaleString('default', { month: 'long', year: 'numeric' })}
+          </span>
+          <button className="w-6 h-6 rounded flex items-center justify-center hover:bg-gray-100"><ChevronRight size={14} className="text-gray-500" /></button>
+        </div>
+
+        {/* Date strip */}
+        <div className="grid grid-cols-7 gap-0.5 mt-3">
+          {weekDays.map((d, i) => {
+            const isToday = d.toDateString() === today.toDateString();
+            return (
+              <div key={i} className={`flex flex-col items-center py-1.5 rounded-lg text-center ${isToday ? 'bg-[#0E2A38] text-white' : 'text-gray-500'}`}>
+                <span className="text-[10px] font-medium">{String(d.getDate()).padStart(2, '0')}</span>
+                <span className="text-[9px] opacity-70">{dayNames[d.getDay()]}</span>
+                {isToday && <span className="text-[8px] mt-0.5 font-bold uppercase tracking-wider opacity-80">Today</span>}
+              </div>
+            );
+          })}
+        </div>
+      </CardHeader>
+
+      <CardContent className="pt-3 flex-1 overflow-y-auto space-y-3 px-4">
+        {calendarRooms.length > 0 ? (
+          calendarRooms.map((room, ri) => (
+            <div key={ri} className="border border-gray-100 rounded-xl overflow-hidden">
+              <div className="bg-gray-50 px-3 py-2 border-b border-gray-100">
+                <span className="text-xs font-semibold text-gray-600">{room.number}</span>
+              </div>
+              {room.guests.length > 0 ? (
+                <div className="divide-y divide-gray-50">
+                  {room.guests.map((g, gi) => (
+                    <div key={gi} className="flex items-center gap-2 px-3 py-2.5">
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ backgroundColor: g.color }}>
+                        {g.avatar}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-gray-800 truncate">{g.name}</p>
+                        <p className="text-[10px] text-gray-400">In {g.checkIn} · Out {g.checkOut}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="px-3 py-2.5 text-xs text-gray-400">No guests today</p>
+              )}
+            </div>
+          ))
+        ) : (
+          <p className="text-xs text-gray-400 text-center py-8">Add rooms to see the calendar.</p>
+        )}
+      </CardContent>
+
+      <div className="border-t border-gray-100 p-3">
+        <button className="w-full py-2 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
+          Full View
+        </button>
+      </div>
+    </Card>
   );
 }

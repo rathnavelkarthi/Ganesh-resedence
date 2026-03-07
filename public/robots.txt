@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /site/*/room/
+
+Sitemap: https://easystay.com/sitemap.xml

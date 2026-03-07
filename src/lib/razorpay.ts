@@ -45,7 +45,8 @@ export async function initiatePayment(
     billingCycle: 'monthly' | 'yearly',
     tenantId: string,
     userEmail: string,
-    businessName: string
+    businessName: string,
+    discount?: number
 ): Promise<PaymentResult> {
     const loaded = await loadRazorpayScript();
     if (!loaded) return { success: false, error: 'Failed to load Razorpay SDK' };
@@ -65,7 +66,7 @@ export async function initiatePayment(
             'Authorization': `Bearer ${token}`,
             'apikey': SUPABASE_ANON_KEY,
         },
-        body: JSON.stringify({ plan, billing_cycle: billingCycle, tenant_id: tenantId }),
+        body: JSON.stringify({ plan, billing_cycle: billingCycle, tenant_id: tenantId, discount }),
     });
 
     if (!orderRes.ok) {

@@ -1,12 +1,15 @@
 import { useState, useMemo } from 'react';
 import { useCRM, MenuItem } from '../../context/CRMDataContext';
+import { useAuth } from '../../context/AuthContext';
+import { useLocation } from 'react-router-dom';
 import {
     Search, Plus, Minus, Trash2, ShoppingCart,
-    UtensilsCrossed, ReceiptText, ChevronRight, Check
+    UtensilsCrossed, ReceiptText, ChevronRight, Check, Bell
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePlanLimits } from '../../lib/planLimits';
 import UpgradeModal from '../../components/crm/UpgradeModal';
+import { Badge } from '../../components/ui/badge';
 
 type CartItem = {
     menuItem: MenuItem;
@@ -15,7 +18,11 @@ type CartItem = {
 };
 
 export default function POS() {
-    const { menuCategories, menuItems, restaurantTables, addFoodOrder } = useCRM();
+    const { user, tenant } = useAuth();
+    const location = useLocation();
+    const passedTableId = location.state?.tableId;
+
+    const { menuCategories, menuItems, restaurantTables, foodOrders, addFoodOrder, addItemsToOrder, updateFoodOrderStatus, cmsSettings } = useCRM();
     const { canAdd, limitFor, currentCount, plan } = usePlanLimits();
     const [showUpgrade, setShowUpgrade] = useState(false);
 
@@ -25,7 +32,18 @@ export default function POS() {
 
     // Order Context State
     const [orderType, setOrderType] = useState<'dine_in' | 'takeaway' | 'delivery'>('dine_in');
-    const [selectedTable, setSelectedTable] = useState<number | null>(null);
+    const [selectedTable, setSelectedTable] = useState<number | null>(passedTableId || null);
+
+    // Find active order for selected table
+    const activeOrderForTable = useMemo(() => {
+        if (!selectedTable) return null;
+        return foodOrders.find(o =>
+            o.table_id === selectedTable &&
+            o.status !== 'billed' &&
+            o.status !== 'cancelled'
+        );
+    }, [selectedTable, foodOrders]);
+
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
 
@@ -48,11 +66,11 @@ export default function POS() {
 
     const cartTotals = useMemo(() => {
         const subtotal = cart.reduce((sum, item) => sum + (item.menuItem.price * item.quantity), 0);
-        const taxRate = 0.05; // Assuming 5% GST for restaurant
-        const tax = subtotal * taxRate;
+        const gstRate = parseFloat(cmsSettings.gstRate || '0') / 100;
+        const tax = subtotal * gstRate;
         const total = subtotal + tax;
         return { subtotal, tax, total };
-    }, [cart]);
+    }, [cart, cmsSettings.gstRate]);
 
     // Cart Actions
     const addToCart = (item: MenuItem) => {
@@ -77,42 +95,71 @@ export default function POS() {
 
     const clearCart = () => setCart([]);
 
+    const handleRequestBill = async () => {
+        if (!activeOrderForTable) return;
+        const { error } = await updateFoodOrderStatus(activeOrderForTable.id, 'bill_requested');
+        if (!error) {
+            toast.success("Bill requested successfully");
+        } else {
+            toast.error("Failed to request bill");
+        }
+    };
+
     // Checkout Process
     const handleCheckout = async () => {
         if (cart.length === 0) return toast.error("Cart is empty");
-        if (!canAdd('food_orders')) { setShowUpgrade(true); return; }
-        // No longer strictly requiring a table for dine-in, as some restaurants just bring the bill to the customer without formal table tracking.
+        if (!canAdd('food_orders') && !activeOrderForTable) { setShowUpgrade(true); return; }
 
         setIsProcessing(true);
         try {
-            const orderData = {
-                table_id: selectedTable || null,
-                order_type: orderType,
-                customer_name: customerName,
-                customer_phone: customerPhone,
-                status: 'pending' as const,
-                total_amount: cartTotals.total,
-                gst_amount: cartTotals.tax,
-                payment_status: 'paid' as const,
-                payment_method: paymentMethod,
-                notes: ''
-            };
+            if (activeOrderForTable) {
+                // Update existing order
+                const newItems = cart.map(item => ({
+                    menu_item_id: item.menuItem.id,
+                    item_name: item.menuItem.name,
+                    quantity: item.quantity,
+                    unit_price: item.menuItem.price,
+                    notes: item.notes
+                }));
 
-            const orderItemsData = cart.map(item => ({
-                menu_item_id: item.menuItem.id,
-                item_name: item.menuItem.name,
-                quantity: item.quantity,
-                unit_price: item.menuItem.price,
-                notes: item.notes
-            }));
+                const newTotal = activeOrderForTable.total_amount + cartTotals.total;
+                const newGst = activeOrderForTable.gst_amount + cartTotals.tax;
 
-            await addFoodOrder(orderData, orderItemsData);
-            toast.success("Order placed successfully");
+                await addItemsToOrder(activeOrderForTable.id, newItems, newTotal, newGst);
+                toast.success("Order updated successfully");
+            } else {
+                // Create new order
+                const orderData = {
+                    table_id: selectedTable || null,
+                    order_type: orderType,
+                    customer_name: customerName,
+                    customer_phone: customerPhone,
+                    status: 'pending' as const,
+                    total_amount: cartTotals.total,
+                    gst_amount: cartTotals.tax,
+                    payment_status: 'paid' as const,
+                    payment_method: paymentMethod,
+                    notes: ''
+                };
 
-            // Trigger printing the receipt
-            setTimeout(() => {
-                window.print();
-            }, 100);
+                const orderItemsData = cart.map(item => ({
+                    menu_item_id: item.menuItem.id,
+                    item_name: item.menuItem.name,
+                    quantity: item.quantity,
+                    unit_price: item.menuItem.price,
+                    notes: item.notes
+                }));
+
+                await addFoodOrder(orderData, orderItemsData);
+                toast.success("Order placed successfully");
+            }
+
+            // Trigger printing the receipt if new order OR explicitly requested
+            if (!activeOrderForTable) {
+                setTimeout(() => {
+                    window.print();
+                }, 100);
+            }
 
             // Wait a moment before clearing to allow print dialog to capture the DOM
             setTimeout(() => {
@@ -123,7 +170,7 @@ export default function POS() {
                 setShowCheckout(false);
             }, 500);
         } catch (error: any) {
-            toast.error(error.message || "Failed to place order");
+            toast.error(error.message || "Failed to process order");
         } finally {
             setIsProcessing(false);
         }
@@ -266,6 +313,30 @@ export default function POS() {
                                 />
                             </div>
                         )}
+
+                        {activeOrderForTable && (
+                            <div className="mt-2 p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600">Running Bill</p>
+                                    <Badge className="bg-blue-500 text-white text-[9px] uppercase tracking-tighter">Active</Badge>
+                                </div>
+                                <div className="space-y-1">
+                                    {activeOrderForTable.items?.slice(0, 3).map((item, idx) => (
+                                        <div key={idx} className="flex justify-between text-[11px] text-blue-800/70">
+                                            <span>{item.quantity}x {item.item_name}</span>
+                                            <span className="font-bold">₹{item.unit_price * item.quantity}</span>
+                                        </div>
+                                    ))}
+                                    {activeOrderForTable.items && activeOrderForTable.items.length > 3 && (
+                                        <p className="text-[9px] text-blue-400 italic">+{activeOrderForTable.items.length - 3} more items...</p>
+                                    )}
+                                </div>
+                                <div className="mt-2 pt-2 border-t border-blue-100 flex justify-between items-center text-blue-900 font-bold">
+                                    <span className="text-xs uppercase">Current Total</span>
+                                    <span>₹{activeOrderForTable.total_amount.toFixed(0)}</span>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Cart Items */}
@@ -327,12 +398,21 @@ export default function POS() {
                                 >
                                     <Trash2 size={20} />
                                 </button>
+                                {activeOrderForTable && activeOrderForTable.status !== 'bill_requested' && (
+                                    <button
+                                        onClick={handleRequestBill}
+                                        className="p-3 text-amber-600 bg-amber-50 rounded-xl hover:bg-amber-100 transition-colors"
+                                        title="Request Bill"
+                                    >
+                                        <Bell size={20} />
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => setShowCheckout(true)}
                                     disabled={cart.length === 0}
                                     className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#0E2A38] text-white rounded-xl font-bold shadow-md hover:bg-[#1a3d4f] hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    <ReceiptText size={18} /> Charge ₹{cartTotals.total.toFixed(0)}
+                                    <ReceiptText size={18} /> {activeOrderForTable ? 'Update Order' : `Charge ₹${cartTotals.total.toFixed(0)}`}
                                 </button>
                             </div>
                         ) : (
@@ -352,17 +432,21 @@ export default function POS() {
                                 <div className="flex gap-2">
                                     <button
                                         onClick={() => setShowCheckout(false)}
-                                        className="flex-1 py-3 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+                                        className="px-4 py-3 text-gray-500 bg-gray-100 rounded-xl font-bold hover:bg-gray-200 transition-colors"
                                     >
                                         Back
                                     </button>
                                     <button
                                         onClick={handleCheckout}
                                         disabled={isProcessing}
-                                        className="flex-[2] flex items-center justify-center gap-2 py-3 bg-green-600 text-white rounded-xl font-bold shadow-md hover:bg-green-700 transition-all disabled:opacity-50"
+                                        className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#C9A646] text-white rounded-xl font-bold shadow-md hover:bg-[#b8953d] hover:shadow-lg transition-all"
                                     >
-                                        {isProcessing ? 'Processing...' : (
-                                            <>Confirm <Check size={18} /></>
+                                        {isProcessing ? (
+                                            <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                        ) : (
+                                            <>
+                                                <Check size={18} /> Confirm Payment
+                                            </>
                                         )}
                                     </button>
                                 </div>
@@ -372,58 +456,73 @@ export default function POS() {
                 </div>
             </div>
 
-            {/* PRINTABLE RECEIPT (Hidden on screen, visible only when printing) */}
-            <div className="hidden print:block w-[80mm] mx-auto bg-white p-4 font-mono text-sm leading-tight text-black">
-                <div className="text-center mb-4 border-b border-black pb-4">
-                    <h1 className="text-xl font-bold mb-1">RESTAURANT RECEIPT</h1>
-                    <p className="text-xs">Ganesh Residence</p>
-                    <p className="text-xs">{new Date().toLocaleString()}</p>
-                    <p className="text-xs mt-1 border border-black inline-block px-2 py-0.5 font-bold uppercase">
-                        {orderType.replace('_', ' ')}
-                        {selectedTable ? ` - TABLE ${restaurantTables.find(t => t.id === selectedTable)?.table_number}` : ''}
-                    </p>
+            {/* Print View (Hidden on screen) */}
+            <div className="hidden print:block p-8 font-mono text-sm">
+                <div className="text-center mb-6">
+                    <h1 className="text-lg font-bold uppercase">{cmsSettings.hotelName}</h1>
+                    <p>{cmsSettings.address}</p>
+                    <p>PH: {cmsSettings.phone}</p>
+                    <div className="border-t border-dashed border-black my-4" />
+                    <p className="font-bold">TAX INVOICE</p>
                 </div>
 
-                <table className="w-full mb-4">
-                    <thead>
-                        <tr className="border-b border-black text-xs text-left">
-                            <th className="pb-1 font-bold">ITEM</th>
-                            <th className="pb-1 font-bold text-center">QTY</th>
-                            <th className="pb-1 font-bold text-right">AMT</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {cart.map(item => (
-                            <tr key={item.menuItem.id} className="text-xs align-top">
-                                <td className="py-1 pr-2">{item.menuItem.name}</td>
-                                <td className="py-1 text-center">{item.quantity}</td>
-                                <td className="py-1 text-right">₹{item.menuItem.price * item.quantity}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                <div className="flex justify-between mb-2">
+                    <span>DATE: {new Date().toLocaleDateString()}</span>
+                    <span>TIME: {new Date().toLocaleTimeString()}</span>
+                </div>
+                <div className="mb-4">
+                    <p>ORDER TYPE: {orderType.replace('_', ' ').toUpperCase()}</p>
+                    {selectedTable && (
+                        <p>TABLE NO: {restaurantTables.find(t => t.id === selectedTable)?.table_number}</p>
+                    )}
+                    {customerName && <p>CUSTOMER: {customerName}</p>}
+                </div>
 
-                <div className="border-t border-black pt-2 space-y-1 mb-4 text-xs font-bold">
+                <div className="border-t border-dashed border-black pt-4">
+                    <div className="flex justify-between font-bold mb-2">
+                        <span className="flex-[2]">ITEM</span>
+                        <span className="flex-1 text-center">QTY</span>
+                        <span className="flex-1 text-right">PRICE</span>
+                    </div>
+                    {cart.map(item => (
+                        <div key={item.menuItem.id} className="flex justify-between mb-1">
+                            <span className="flex-[2] uppercase">{item.menuItem.name}</span>
+                            <span className="flex-1 text-center">{item.quantity}</span>
+                            <span className="flex-1 text-right">{item.menuItem.price * item.quantity}</span>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="border-t border-dashed border-black mt-4 pt-4 space-y-1">
                     <div className="flex justify-between">
-                        <span>SUBTOTAL:</span>
+                        <span>SUBTOTAL</span>
                         <span>₹{cartTotals.subtotal.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
-                        <span>GST (5%):</span>
+                        <span>GST (5%)</span>
                         <span>₹{cartTotals.tax.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between text-sm py-1 border-t border-b border-black mt-1">
-                        <span>TOTAL:</span>
+                    <div className="flex justify-between font-bold text-lg pt-2 border-t border-dashed border-black mt-2">
+                        <span>TOTAL</span>
                         <span>₹{cartTotals.total.toFixed(2)}</span>
                     </div>
                 </div>
 
-                <div className="text-center text-xs mt-6 pt-4 border-t border-black border-dashed">
-                    <p>Thank you for your visit!</p>
-                    <p>Please come again</p>
+                <div className="mt-8 text-center text-xs">
+                    <p>PAYMENT METHOD: {paymentMethod.toUpperCase()}</p>
+                    <p className="mt-4">THANK YOU FOR VISITING!</p>
+                    <p>HAVE A GREAT DAY</p>
                 </div>
             </div>
-            <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} resource="food orders this month" plan={plan} currentCount={currentCount('food_orders')} limit={limitFor('food_orders')} />
+
+            <UpgradeModal
+                open={showUpgrade}
+                onClose={() => setShowUpgrade(false)}
+                resource="food orders this month"
+                plan={plan}
+                currentCount={currentCount('food_orders')}
+                limit={limitFor('food_orders')}
+            />
         </>
     );
 }

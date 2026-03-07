@@ -8,7 +8,15 @@ interface RoleGuardProps {
 }
 
 export default function RoleGuard({ children, allowedRoles }: RoleGuardProps) {
-  const { user, hasPermission } = useAuth();
+  const { user, hasPermission, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-8 h-8 border-4 border-[var(--color-ocean-500)] border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   if (!user) {
     return <Navigate to="/admin/login" replace />;
@@ -20,7 +28,7 @@ export default function RoleGuard({ children, allowedRoles }: RoleGuardProps) {
         <div className="text-center p-8 bg-white rounded-2xl shadow-sm border border-gray-100 max-w-md">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
           <p className="text-gray-600 mb-6">You do not have permission to view this page.</p>
-          <button 
+          <button
             onClick={() => window.history.back()}
             className="px-6 py-2 bg-[var(--color-ocean-600)] text-white rounded-xl font-medium"
           >

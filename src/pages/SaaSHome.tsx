@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { motion, useScroll, useMotionValueEvent } from 'framer-motion';
 import {
     ArrowRight, CheckCircle2, Building2, CalendarRange,
@@ -32,58 +33,50 @@ const fadeUp = {
 };
 
 export default function SaaSHome() {
-    const [mobileMenu, setMobileMenu] = useState(false);
-
     return (
         <div className="font-sans antialiased overflow-x-hidden" style={{ color: C.textDark }}>
-            {/* FONTS */}
+            <Helmet>
+                <title>EasyStay - All-in-One Hotel & Restaurant Management Platform</title>
+                <meta name="description" content="Manage your hotel or restaurant from one system. Websites, bookings, POS, inventory, billing, and analytics — all connected, all in real time. Free to start." />
+                <link rel="canonical" href="https://easystay.com/" />
+                <meta property="og:title" content="EasyStay - All-in-One Hotel & Restaurant Management Platform" />
+                <meta property="og:description" content="Manage your hotel or restaurant from one system. Websites, bookings, POS, inventory, billing, and analytics — all connected, all in real time." />
+                <meta property="og:url" content="https://easystay.com/" />
+                <meta property="og:type" content="website" />
+                <meta property="og:image" content="https://easystay.com/og-image.png" />
+                <meta name="twitter:card" content="summary_large_image" />
+                <meta name="twitter:title" content="EasyStay - All-in-One Hotel & Restaurant Management" />
+                <meta name="twitter:description" content="Bookings, POS, website, inventory, analytics — connected in one platform. Free to start." />
+                <meta name="twitter:image" content="https://easystay.com/og-image.png" />
+                <script type="application/ld+json">{JSON.stringify({
+                    "@context": "https://schema.org",
+                    "@type": "SoftwareApplication",
+                    "name": "EasyStay",
+                    "applicationCategory": "BusinessApplication",
+                    "operatingSystem": "Web",
+                    "description": "All-in-one hotel and restaurant management platform with bookings, POS, website builder, inventory, billing, and analytics.",
+                    "url": "https://easystay.com",
+                    "offers": {
+                        "@type": "Offer",
+                        "price": "0",
+                        "priceCurrency": "INR",
+                        "description": "Free Starter plan with up to 5 rooms"
+                    },
+                    "publisher": {
+                        "@type": "Organization",
+                        "name": "EasyStay",
+                        "url": "https://easystay.com",
+                        "logo": "https://easystay.com/logo.png"
+                    }
+                })}</script>
+            </Helmet>
+            {/* FONTS (loaded via index.html preconnect) */}
             <style>{`
-                @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=DM+Serif+Display&display=swap');
                 .font-display { font-family: 'DM Serif Display', serif; }
                 .font-body { font-family: 'DM Sans', sans-serif; }
             `}</style>
 
-            {/* ═══════ NAVBAR ═══════ */}
-            <nav className="fixed top-0 inset-x-0 z-50 backdrop-blur-xl border-b" style={{ background: `${C.cream}ee`, borderColor: C.border }}>
-                <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-                    <Link to="/" className="flex items-center gap-2 font-bold text-xl font-display" style={{ color: C.forest }}>
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: C.forest }}>
-                            <Zap size={18} style={{ color: C.gold }} />
-                        </div>
-                        HospitalityOS
-                    </Link>
 
-                    <div className="hidden md:flex items-center gap-8">
-                        <a href="#features" className="text-sm font-medium hover:opacity-70 transition-opacity" style={{ color: C.textMuted }}>Features</a>
-                        <a href="#how-it-works" className="text-sm font-medium hover:opacity-70 transition-opacity" style={{ color: C.textMuted }}>How it works</a>
-                        <a href="#pricing" className="text-sm font-medium hover:opacity-70 transition-opacity" style={{ color: C.textMuted }}>Pricing</a>
-                        <a href="#testimonials" className="text-sm font-medium hover:opacity-70 transition-opacity" style={{ color: C.textMuted }}>Testimonials</a>
-                    </div>
-
-                    <div className="hidden md:flex items-center gap-3">
-                        <Link to="/login" className="text-sm font-semibold px-4 py-2 rounded-full transition-all hover:opacity-80" style={{ color: C.forest }}>
-                            Log in
-                        </Link>
-                        <Link to="/signup" className="text-sm font-semibold px-5 py-2.5 rounded-full transition-all hover:opacity-90 shadow-lg" style={{ background: C.forest, color: C.cream }}>
-                            Start Free
-                        </Link>
-                    </div>
-
-                    <button onClick={() => setMobileMenu(!mobileMenu)} className="md:hidden" style={{ color: C.forest }}>
-                        {mobileMenu ? <X size={24} /> : <Menu size={24} />}
-                    </button>
-                </div>
-
-                {/* Mobile Menu */}
-                {mobileMenu && (
-                    <div className="md:hidden px-6 pb-6 space-y-4" style={{ background: C.cream }}>
-                        <a href="#features" onClick={() => setMobileMenu(false)} className="block text-sm font-medium py-2" style={{ color: C.textDark }}>Features</a>
-                        <a href="#how-it-works" onClick={() => setMobileMenu(false)} className="block text-sm font-medium py-2" style={{ color: C.textDark }}>How it works</a>
-                        <a href="#pricing" onClick={() => setMobileMenu(false)} className="block text-sm font-medium py-2" style={{ color: C.textDark }}>Pricing</a>
-                        <Link to="/signup" className="block text-center text-sm font-semibold px-5 py-3 rounded-full" style={{ background: C.forest, color: C.cream }}>Start Free</Link>
-                    </div>
-                )}
-            </nav>
 
             {/* ═══════ 1. HERO ═══════ */}
             <section className="relative pt-28 pb-8 md:pt-36 md:pb-16 px-6" style={{ background: C.cream }}>
@@ -119,9 +112,9 @@ export default function SaaSHome() {
                         <Link to="/signup" className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full text-base font-semibold transition-all hover:opacity-90 shadow-xl" style={{ background: C.forest, color: C.cream }}>
                             Start Free <ArrowRight size={18} />
                         </Link>
-                        <button className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full text-base font-semibold border-2 transition-all hover:bg-white/50" style={{ borderColor: C.border, color: C.forest }}>
-                            Watch Demo
-                        </button>
+                        <a href="https://wa.me/919345244727?text=Hi%2C%20I%20would%20like%20to%20book%20a%20demo%20for%20HospitalityOS" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full text-base font-semibold border-2 transition-all hover:bg-white/50" style={{ borderColor: C.border, color: C.forest }}>
+                            Book a Demo
+                        </a>
                     </motion.div>
 
                     {/* Hero Dashboard Image */}
@@ -135,8 +128,9 @@ export default function SaaSHome() {
                         <div className="rounded-2xl md:rounded-3xl overflow-hidden border shadow-2xl shadow-[#1A3C34]/10" style={{ borderColor: C.border }}>
                             <img
                                 src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=2070"
-                                alt="HospitalityOS Dashboard"
+                                alt="EasyStay Dashboard"
                                 className="w-full h-[250px] md:h-[550px] object-cover"
+                                fetchPriority="high"
                             />
                             {/* Overlay bottom bar */}
                             <div className="absolute bottom-0 inset-x-0 p-4 md:p-8" style={{ background: 'linear-gradient(to top, rgba(26,60,52,0.95), transparent)' }}>
@@ -569,9 +563,9 @@ export default function SaaSHome() {
                             <Link to="/signup" className="inline-flex items-center justify-center gap-2 px-10 py-5 rounded-full text-lg font-semibold shadow-xl transition-all hover:opacity-90" style={{ background: C.gold, color: C.white }}>
                                 Get started for free <ArrowRight size={20} />
                             </Link>
-                            <button className="inline-flex items-center justify-center gap-2 px-10 py-5 rounded-full text-lg font-semibold border-2 transition-all hover:bg-white/10" style={{ borderColor: 'rgba(255,255,255,0.2)', color: C.white }}>
+                            <a href="https://wa.me/919345244727?text=Hi%2C%20I%20would%20like%20to%20book%20a%20demo%20for%20HospitalityOS" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 px-10 py-5 rounded-full text-lg font-semibold border-2 transition-all hover:bg-white/10" style={{ borderColor: 'rgba(255,255,255,0.2)', color: C.white }}>
                                 Book a demo
-                            </button>
+                            </a>
                         </div>
                     </motion.div>
                 </div>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { motion } from 'motion/react';
 import { Shield, Zap, Receipt, Building2 } from 'lucide-react';
 import BillingToggle from '../components/pricing/BillingToggle';
@@ -47,6 +48,32 @@ export default function PricingPage() {
 
     return (
         <div className="bg-[#F8FAFC] min-h-screen pt-32 pb-24 relative overflow-hidden text-[#0E2A38]">
+            <Helmet>
+                <title>Pricing - EasyStay | Free to Start, Plans from ₹2,499/mo</title>
+                <meta name="description" content="Simple, transparent pricing for hotel and restaurant management. Start free with up to 5 rooms. Growth, Pro, and Enterprise plans for every property size." />
+                <link rel="canonical" href="https://easystay.com/pricing" />
+                <meta property="og:title" content="EasyStay Pricing - Free to Start, Plans from ₹2,499/mo" />
+                <meta property="og:description" content="Simple, transparent pricing. Start free with up to 5 rooms. Growth, Pro, and Enterprise plans for every property size." />
+                <meta property="og:url" content="https://easystay.com/pricing" />
+                <meta property="og:type" content="website" />
+                <meta property="og:image" content="https://easystay.com/og-image.png" />
+                <meta name="twitter:card" content="summary_large_image" />
+                <meta name="twitter:title" content="EasyStay Pricing - Free to Start" />
+                <meta name="twitter:description" content="Hotel & restaurant management from ₹2,499/mo. Free starter plan available." />
+                <meta name="twitter:image" content="https://easystay.com/og-image.png" />
+                <script type="application/ld+json">{JSON.stringify({
+                    "@context": "https://schema.org",
+                    "@type": "FAQPage",
+                    "mainEntity": [
+                        { "@type": "Question", "name": "Is there a free plan?", "acceptedAnswer": { "@type": "Answer", "text": "Yes! Our Starter plan is completely free — up to 5 rooms, 20 bookings per month, and a basic booking page. No credit card required." }},
+                        { "@type": "Question", "name": "Is there a setup fee?", "acceptedAnswer": { "@type": "Answer", "text": "No. All onboarding, initial data migration, and training are included in your subscription." }},
+                        { "@type": "Question", "name": "Do you integrate with OTAs?", "acceptedAnswer": { "@type": "Answer", "text": "Yes, our Pro and Enterprise plans include seamless two-way synchronization with all major OTAs (MakeMyTrip, Goibibo, Booking.com, Agoda) via our channel manager." }},
+                        { "@type": "Question", "name": "Can I manage my hotel restaurant too?", "acceptedAnswer": { "@type": "Answer", "text": "Absolutely. Our Pro plan includes a full restaurant POS — menu management, food orders with kitchen tracking, table management, and inventory control." }},
+                        { "@type": "Question", "name": "Can I manage multiple properties?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. The Enterprise plan includes a multi-property dashboard where you can manage all your hotels from a single login." }},
+                        { "@type": "Question", "name": "What happens after Year 1?", "acceptedAnswer": { "@type": "Answer", "text": "Your subscription locks in your pricing for 12 months. After Year 1, you can renew at the same rate." }}
+                    ]
+                })}</script>
+            </Helmet>
 
             {/* Background Layering */}
             <div className="absolute inset-0 bg-gradient-to-b from-[#F8FAFC] to-[#EEF2F7] -z-20" />
@@ -248,12 +275,12 @@ export default function PricingPage() {
                         Ready to Upgrade Your Hotel Operations?
                     </h2>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-                        <button className="w-full sm:w-auto px-10 py-4 bg-[#C9A646] hover:bg-[#b08d35] text-white rounded-xl font-bold tracking-wider transition-colors shadow-md hover:shadow-lg">
+                        <a href="https://wa.me/919345244727?text=Hi%2C%20I%20would%20like%20to%20talk%20to%20sales%20about%20HospitalityOS" target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto px-10 py-4 bg-[#C9A646] hover:bg-[#b08d35] text-white rounded-xl font-bold tracking-wider transition-colors shadow-md hover:shadow-lg inline-block text-center">
                             Talk to Sales
-                        </button>
-                        <button className="w-full sm:w-auto px-10 py-4 bg-white hover:bg-gray-50 text-[#0E2A38] border-2 border-[#0E2A38] rounded-xl font-bold tracking-wider transition-colors shadow-sm">
+                        </a>
+                        <a href="https://wa.me/919345244727?text=Hi%2C%20I%20would%20like%20to%20book%20a%20demo%20for%20HospitalityOS" target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto px-10 py-4 bg-white hover:bg-gray-50 text-[#0E2A38] border-2 border-[#0E2A38] rounded-xl font-bold tracking-wider transition-colors shadow-sm inline-block text-center">
                             Schedule Demo
-                        </button>
+                        </a>
                     </div>
                 </motion.div>
 

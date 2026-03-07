@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { supabase } from '../lib/supabaseClient';
 import { getSubdomain } from '../hooks/useSubdomain';
 import { motion, AnimatePresence } from 'motion/react';
@@ -184,6 +185,19 @@ export default function RoomDetail() {
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] font-sans text-gray-900 antialiased">
+      <Helmet>
+        <title>{room.name} - {tenant.business_name} | Book Direct</title>
+        <meta name="description" content={`${room.name} at ${tenant.business_name}. ${room.description?.slice(0, 120) || `Sleeps ${room.max_occupancy} guests. Starting at ₹${room.price_per_night}/night.`}`} />
+        <link rel="canonical" href={`https://${tenant.subdomain}.easystay.com/room/${room.id}`} />
+        <meta property="og:title" content={`${room.name} - ${tenant.business_name}`} />
+        <meta property="og:description" content={`Sleeps ${room.max_occupancy} guests. Starting at ₹${room.price_per_night}/night. Book direct for best rates.`} />
+        <meta property="og:url" content={`https://${tenant.subdomain}.easystay.com/room/${room.id}`} />
+        <meta property="og:type" content="product" />
+        {images[0] && <meta property="og:image" content={images[0]} />}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={`${room.name} - ${tenant.business_name}`} />
+        <meta name="twitter:description" content={`From ₹${room.price_per_night}/night. Book direct.`} />
+      </Helmet>
       {/* Navbar */}
       <nav className="fixed top-0 inset-x-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-100/80">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -195,7 +209,7 @@ export default function RoomDetail() {
             <div className="w-px h-6 bg-gray-200" />
             <div className="flex items-center gap-2">
               {tenant.logo_url ? (
-                <img src={tenant.logo_url} alt="" className="w-7 h-7 rounded-lg object-cover" />
+                <img src={tenant.logo_url} alt={`${tenant.business_name} logo`} className="w-7 h-7 rounded-lg object-cover" />
               ) : (
                 <div className="w-7 h-7 rounded-lg bg-[#0E2A38] flex items-center justify-center">
                   <span className="text-white font-bold text-xs">{tenant.business_name.charAt(0)}</span>
@@ -222,7 +236,7 @@ export default function RoomDetail() {
               <div className="grid grid-cols-2 h-[60vh] gap-1">
                 {images.map((img, i) => (
                   <div key={i} className="overflow-hidden cursor-pointer" onClick={() => { setActiveImage(i); setLightboxOpen(true); }}>
-                    <img src={img} alt="" loading="lazy" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                    <img src={img} alt={`${room.name} photo ${i + 1}`} loading="lazy" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
                   </div>
                 ))}
               </div>
@@ -235,7 +249,7 @@ export default function RoomDetail() {
                 {images.slice(1, 5).map((img, i) => (
                   <div key={i} className="overflow-hidden cursor-pointer relative"
                     onClick={() => { setActiveImage(i + 1); setLightboxOpen(true); }}>
-                    <img src={img} alt="" loading="lazy" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                    <img src={img} alt={`${room.name} photo ${i + 2}`} loading="lazy" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
                     {i === 3 && images.length > 5 && (
                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                         <span className="text-white font-semibold text-lg">+{images.length - 5}</span>
@@ -535,7 +549,7 @@ export default function RoomDetail() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               src={images[activeImage]}
-              alt=""
+              alt={`${room.name} photo ${activeImage + 1}`}
               className="max-w-[85vw] max-h-[85vh] object-contain rounded-lg"
               onClick={e => e.stopPropagation()}
             />

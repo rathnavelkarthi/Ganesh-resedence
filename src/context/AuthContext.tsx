@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { generateSubdomain, hasPermission as checkPermission } from '../lib/booking';
 
-export type Role = 'SUPER_ADMIN' | 'MANAGER' | 'RECEPTION' | 'HOUSEKEEPING' | 'ACCOUNTANT';
+export type Role = 'SUPER_ADMIN' | 'MANAGER' | 'RECEPTION' | 'HOUSEKEEPING' | 'ACCOUNTANT' | 'SERVER';
 
 export type Tenant = {
   id: string;

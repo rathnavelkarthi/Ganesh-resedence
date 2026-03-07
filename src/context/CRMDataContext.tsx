@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from './AuthContext';
-import { mapReservationStatus, mapPaymentStatus } from '../lib/booking';
+import { mapReservationStatus, mapPaymentStatus, mapUIToDBStatus } from '../lib/booking';
 
 // --- Hotel Types ---
 
@@ -12,6 +12,7 @@ export type StaffMember = {
     phone: string;
     role: string;
     status: 'Active' | 'Inactive';
+    maintenance_notes?: string | null;
 };
 
 export type Reservation = {
@@ -25,7 +26,7 @@ export type Reservation = {
     checkIn: string;
     checkOut: string;
     source: string;
-    status: 'Confirmed' | 'Pending' | 'Cancelled' | 'Checked Out';
+    status: 'Confirmed' | 'Pending' | 'Cancelled' | 'Checked In' | 'Checked Out';
     payment: 'Paid' | 'Unpaid' | 'Partial' | 'Refunded';
     payment_method?: string;
     amount?: number;
@@ -46,6 +47,7 @@ export type Room = {
     status: 'Available' | 'Occupied' | 'Maintenance';
     cleaning_status: 'Clean' | 'Dirty';
     is_available: boolean;
+    maintenance_notes?: string | null;
 };
 
 export type PageContent = {
@@ -65,6 +67,8 @@ export type CMSSettings = {
     contactPhone: string;
     contactAddress: string;
     aboutText: string;
+    hotelName?: string;
+    gstRate?: string;
 };
 
 // --- Restaurant Types ---
@@ -114,7 +118,7 @@ export type FoodOrder = {
     order_type: 'dine_in' | 'takeaway' | 'delivery';
     customer_name: string;
     customer_phone: string;
-    status: 'pending' | 'preparing' | 'ready' | 'served' | 'cancelled';
+    status: 'pending' | 'preparing' | 'ready' | 'served' | 'bill_requested' | 'billed' | 'cancelled';
     total_amount: number;
     gst_amount: number;
     payment_status: 'paid' | 'unpaid' | 'partial';
@@ -143,6 +147,8 @@ const initialCMS: CMSSettings = {
     contactPhone: '',
     contactAddress: '',
     aboutText: '',
+    hotelName: '',
+    gstRate: '5',
 };
 
 // --- Context Definition ---
@@ -154,7 +160,7 @@ interface CRMContextType {
     cmsSettings: CMSSettings;
     rooms: Room[];
     pageContent: PageContent[];
-    addStaff: (member: Omit<StaffMember, 'id'>) => Promise<void>;
+    addStaff: (member: Omit<StaffMember, 'id'> & { password?: string }) => Promise<void>;
     deleteStaff: (id: string) => Promise<void>;
     addReservation: (reservation: Omit<Reservation, 'id'>) => Promise<void>;
     deleteReservation: (id: string) => Promise<void>;
@@ -184,6 +190,7 @@ interface CRMContextType {
     updateRestaurantTable: (id: number, data: Partial<RestaurantTable>) => Promise<void>;
     deleteRestaurantTable: (id: number) => Promise<void>;
     addFoodOrder: (order: Omit<FoodOrder, 'id' | 'items' | 'created_at'>, items: Omit<FoodOrderItem, 'id' | 'order_id'>[]) => Promise<void>;
+    addItemsToOrder: (orderId: number, items: Omit<FoodOrderItem, 'id' | 'order_id'>[], newTotal: number, newGst: number) => Promise<void>;
     updateFoodOrder: (id: number, data: Partial<FoodOrder>) => Promise<void>;
     addInventoryItem: (item: Omit<InventoryItem, 'id'>) => Promise<void>;
     updateInventoryItem: (id: number, data: Partial<InventoryItem>) => Promise<void>;
@@ -281,6 +288,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
                         gst_amount: r.gst_amount,
                         payment_date: r.payment_date,
                     })));
+                    console.log('CRMDataContext: Loaded reservations from DB:', resData.length);
                 } else { setReservations([]); }
 
                 const { data: roomsData } = await supabase.from('rooms').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false });
@@ -323,15 +331,39 @@ export function CRMProvider({ children }: { children: ReactNode }) {
 
     // ==================== HOTEL CRUD ====================
 
-    const addStaff = async (member: Omit<StaffMember, 'id'>) => {
-        const newId = `S-${String(staff.length + 1).padStart(3, '0')}`;
-        const newStaffMember = { ...member, id: newId };
-        const { error } = await supabase.from('staff').insert([{
-            id: newId, name: member.name, role: member.role,
-            status: member.status.toUpperCase(), email: member.email,
-            phone: member.phone, tenant_id: tid(),
-        }]);
-        if (!error) setStaff([newStaffMember, ...staff]);
+    const addStaff = async (member: Omit<StaffMember, 'id'> & { password?: string }) => {
+        if (!member.password) {
+            throw new Error("Password is required for new staff members.");
+        }
+
+        const { data: newUserId, error } = await supabase.rpc('create_staff_user', {
+            p_email: member.email,
+            p_password: member.password,
+            p_name: member.name,
+            p_role: member.role,
+            p_phone: member.phone,
+            p_tenant_id: tid()
+        });
+
+        if (error) {
+            console.error("Error creating staff:", error);
+            throw new Error(error.message || "Failed to create staff member.");
+        }
+
+        // Fetch the newly created staff member to get the full formatted object
+        const { data: newStaffData } = await supabase
+            .from('staff')
+            .select('*')
+            .eq('id', newUserId)
+            .single();
+
+        if (newStaffData) {
+            const formattedStaffMember = {
+                ...newStaffData,
+                status: newStaffData.status.charAt(0) + newStaffData.status.slice(1).toLowerCase()
+            } as StaffMember;
+            setStaff([formattedStaffMember, ...staff]);
+        }
     };
 
     const deleteStaff = async (id: string) => {
@@ -353,7 +385,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
             guest_phone: reservation.guest_phone, guest_location: reservation.guest_location,
             room_type: reservation.room, room_id: reservation.room_id,
             check_in: reservation.checkIn, check_out: reservation.checkOut,
-            source: reservation.source, status: reservation.status.toUpperCase(),
+            source: reservation.source, status: mapUIToDBStatus(reservation.status),
             payment_status: reservation.payment.toUpperCase(),
             payment_method: reservation.payment_method,
             amount: reservation.amount || 0, gst_amount: reservation.gst_amount || 0,
@@ -384,7 +416,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         if (updatedData.room_id) updatePayload.room_id = updatedData.room_id;
         if (updatedData.checkIn) updatePayload.check_in = updatedData.checkIn;
         if (updatedData.checkOut) updatePayload.check_out = updatedData.checkOut;
-        if (updatedData.status) updatePayload.status = updatedData.status === 'Checked Out' ? 'CHECKED_OUT' : updatedData.status.toUpperCase();
+        if (updatedData.status) updatePayload.status = mapUIToDBStatus(updatedData.status);
         if (updatedData.payment) updatePayload.payment_status = updatedData.payment.toUpperCase();
         if (updatedData.payment_method) updatePayload.payment_method = updatedData.payment_method;
         if (updatedData.amount !== undefined) updatePayload.amount = updatedData.amount;
@@ -415,7 +447,8 @@ export function CRMProvider({ children }: { children: ReactNode }) {
 
     const deleteRoom = async (id: number) => {
         const { error } = await supabase.from('rooms').delete().eq('id', id);
-        if (!error) setRooms(rooms.filter(r => r.id !== id));
+        if (error) throw error;
+        setRooms(prev => prev.filter(r => r.id !== id));
     };
 
     const updatePageContent = async (section: string, blockKey: string, content: Partial<PageContent>) => {
@@ -434,29 +467,45 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     };
 
     const checkInGuest = async (reservationId: string, roomId?: number) => {
+        console.log('CRMDataContext: checkInGuest called for', reservationId, 'room', roomId);
         const { error: resError } = await supabase.from('reservations').update({ status: 'CHECKED_IN' }).eq('id', reservationId);
-        if (resError) throw resError;
+        if (resError) {
+            console.error('CRMDataContext: Error updating reservation status to CHECKED_IN:', resError);
+            throw resError;
+        }
 
         if (roomId) {
             const { error: roomError } = await supabase.from('rooms').update({ status: 'Occupied' }).eq('id', roomId);
-            if (roomError) throw roomError;
+            if (roomError) {
+                console.error('CRMDataContext: Error updating room status to Occupied:', roomError);
+                throw roomError;
+            }
             setRooms(prev => prev.map(r => r.id === roomId ? { ...r, status: 'Occupied' } : r));
         }
 
         setReservations(prev => prev.map(r => r.id === reservationId ? { ...r, status: 'Checked In' } : r));
+        console.log('CRMDataContext: Successfully checked in guest');
     };
 
     const checkOutGuest = async (reservationId: string, roomId?: number) => {
+        console.log('CRMDataContext: checkOutGuest called for', reservationId, 'room', roomId);
         const { error: resError } = await supabase.from('reservations').update({ status: 'CHECKED_OUT', payment_status: 'PAID' }).eq('id', reservationId);
-        if (resError) throw resError;
+        if (resError) {
+            console.error('CRMDataContext: Error updating reservation status to CHECKED_OUT:', resError);
+            throw resError;
+        }
 
         if (roomId) {
             const { error: roomError } = await supabase.from('rooms').update({ status: 'Available', cleaning_status: 'Dirty' }).eq('id', roomId);
-            if (roomError) throw roomError;
+            if (roomError) {
+                console.error('CRMDataContext: Error updating room status to Available:', roomError);
+                throw roomError;
+            }
             setRooms(prev => prev.map(r => r.id === roomId ? { ...r, status: 'Available', cleaning_status: 'Dirty' } : r));
         }
 
         setReservations(prev => prev.map(r => r.id === reservationId ? { ...r, status: 'Checked Out', payment: 'Paid' } : r));
+        console.log('CRMDataContext: Successfully checked out guest');
     };
 
     // ==================== RESTAURANT CRUD ====================
@@ -540,6 +589,33 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    const addItemsToOrder = async (orderId: number, items: Omit<FoodOrderItem, 'id' | 'order_id'>[], newTotal: number, newGst: number) => {
+        const { error: orderErr } = await supabase.from('food_orders').update({
+            total_amount: newTotal,
+            gst_amount: newGst,
+            updated_at: new Date().toISOString()
+        }).eq('id', orderId);
+
+        if (orderErr) throw orderErr;
+
+        const orderItems = items.map(i => ({ ...i, order_id: orderId }));
+        const { data: itemsData, error: itemsErr } = await supabase.from('food_order_items').insert(orderItems).select();
+
+        if (itemsErr) throw itemsErr;
+
+        setFoodOrders(prev => prev.map(o => {
+            if (o.id === orderId) {
+                return {
+                    ...o,
+                    total_amount: newTotal,
+                    gst_amount: newGst,
+                    items: [...(o.items || []), ...(itemsData || [])]
+                };
+            }
+            return o;
+        }));
+    };
+
     const updateFoodOrder = async (id: number, data: Partial<FoodOrder>) => {
         const { items: _items, ...updateData } = data as any;
         const { error } = await supabase.from('food_orders').update({
@@ -592,7 +668,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
             addMenuCategory, updateMenuCategory, deleteMenuCategory,
             addMenuItem, updateMenuItem, deleteMenuItem,
             addRestaurantTable, updateRestaurantTable, deleteRestaurantTable,
-            addFoodOrder, updateFoodOrder, refreshFoodOrders,
+            addFoodOrder, addItemsToOrder, updateFoodOrder, refreshFoodOrders,
             addInventoryItem, updateInventoryItem, deleteInventoryItem,
         }}>
             {children}

@@ -61,12 +61,19 @@ export default function SaaSNavbar() {
                             </Link>
                         ))}
                         <div className="flex items-center gap-3 ml-4">
-                            <Link
-                                to="/#contact"
-                                onClick={() => handleNavClick('/#contact')}
+                            <a
+                                href="https://wa.me/919345244727?text=Hi%2C%20I%20would%20like%20to%20book%20a%20demo%20for%20HospitalityOS"
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 className="text-sm font-semibold text-foreground border border-foreground/15 px-4 py-2 rounded-lg hover:border-foreground/30 transition-all duration-200"
                             >
                                 Book a Demo
+                            </a>
+                            <Link
+                                to="/admin/login"
+                                className="text-sm font-semibold text-foreground hover:text-foreground/80 transition-all duration-200"
+                            >
+                                Log in
                             </Link>
                             <Link
                                 to="/signup"
@@ -109,12 +116,21 @@ export default function SaaSNavbar() {
                             </Link>
                         ))}
                         <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-foreground/5">
-                            <Link
-                                to="/#contact"
+                            <a
+                                href="https://wa.me/919345244727?text=Hi%2C%20I%20would%20like%20to%20book%20a%20demo%20for%20HospitalityOS"
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 onClick={() => setIsMobileMenuOpen(false)}
                                 className="block text-center text-foreground border border-foreground/15 px-6 py-3 rounded-lg font-semibold text-sm"
                             >
                                 Book a Demo
+                            </a>
+                            <Link
+                                to="/admin/login"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className="block text-center text-foreground font-semibold text-sm hover:text-foreground/80 py-2"
+                            >
+                                Log in
                             </Link>
                             <Link
                                 to="/signup"

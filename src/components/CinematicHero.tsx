@@ -36,6 +36,7 @@ export default function CinematicHero() {
                     src={heroImage}
                     alt="Ganesh Residency Sanctuary"
                     className="object-cover w-full h-full opacity-60"
+                    fetchPriority="high"
                 />
                 {/* Dark gradient overlay */}
                 <div className="absolute inset-0 bg-gradient-to-b from-foreground/10 via-foreground/30 to-foreground/90 mix-blend-multiply" />

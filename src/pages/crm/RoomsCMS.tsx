@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Edit2, Trash2, Image as ImageIcon, X, Check, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, Image as ImageIcon, X, Check, Search, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useCRM, Room } from '../../context/CRMDataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -85,8 +85,8 @@ export default function RoomsCMS() {
                 images: [...prev.images, urlData.publicUrl]
             }));
             toast.success('Image uploaded', { id: toastId });
-        } catch (error) {
-            console.error('Upload Error:', error);
+        } catch (err) {
+            console.error('Upload Error:', err);
             toast.error('Network error during upload', { id: toastId });
         } finally {
             setIsUploading(false);
@@ -132,6 +132,18 @@ export default function RoomsCMS() {
         setIsModalOpen(false);
     };
 
+    const handleDeleteRoom = async (room: Room) => {
+        if (window.confirm(`Are you sure you want to delete room ${room.room_number || room.name}?`)) {
+            try {
+                await deleteRoom(room.id);
+                toast.success('Room deleted successfully');
+            } catch (error: any) {
+                console.error(error);
+                toast.error(error.message || 'Failed to delete room. It might be linked to existing reservations.');
+            }
+        }
+    };
+
     return (
         <div className="p-6 max-w-7xl mx-auto">
             <div className="flex justify-between items-center mb-6">
@@ -171,7 +183,6 @@ export default function RoomsCMS() {
                                     alt={room.name}
                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                     onError={(e) => {
-                                        // Fallback to placeholder if backend image missing
                                         (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&q=80&w=1000';
                                     }}
                                 />
@@ -186,13 +197,15 @@ export default function RoomsCMS() {
                         </div>
 
                         <div className="p-5">
-                            <div className="flex justify-between items-start mb-2">
-                                <h3 className="text-xl font-bold text-[#0E2A38]">{room.name}</h3>
-                                <p className="font-bold text-[#C9A646]">₹{room.price_per_night}</p>
+                            <div className="flex justify-between items-start mb-1">
+                                <h3 className="text-lg font-bold text-[#0E2A38]">
+                                    {room.room_number ? `Room ${room.room_number} – ` : ''}{room.name}
+                                </h3>
+                                <p className="font-bold text-[#C9A646] shrink-0 ml-2">₹{room.price_per_night}</p>
                             </div>
                             <p className="text-sm text-gray-500 mb-4">{room.type} • Up to {room.max_occupancy} Guests</p>
 
-                            <div className="flex flex-wrap gap-1.5 mb-6 line-clamp-2 min-h-[48px]">
+                            <div className="flex flex-wrap gap-1.5 mb-6 min-h-[32px]">
                                 {room.amenities && room.amenities.slice(0, 4).map((amenity, idx) => (
                                     <span key={idx} className="bg-gray-100 text-gray-600 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md">
                                         {amenity}
@@ -205,15 +218,13 @@ export default function RoomsCMS() {
                                 )}
                             </div>
 
-                            <div className="flex justify-between items-center pt-4 border-t border-gray-100">
-                                <div className="flex gap-2">
-                                    <button onClick={() => handleOpenModal(room)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit Room">
-                                        <Edit2 size={18} />
-                                    </button>
-                                    <button onClick={() => deleteRoom(room.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete Room">
-                                        <Trash2 size={18} />
-                                    </button>
-                                </div>
+                            <div className="flex gap-2 pt-4 border-t border-gray-100">
+                                <button onClick={() => handleOpenModal(room)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit Room">
+                                    <Edit2 size={18} />
+                                </button>
+                                <button onClick={() => handleDeleteRoom(room)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete Room">
+                                    <Trash2 size={18} />
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -228,181 +239,207 @@ export default function RoomsCMS() {
                 )}
             </div>
 
-            {/* Add/Edit Modal */}
+            {/* ─── Add / Edit Modal ─────────────────────────────────────── */}
             <AnimatePresence>
                 {isModalOpen && (
                     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            initial={{ opacity: 0, scale: 0.97, y: 16 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden"
+                            exit={{ opacity: 0, scale: 0.97, y: 16 }}
+                            className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden"
                         >
-                            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/80 sticky top-0 z-10">
-                                <h2 className="text-xl font-bold font-serif text-[#0E2A38]">
-                                    {editingRoomId ? 'Edit Room Details' : 'Add New Room'}
+                            {/* Header */}
+                            <div className="px-8 py-5 border-b border-gray-100 flex justify-between items-center">
+                                <h2 className="text-2xl font-bold text-gray-900">
+                                    {editingRoomId ? 'Edit room' : 'New room'}
                                 </h2>
-                                <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-700 bg-white hover:bg-gray-100 p-2 rounded-full transition-colors shadow-sm">
+                                <button
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="text-gray-400 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors"
+                                >
                                     <X size={20} />
                                 </button>
                             </div>
 
-                            <div className="p-6 overflow-y-auto flex-1">
-                                <form id="roomForm" onSubmit={handleSubmit} className="space-y-6">
-                                    {/* Basic Info */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Room Number</label>
-                                            <input
-                                                type="text"
-                                                required
-                                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C9A646] focus:border-transparent outline-none transition-all"
-                                                value={formData.room_number}
-                                                onChange={(e) => setFormData({ ...formData, room_number: e.target.value })}
-                                                placeholder="e.g. 101"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Room Name / Label</label>
-                                            <input
-                                                type="text"
-                                                required
-                                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C9A646] focus:border-transparent outline-none transition-all"
-                                                value={formData.name}
-                                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                                placeholder="e.g. Ocean View Suite"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Room Type</label>
-                                            <select
-                                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C9A646] focus:border-transparent outline-none transition-all"
-                                                value={formData.type}
-                                                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                                            >
-                                                <option>Standard</option>
-                                                <option>Deluxe</option>
-                                                <option>Executive</option>
-                                                <option>Suite</option>
-                                                <option>Villa</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Price Per Night (₹)</label>
-                                            <input
-                                                type="number"
-                                                required
-                                                min="0"
-                                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C9A646] focus:border-transparent outline-none transition-all"
-                                                value={formData.price_per_night}
-                                                onChange={(e) => setFormData({ ...formData, price_per_night: Number(e.target.value) })}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Max Occupancy</label>
-                                            <input
-                                                type="number"
-                                                required
-                                                min="1"
-                                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C9A646] focus:border-transparent outline-none transition-all"
-                                                value={formData.max_occupancy}
-                                                onChange={(e) => setFormData({ ...formData, max_occupancy: Number(e.target.value) })}
-                                            />
-                                        </div>
-                                    </div>
+                            {/* Body — two columns */}
+                            <div className="flex-1 overflow-y-auto">
+                                <form id="roomForm" onSubmit={handleSubmit}>
+                                    <div className="grid grid-cols-1 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x divide-gray-100">
 
-                                    {/* Description */}
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Description</label>
-                                        <textarea
-                                            rows={3}
-                                            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C9A646] focus:border-transparent outline-none transition-all resize-none"
-                                            value={formData.description}
-                                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                            placeholder="Enter a captivating description of this room for the main website..."
-                                        />
-                                    </div>
+                                        {/* ── LEFT ── */}
+                                        <div className="lg:col-span-3 p-8 space-y-5">
+                                            <h3 className="text-base font-semibold text-gray-900">Basic information</h3>
 
-                                    {/* Amenities */}
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Amenities (Press Enter to add)</label>
-                                        <div className="flex flex-wrap gap-2 mb-3">
-                                            {formData.amenities.map(amenity => (
-                                                <span key={amenity} className="inline-flex items-center gap-1.5 bg-gray-100 text-gray-700 px-3 py-1.5 rounded-full text-sm font-medium">
-                                                    {amenity}
-                                                    <button type="button" onClick={() => removeAmenity(amenity)} className="text-gray-400 hover:text-red-500">
-                                                        <X size={14} />
-                                                    </button>
-                                                </span>
-                                            ))}
-                                        </div>
-                                        <input
-                                            type="text"
-                                            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C9A646] focus:border-transparent outline-none transition-all"
-                                            value={newAmenity}
-                                            onChange={(e) => setNewAmenity(e.target.value)}
-                                            onKeyDown={addAmenity}
-                                            placeholder="e.g. Free Wi-Fi, Ocean View, King Bed..."
-                                        />
-                                    </div>
-
-                                    {/* Image Upload Gallery */}
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Photo Gallery</label>
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-3">
-                                            {formData.images.map((imgUrl, index) => (
-                                                <div key={index} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 group bg-gray-50">
-                                                    <img src={imgUrl} alt={`Gallery ${index}`} className="w-full h-full object-cover" />
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => removeImage(index)}
-                                                        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
-                                                    >
-                                                        <X size={14} />
-                                                    </button>
-                                                </div>
-                                            ))}
-
-                                            {/* Upload Button */}
-                                            <div className="relative aspect-square rounded-xl border-2 border-dashed border-gray-300 hover:border-[#C9A646] bg-gray-50 hover:bg-[#C9A646]/5 transition-colors flex flex-col items-center justify-center text-center cursor-pointer overflow-hidden">
+                                            {/* Room name */}
+                                            <div>
+                                                <label className="block text-sm text-gray-600 mb-1.5">Room name</label>
                                                 <input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    onChange={handleImageUpload}
-                                                    disabled={isUploading}
-                                                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                                                    type="text"
+                                                    required
+                                                    className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#C9A646] focus:border-transparent outline-none text-sm"
+                                                    value={formData.name}
+                                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                                    placeholder="e.g. Standard King Room"
                                                 />
-                                                <ImageIcon className="text-gray-400 mb-2" size={24} />
-                                                <span className="text-sm font-bold text-gray-500 px-2">{isUploading ? 'Uploading...' : 'Upload Image'}</span>
+                                            </div>
+
+                                            {/* Room Number / Price / Category */}
+                                            <div className="grid grid-cols-3 gap-3">
+                                                <div>
+                                                    <label className="block text-sm text-gray-600 mb-1.5">Room Number</label>
+                                                    <input
+                                                        type="text"
+                                                        required
+                                                        className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#C9A646] focus:border-transparent outline-none text-sm"
+                                                        value={formData.room_number}
+                                                        onChange={(e) => setFormData({ ...formData, room_number: e.target.value })}
+                                                        placeholder="101"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm text-gray-600 mb-1.5">Price / Night (₹)</label>
+                                                    <input
+                                                        type="number"
+                                                        required
+                                                        min="0"
+                                                        className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#C9A646] focus:border-transparent outline-none text-sm"
+                                                        value={formData.price_per_night}
+                                                        onChange={(e) => setFormData({ ...formData, price_per_night: Number(e.target.value) })}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm text-gray-600 mb-1.5">Category</label>
+                                                    <select
+                                                        className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#C9A646] focus:border-transparent outline-none text-sm"
+                                                        value={formData.type}
+                                                        onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                                                    >
+                                                        <option>Standard</option>
+                                                        <option>Deluxe</option>
+                                                        <option>Executive</option>
+                                                        <option>Suite</option>
+                                                        <option>Villa</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            {/* Max Occupancy / Available toggle */}
+                                            <div className="grid grid-cols-3 gap-3">
+                                                <div>
+                                                    <label className="block text-sm text-gray-600 mb-1.5">Max occupancy</label>
+                                                    <select
+                                                        className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#C9A646] focus:border-transparent outline-none text-sm"
+                                                        value={formData.max_occupancy}
+                                                        onChange={(e) => setFormData({ ...formData, max_occupancy: Number(e.target.value) })}
+                                                    >
+                                                        {[1, 2, 3, 4, 5, 6, 8, 10].map(n => <option key={n} value={n}>{n}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <label className="block text-sm text-gray-600 mb-1.5">Available for booking</label>
+                                                    <div className="flex items-center h-[38px]">
+                                                        <label className="relative inline-flex items-center cursor-pointer">
+                                                            <input
+                                                                type="checkbox"
+                                                                className="sr-only peer"
+                                                                checked={formData.is_available}
+                                                                onChange={(e) => setFormData({ ...formData, is_available: e.target.checked })}
+                                                            />
+                                                            <div className="w-10 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500" />
+                                                            <span className="ml-2 text-sm text-gray-600">{formData.is_available ? 'Yes' : 'No'}</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Description */}
+                                            <div>
+                                                <label className="block text-sm text-gray-600 mb-1.5">Description</label>
+                                                <textarea
+                                                    rows={4}
+                                                    className="w-full px-3 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#C9A646] focus:border-transparent outline-none resize-none text-sm"
+                                                    value={formData.description}
+                                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                                    placeholder="Briefly describe the room..."
+                                                />
                                             </div>
                                         </div>
-                                        <p className="text-xs text-gray-400">First image will be used as the main thumbnail. Recommended aspect ratio 16:9.</p>
-                                    </div>
 
-                                    {/* Status */}
-                                    <div className="flex items-center gap-3">
-                                        <label className="relative inline-flex items-center cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                value=""
-                                                className="sr-only peer"
-                                                checked={formData.is_available}
-                                                onChange={(e) => setFormData({ ...formData, is_available: e.target.checked })}
-                                            />
-                                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
-                                            <span className="ml-3 text-sm font-bold text-gray-700 uppercase tracking-wide">Available for Booking</span>
-                                        </label>
-                                    </div>
+                                        {/* ── RIGHT ── */}
+                                        <div className="lg:col-span-2 p-8 space-y-8">
+                                            {/* Room photo */}
+                                            <div>
+                                                <h3 className="text-base font-semibold text-gray-900 mb-4">Room photo</h3>
+                                                <div className="relative border-2 border-dashed border-gray-200 rounded-xl h-36 bg-gray-50 hover:border-[#C9A646] hover:bg-[#C9A646]/5 transition-colors flex flex-col items-center justify-center cursor-pointer mb-3 overflow-hidden">
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        onChange={handleImageUpload}
+                                                        disabled={isUploading}
+                                                        className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                                                    />
+                                                    <Upload size={20} className="text-gray-400 mb-2" />
+                                                    <span className="text-sm text-gray-500 font-medium">{isUploading ? 'Uploading...' : 'Upload image'}</span>
+                                                    <span className="text-xs text-gray-400 mt-0.5">16:9 recommended</span>
+                                                </div>
+                                                {formData.images.length > 0 && (
+                                                    <div className="flex gap-2 overflow-x-auto pb-1">
+                                                        {formData.images.map((imgUrl, index) => (
+                                                            <div key={index} className="relative shrink-0 w-20 h-16 rounded-lg overflow-hidden border border-gray-200 group">
+                                                                <img src={imgUrl} alt={`Gallery ${index}`} className="w-full h-full object-cover" />
+                                                                {index === 0 && (
+                                                                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[9px] text-center py-0.5 font-semibold">Main</div>
+                                                                )}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => removeImage(index)}
+                                                                    className="absolute top-1 right-1 bg-red-500 text-white p-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                >
+                                                                    <X size={10} />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
 
+                                            {/* Facilities */}
+                                            <div>
+                                                <h3 className="text-base font-semibold text-gray-900 mb-3">Facilities and services</h3>
+                                                <input
+                                                    type="text"
+                                                    className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#C9A646] focus:border-transparent outline-none text-sm mb-3"
+                                                    value={newAmenity}
+                                                    onChange={(e) => setNewAmenity(e.target.value)}
+                                                    onKeyDown={addAmenity}
+                                                    placeholder="Add facilities... (press Enter)"
+                                                />
+                                                <div className="flex flex-wrap gap-2">
+                                                    {formData.amenities.map(amenity => (
+                                                        <span key={amenity} className="inline-flex items-center gap-1 bg-gray-100 text-gray-700 px-2.5 py-1 rounded-full text-xs font-medium">
+                                                            {amenity}
+                                                            <button type="button" onClick={() => removeAmenity(amenity)} className="text-gray-400 hover:text-red-500 ml-0.5">
+                                                                <X size={12} />
+                                                            </button>
+                                                        </span>
+                                                    ))}
+                                                    {formData.amenities.length === 0 && (
+                                                        <p className="text-xs text-gray-400">Type a facility and press Enter.</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </form>
                             </div>
 
-                            {/* Action Buttons */}
-                            <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 rounded-b-2xl">
+                            {/* Footer */}
+                            <div className="px-8 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 rounded-b-2xl">
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
-                                    className="px-6 py-2.5 rounded-xl font-bold text-gray-600 hover:bg-gray-200 transition-colors"
+                                    className="px-5 py-2.5 rounded-xl font-medium text-gray-600 hover:bg-gray-200 transition-colors text-sm"
                                 >
                                     Cancel
                                 </button>
@@ -410,18 +447,25 @@ export default function RoomsCMS() {
                                     type="submit"
                                     form="roomForm"
                                     disabled={isUploading}
-                                    className="px-6 py-2.5 rounded-xl font-bold bg-[#0E2A38] hover:bg-[#091b24] text-[#C9A646] shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
+                                    className="px-6 py-2.5 rounded-xl font-semibold bg-[#0E2A38] hover:bg-[#091b24] text-[#C9A646] shadow-sm transition-all flex items-center gap-2 disabled:opacity-50 text-sm"
                                 >
-                                    <Check size={18} />
+                                    <Check size={16} />
                                     {editingRoomId ? 'Save Changes' : 'Create Room'}
                                 </button>
                             </div>
-
                         </motion.div>
                     </div>
                 )}
             </AnimatePresence>
-            <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} resource="rooms" plan={plan} currentCount={currentCount('rooms')} limit={limitFor('rooms')} />
+
+            <UpgradeModal
+                open={showUpgrade}
+                onClose={() => setShowUpgrade(false)}
+                resource="rooms"
+                plan={plan}
+                currentCount={currentCount('rooms')}
+                limit={limitFor('rooms')}
+            />
         </div>
     );
 }

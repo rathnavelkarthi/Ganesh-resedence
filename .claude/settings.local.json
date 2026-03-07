@@ -21,7 +21,10 @@
       "WebFetch(domain:www.esaystay.com)",
       "Bash(node:*)",
       "Bash(npm:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "WebFetch(domain:www.hotelogix.com)",
+      "WebFetch(domain:www.ezeeoptimus.com)",
+      "mcp__plugin_playwright_playwright__browser_snapshot"
     ]
   },
   "enableAllProjectMcpServers": true,
