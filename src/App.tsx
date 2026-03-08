@@ -1,6 +1,7 @@
 import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
+import { ClerkProvider } from '@clerk/react';
 import SaaSNavbar from './components/saas/SaaSNavbar';
 import SaaSFooter from './components/saas/SaaSFooter';
 import { AuthProvider } from './context/AuthContext';
@@ -8,6 +9,8 @@ import { CRMProvider } from './context/CRMDataContext';
 import ScrollToTop from './components/ScrollToTop';
 import { Toaster } from 'sonner';
 import { getSubdomain } from './hooks/useSubdomain';
+
+const CLERK_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string;
 
 // Lazy load route components
 const SaaSHome = lazy(() => import('./pages/SaaSHome'));
@@ -18,6 +21,7 @@ const RoomDetail = lazy(() => import('./pages/RoomDetail'));
 const Login = lazy(() => import('./pages/crm/Login'));
 const CRMApp = lazy(() => import('./components/crm/CRMApp'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const SSOCallback = lazy(() => import('./pages/SSOCallback'));
 
 // Simple loading fallback
 const PageLoader = () => (
@@ -31,19 +35,83 @@ export default function App() {
 
   if (hostSubdomain) {
     return (
+      <ClerkProvider publishableKey={CLERK_KEY}>
+        <HelmetProvider>
+          <AuthProvider>
+            <CRMProvider>
+              <Router basename="/">
+                <ScrollToTop />
+                <Toaster position="top-right" richColors closeButton />
+                <div className="noise-overlay"></div>
+
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
+                    {/* Tenant Site Routes */}
+                    <Route path="/" element={<TenantSite />} />
+                    <Route path="/room/:roomId" element={<RoomDetail />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
+              </Router>
+            </CRMProvider>
+          </AuthProvider>
+        </HelmetProvider>
+      </ClerkProvider>
+    );
+  }
+
+  return (
+    <ClerkProvider publishableKey={CLERK_KEY}>
       <HelmetProvider>
         <AuthProvider>
           <CRMProvider>
             <Router basename="/">
               <ScrollToTop />
               <Toaster position="top-right" richColors closeButton />
+              <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:bg-primary focus:text-white focus:px-4 focus:py-2 focus:rounded-sm focus:text-sm focus:font-semibold">
+                Skip to content
+              </a>
               <div className="noise-overlay"></div>
 
               <Suspense fallback={<PageLoader />}>
                 <Routes>
-                  {/* Tenant Site Routes */}
-                  <Route path="/" element={<TenantSite />} />
-                  <Route path="/room/:roomId" element={<RoomDetail />} />
+                  {/* SaaS landing page */}
+                  <Route path="/" element={
+                    <div className="min-h-screen flex flex-col font-sans text-foreground bg-background">
+                      <SaaSNavbar />
+                      <main id="main-content" className="flex-grow">
+                        <SaaSHome />
+                      </main>
+                      <SaaSFooter />
+                    </div>
+                  } />
+
+                  {/* Pricing page */}
+                  <Route path="/pricing" element={
+                    <div className="min-h-screen flex flex-col font-sans text-foreground bg-background">
+                      <SaaSNavbar />
+                      <main id="main-content" className="flex-grow">
+                        <PricingPage />
+                      </main>
+                      <SaaSFooter />
+                    </div>
+                  } />
+
+                  {/* Tenant websites */}
+                  <Route path="/site/:subdomain" element={<TenantSite />} />
+                  <Route path="/site/:subdomain/room/:roomId" element={<RoomDetail />} />
+
+                  {/* Signup */}
+                  <Route path="/signup" element={<Signup />} />
+
+                  {/* SSO callback (Google OAuth) */}
+                  <Route path="/sso-callback" element={<SSOCallback />} />
+
+                  {/* CRM admin routes */}
+                  <Route path="/admin/login" element={<Login />} />
+                  <Route path="/admin/*" element={<CRMApp />} />
+
+                  {/* Fallback */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
@@ -51,63 +119,6 @@ export default function App() {
           </CRMProvider>
         </AuthProvider>
       </HelmetProvider>
-    );
-  }
-
-  return (
-    <HelmetProvider>
-      <AuthProvider>
-        <CRMProvider>
-          <Router basename="/">
-            <ScrollToTop />
-            <Toaster position="top-right" richColors closeButton />
-            <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:bg-primary focus:text-white focus:px-4 focus:py-2 focus:rounded-sm focus:text-sm focus:font-semibold">
-              Skip to content
-            </a>
-            <div className="noise-overlay"></div>
-
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                {/* SaaS landing page */}
-                <Route path="/" element={
-                  <div className="min-h-screen flex flex-col font-sans text-foreground bg-background">
-                    <SaaSNavbar />
-                    <main id="main-content" className="flex-grow">
-                      <SaaSHome />
-                    </main>
-                    <SaaSFooter />
-                  </div>
-                } />
-
-                {/* Pricing page */}
-                <Route path="/pricing" element={
-                  <div className="min-h-screen flex flex-col font-sans text-foreground bg-background">
-                    <SaaSNavbar />
-                    <main id="main-content" className="flex-grow">
-                      <PricingPage />
-                    </main>
-                    <SaaSFooter />
-                  </div>
-                } />
-
-                {/* Tenant websites */}
-                <Route path="/site/:subdomain" element={<TenantSite />} />
-                <Route path="/site/:subdomain/room/:roomId" element={<RoomDetail />} />
-
-                {/* Signup */}
-                <Route path="/signup" element={<Signup />} />
-
-                {/* CRM admin routes */}
-                <Route path="/admin/login" element={<Login />} />
-                <Route path="/admin/*" element={<CRMApp />} />
-
-                {/* Fallback */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </Router>
-        </CRMProvider>
-      </AuthProvider>
-    </HelmetProvider>
+    </ClerkProvider>
   );
 }
