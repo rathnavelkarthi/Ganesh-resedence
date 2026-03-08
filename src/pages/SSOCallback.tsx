@@ -17,12 +17,12 @@ export default function SSOCallback() {
             afterSignUpUrl: '/admin/dashboard',
         } as any)
             .then(() => {
-                navigate('/admin/dashboard', { replace: true });
+                window.location.href = '/admin/dashboard';
             })
             .catch(() => {
                 // If callback handling fails, still try to go to dashboard
                 // (session may already be set)
-                navigate('/admin/dashboard', { replace: true });
+                window.location.href = '/admin/dashboard';
             });
     }, []);
 

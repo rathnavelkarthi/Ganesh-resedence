@@ -184,7 +184,7 @@ export default function Guests() {
                   </td>
                   <td className="p-4 font-semibold text-[var(--color-ocean-900)]">₹{guest.spent.toLocaleString('en-IN')}</td>
                   <td className="p-4 text-gray-600">{guest.lastVisit}</td>
-                  <td className="p-4 text-right relative">
+                  <td className={`p-4 text-right relative ${activeDropdown === guest.id ? 'z-50' : ''}`}>
                     <button
                       onClick={() => setActiveDropdown(activeDropdown === guest.id ? null : guest.id)}
                       className="p-1.5 text-gray-400 hover:text-[var(--color-ocean-600)] hover:bg-[var(--color-ocean-50)] rounded-lg transition-colors focus:outline-none"

@@ -35,7 +35,7 @@ export default function App() {
 
   if (hostSubdomain) {
     return (
-      <ClerkProvider publishableKey={CLERK_KEY}>
+      <ClerkProvider publishableKey={CLERK_KEY} afterSignOutUrl="/admin/login">
         <HelmetProvider>
           <AuthProvider>
             <CRMProvider>

@@ -92,8 +92,8 @@ export default function Signup() {
             setError(result.error);
             setIsLoading(false);
         } else {
-            // Session is already active via setActive — go straight to dashboard
-            navigate('/admin/dashboard');
+            // Hard redirect so the page reloads and picks up the new Clerk session
+            window.location.href = '/admin/dashboard';
         }
     };
 

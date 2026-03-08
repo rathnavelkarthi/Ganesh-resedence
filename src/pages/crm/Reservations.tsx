@@ -297,7 +297,7 @@ export default function Reservations() {
                         {res.payment}
                       </span>
                     </td>
-                    <td className="p-4 text-right relative">
+                    <td className={`p-4 text-right relative ${activeMenuId === res.id ? 'z-50' : ''}`}>
                       <button
                         onClick={() => setActiveMenuId(activeMenuId === res.id ? null : res.id)}
                         className="p-1.5 text-gray-400 hover:text-[var(--color-ocean-600)] hover:bg-[var(--color-ocean-50)] rounded-lg transition-colors"
