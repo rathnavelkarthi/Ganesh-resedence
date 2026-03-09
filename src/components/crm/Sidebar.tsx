@@ -370,15 +370,19 @@ function AddPropertyModal({
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState<'hotel' | 'restaurant' | 'combined'>('hotel');
   const [adding, setAdding] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleAdd = async () => {
     if (!newName.trim()) return;
     setAdding(true);
+    setErrorMsg(null);
     const { error } = await onAdd(newName.trim(), newType);
     setAdding(false);
     if (!error) {
       onClose();
       setNewName('');
+    } else {
+      setErrorMsg(error);
     }
   };
 
@@ -418,6 +422,12 @@ function AddPropertyModal({
           </div>
 
           <div className="px-6 pb-4 space-y-5">
+            {errorMsg && (
+              <div className="p-3 bg-red-50 text-red-600 border border-red-100 rounded-xl text-sm">
+                {errorMsg}
+              </div>
+            )}
+
             {/* Property name */}
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Property name</label>

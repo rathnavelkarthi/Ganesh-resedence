@@ -78,6 +78,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       const active = (savedId && tenantList.find(t => t.id === savedId)) || tenantList[0];
 
       if (active) {
+        console.log('[AuthContext] Found active tenant', active.id);
         setTenant(active);
         localStorage.setItem(ACTIVE_PROPERTY_KEY, active.id);
         const link = links.find(l => l.tenant_id === active.id);
@@ -87,14 +88,17 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       return;
     }
 
+    console.log('[AuthContext] No properties found via user_properties, checking fallback...');
     const { data: fallback } = await supabase
       .from('tenants').select('*').eq('owner_id', clerkId).limit(1).single();
 
     if (fallback) {
+      console.log('[AuthContext] Found fallback tenant directly connected to owner', fallback.id);
       setProperties([fallback as Tenant]);
       setTenant(fallback as Tenant);
       setUser(buildUser(clerkId, email, name, 'SUPER_ADMIN', avatarUrl));
     } else {
+      console.log('[AuthContext] No tenant found at all for user', clerkId);
       // New Google signup — check if business info was saved before the OAuth redirect
       const pendingName = localStorage.getItem('pending_business_name');
       const pendingType = localStorage.getItem('pending_business_type') as Tenant['business_type'] | null;
@@ -110,14 +114,20 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
           p_subdomain: subdomain,
         });
         if (!error) {
+          console.log('[AuthContext] Successfully created pending tenant from Google signup', subdomain);
           // Reload now that the tenant exists
           await loadProperties(clerkId, email, name, avatarUrl);
           return;
+        } else {
+          console.error('[AuthContext] Error creating tenant from pending info', error);
         }
       }
 
+      console.log('[AuthContext] Providing isolated user session to avoid redirect loop');
       setProperties([]);
       setTenant(null);
+      // We must set the user even if there is no tenant, otherwise Login.tsx 
+      // redirects to /admin/dashboard -> CRMApp -> redirects to /admin/login -> loop
       setUser(buildUser(clerkId, email, name, 'SUPER_ADMIN', avatarUrl));
     }
   };
@@ -132,8 +142,10 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!userLoaded) return;
     if (!clerkUser) {
+      console.log('[AuthContext] No clerkUser, setting state to null');
       setUser(null); setTenant(null); setProperties([]); setLoading(false); return;
     }
+    console.log('[AuthContext] clerkUser loaded, email:', clerkUser.primaryEmailAddress?.emailAddress);
     const email = clerkUser.primaryEmailAddress?.emailAddress || '';
     const name = clerkUser.fullName || email.split('@')[0];
     loadProperties(clerkUser.id, email, name, clerkUser.imageUrl).finally(() => setLoading(false));
