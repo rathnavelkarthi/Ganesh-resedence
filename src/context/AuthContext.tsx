@@ -186,7 +186,12 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
           const { error: tenantError } = await supabase.rpc('create_tenant', {
             p_owner_id: clerkId, p_business_name: businessName, p_business_type: businessType, p_subdomain: subdomain,
           });
-          if (tenantError) return { error: tenantError.message };
+          if (tenantError) {
+            if (tenantError.message?.includes('tenants_subdomain_key')) {
+              return { error: 'This business name is already taken. Please choose a different one.' };
+            }
+            return { error: tenantError.message };
+          }
         }
         return { error: null };
       }
@@ -270,7 +275,12 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     const { data: newTenantId, error } = await supabase.rpc('create_tenant', {
       p_owner_id: clerkUser.id, p_business_name: name, p_business_type: type, p_subdomain: subdomain,
     });
-    if (error) return { error: error.message };
+    if (error) {
+      if (error.message?.includes('tenants_subdomain_key')) {
+        return { error: 'This property name is already taken. Please try a different name.' };
+      }
+      return { error: error.message };
+    }
     const email = clerkUser.primaryEmailAddress?.emailAddress || '';
     const clerkName = clerkUser.fullName || email.split('@')[0];
     await loadProperties(clerkUser.id, email, clerkName, clerkUser.imageUrl);
