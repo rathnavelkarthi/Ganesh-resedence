@@ -22,6 +22,7 @@ const Login = lazy(() => import('./pages/crm/Login'));
 const CRMApp = lazy(() => import('./components/crm/CRMApp'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const SSOCallback = lazy(() => import('./pages/SSOCallback'));
+const TableOrder = lazy(() => import('./pages/TableOrder'));
 
 // Simple loading fallback
 const PageLoader = () => (
@@ -96,6 +97,9 @@ export default function App() {
                       <SaaSFooter />
                     </div>
                   } />
+
+                  {/* Public table ordering (QR code) */}
+                  <Route path="/order/:subdomain/:tableId" element={<TableOrder />} />
 
                   {/* Tenant websites */}
                   <Route path="/site/:subdomain" element={<TenantSite />} />

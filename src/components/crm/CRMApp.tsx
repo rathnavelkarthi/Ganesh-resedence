@@ -32,6 +32,8 @@ import Tables from '../../pages/crm/Tables';
 import FoodInventory from '../../pages/crm/FoodInventory';
 import Billing from '../../pages/crm/Billing';
 import ServerOrders from '../../pages/crm/ServerOrders';
+import Expenses from '../../pages/crm/Expenses';
+import ProfitLoss from '../../pages/crm/ProfitLoss';
 
 export default function CRMApp() {
   const { user, tenant, loading } = useAuth();
@@ -188,6 +190,18 @@ export default function CRMApp() {
             <Route path="inventory" element={
               <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
                 <FoodInventory />
+              </RoleGuard>
+            } />
+
+            {/* Finance */}
+            <Route path="expenses" element={
+              <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER', 'ACCOUNTANT']}>
+                <Expenses />
+              </RoleGuard>
+            } />
+            <Route path="profit-loss" element={
+              <RoleGuard allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
+                <ProfitLoss />
               </RoleGuard>
             } />
 

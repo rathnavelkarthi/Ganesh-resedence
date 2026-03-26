@@ -39,6 +39,7 @@ interface AuthContextType {
   addProperty: (name: string, type: 'hotel' | 'restaurant' | 'combined') => Promise<{ error: string | null }>;
   hasPermission: (allowedRoles: Role[]) => boolean;
   refreshTenant: () => Promise<void>;
+  loginAsDemo: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -53,6 +54,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [properties, setProperties] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isDemoMode, setIsDemoMode] = useState(() => localStorage.getItem('is_demo_mode') === 'true');
 
   const buildUser = (clerkId: string, email: string, name: string, role: Role, avatarUrl?: string): User => ({
     id: clerkId,
@@ -141,6 +143,34 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!userLoaded) return;
+    
+    // If in demo mode, don't clear state even if no clerkUser
+    if (isDemoMode && !clerkUser) {
+      const demoTenant: Tenant = {
+        id: 'demo-hotel-777',
+        business_name: 'Ocean View Demo Resort',
+        business_type: 'combined',
+        subdomain: 'demo-ocean-view',
+        template: 'luxury',
+        plan: 'enterprise',
+        custom_email: 'demo@hospitalityos.com',
+        logo_url: null,
+        is_active: true,
+      };
+      
+      setTenant(demoTenant);
+      setProperties([demoTenant]);
+      setUser({
+        id: 'demo-user-id',
+        name: 'Demo Admin',
+        email: 'demo@hospitalityos.com',
+        role: 'SUPER_ADMIN',
+        avatar: 'https://ui-avatars.com/api/?name=Demo+Admin&background=C9A646&color=fff',
+      });
+      setLoading(false);
+      return;
+    }
+
     if (!clerkUser) {
       console.log('[AuthContext] No clerkUser, setting state to null');
       setUser(null); setTenant(null); setProperties([]); setLoading(false); return;
@@ -251,7 +281,13 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    await clerk.signOut();
+    try {
+      await clerk.signOut();
+    } catch (e) {
+      console.error('Error during Clerk sign out', e);
+    }
+    setIsDemoMode(false);
+    localStorage.removeItem('is_demo_mode');
     setUser(null); setTenant(null); setProperties([]);
     localStorage.removeItem(ACTIVE_PROPERTY_KEY);
     localStorage.removeItem('crm_user');
@@ -289,12 +325,19 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   };
 
   const hasPermission = (allowedRoles: Role[]) => checkPermission(user?.role ?? null, allowedRoles);
-  const session = clerkUser ? { access_token: 'clerk-managed' } : null;
+  const session = clerkUser || isDemoMode ? { access_token: isDemoMode ? 'demo-token' : 'clerk-managed' } : null;
+
+  const loginAsDemo = () => {
+    setIsDemoMode(true);
+    localStorage.setItem('is_demo_mode', 'true');
+    // State will be set by the useEffect
+  };
 
   return (
     <AuthContext.Provider value={{
       user, tenant, properties, session, loading,
       login, signup, verifyEmail, logout, switchProperty, addProperty, hasPermission, refreshTenant,
+      loginAsDemo,
     }}>
       {children}
     </AuthContext.Provider>

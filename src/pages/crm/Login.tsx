@@ -78,7 +78,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const { user, login } = useAuth();
+  const { user, login, loginAsDemo } = useAuth();
   const clerk = useClerk();
   const navigate = useNavigate();
 
@@ -124,6 +124,13 @@ export default function Login() {
       setError(err?.errors?.[0]?.message || 'Google sign in failed.');
       setGoogleLoading(false);
     }
+  };
+
+  const handleDemoLogin = () => {
+    setIsLoading(true);
+    loginAsDemo();
+    // Redirect happens automatically via useEffect, but let's be explicit
+    setTimeout(() => navigate('/admin/dashboard'), 500);
   };
 
   return (
@@ -291,6 +298,22 @@ export default function Login() {
             <GoogleIcon />
             {googleLoading ? 'Redirecting...' : 'Continue with Google'}
           </motion.button>
+
+          {/* Demo Login Option */}
+          <div className="mt-8 pt-6 border-t border-[#AAB8C5]/10">
+            <motion.button
+              type="button"
+              onClick={handleDemoLogin}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full py-3 rounded-lg border border-[#C9A646]/30 bg-[#C9A646]/5 hover:bg-[#C9A646]/10 text-[#C9A646] text-sm font-semibold tracking-wide transition-all shadow-sm"
+            >
+              🚀 Try Demo Experience (Instant Access)
+            </motion.button>
+            <p className="mt-3 text-[11px] text-[#AAB8C5]/50 text-center uppercase tracking-widest font-medium">
+              No account required for demo
+            </p>
+          </div>
 
           <div className="mt-6 text-center">
             <p className="text-[13px] text-[#AAB8C5]/70">

@@ -31,7 +31,9 @@ import {
   Check,
   Plus,
   Building2,
-  Calculator
+  Calculator,
+  Receipt,
+  TrendingUp,
 } from 'lucide-react';
 
 type BusinessType = 'hotel' | 'restaurant' | 'combined';
@@ -68,6 +70,8 @@ const navItems: NavItem[] = [
   // Finance
   { name: 'Payments', path: '/admin/payments', icon: CreditCard, roles: ['SUPER_ADMIN', 'ACCOUNTANT'], businessTypes: ['hotel', 'restaurant', 'combined'], group: 'Finance' },
   { name: 'Invoices', path: '/admin/invoices', icon: FileText, roles: ['SUPER_ADMIN', 'RECEPTION', 'ACCOUNTANT'], businessTypes: ['hotel', 'restaurant', 'combined'], group: 'Finance' },
+  { name: 'Expenses', path: '/admin/expenses', icon: Receipt, roles: ['SUPER_ADMIN', 'MANAGER', 'ACCOUNTANT'], businessTypes: ['hotel', 'restaurant', 'combined'], group: 'Finance' },
+  { name: 'Profit & Loss', path: '/admin/profit-loss', icon: TrendingUp, roles: ['SUPER_ADMIN', 'MANAGER'], businessTypes: ['hotel', 'restaurant', 'combined'], group: 'Finance' },
   { name: 'Reports', path: '/admin/reports', icon: BarChart3, roles: ['SUPER_ADMIN', 'ACCOUNTANT'], businessTypes: ['hotel', 'restaurant', 'combined'], group: 'Finance' },
 
   // Settings

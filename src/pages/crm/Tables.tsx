@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useCRM, RestaurantTable } from '../../context/CRMDataContext';
-import { Plus, Pencil, Trash2, X, Users, Armchair } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { Plus, Pencil, Trash2, X, Users, Armchair, QrCode, Download, Printer } from 'lucide-react';
 import { usePlanLimits } from '../../lib/planLimits';
 import UpgradeModal from '../../components/crm/UpgradeModal';
 
@@ -13,11 +14,37 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }>
 
 export default function Tables() {
     const { restaurantTables, addRestaurantTable, updateRestaurantTable, deleteRestaurantTable } = useCRM();
+    const { tenant } = useAuth();
     const { canAdd, limitFor, currentCount, plan } = usePlanLimits();
     const [showForm, setShowForm] = useState(false);
     const [showUpgrade, setShowUpgrade] = useState(false);
     const [editing, setEditing] = useState<RestaurantTable | null>(null);
     const [filterSection, setFilterSection] = useState('all');
+    const [qrTable, setQrTable] = useState<RestaurantTable | null>(null);
+    const qrPrintRef = useRef<HTMLDivElement>(null);
+
+    const getOrderUrl = (t: RestaurantTable) =>
+        `${window.location.origin}/order/${tenant?.subdomain || 'demo'}/${t.id}`;
+
+    const getQrImageUrl = (t: RestaurantTable) =>
+        `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(getOrderUrl(t))}&size=300x300`;
+
+    const handleDownloadQr = (t: RestaurantTable) => {
+        const link = document.createElement('a');
+        link.href = getQrImageUrl(t);
+        link.download = `table-${t.table_number}-qr.png`;
+        link.click();
+    };
+
+    const handlePrintQr = () => {
+        const content = qrPrintRef.current;
+        if (!content) return;
+        const w = window.open('', '_blank');
+        if (!w) return;
+        w.document.write(`<html><head><title>QR Code</title><style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;}</style></head><body>${content.innerHTML}</body></html>`);
+        w.document.close();
+        w.onload = () => { w.print(); w.close(); };
+    };
 
     // Form state
     const [tableNumber, setTableNumber] = useState('');
@@ -144,6 +171,9 @@ export default function Tables() {
                                 <div className="flex items-center justify-between">
                                     <h3 className="font-bold text-gray-900 text-lg">T{t.table_number}</h3>
                                     <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onClick={() => setQrTable(t)} className="p-1 text-gray-400 hover:text-[#0E2A38] hover:bg-blue-50 rounded" title="QR Code">
+                                            <QrCode size={12} />
+                                        </button>
                                         <button onClick={() => startEdit(t)} className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded">
                                             <Pencil size={12} />
                                         </button>
@@ -165,6 +195,30 @@ export default function Tables() {
                             </div>
                         );
                     })}
+                </div>
+            )}
+            {/* QR Code Modal */}
+            {qrTable && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setQrTable(null)}>
+                    <div className="bg-white rounded-xl p-6 w-full max-w-sm mx-4 space-y-4 shadow-xl" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between">
+                            <h3 className="font-semibold text-gray-900">QR Code — Table {qrTable.table_number}</h3>
+                            <button onClick={() => setQrTable(null)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+                        </div>
+                        <div ref={qrPrintRef} className="flex flex-col items-center gap-3">
+                            <img src={getQrImageUrl(qrTable)} alt={`QR for table ${qrTable.table_number}`} className="w-52 h-52" />
+                            <p className="text-sm font-medium text-gray-700">Table {qrTable.table_number}</p>
+                        </div>
+                        <p className="text-xs text-gray-400 text-center break-all select-all">{getOrderUrl(qrTable)}</p>
+                        <div className="flex gap-2">
+                            <button onClick={() => handleDownloadQr(qrTable)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-[#0E2A38] text-white rounded-lg text-sm hover:bg-[#1a3d4f]">
+                                <Download size={14} /> Download
+                            </button>
+                            <button onClick={handlePrintQr} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-50">
+                                <Printer size={14} /> Print
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
             <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} resource="tables" plan={plan} currentCount={currentCount('tables')} limit={limitFor('tables')} />
