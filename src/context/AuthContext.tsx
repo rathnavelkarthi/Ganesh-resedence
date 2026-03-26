@@ -142,44 +142,48 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    if (!userLoaded) return;
-    
-    // If in demo mode, don't clear state even if no clerkUser
-    if (isDemoMode && !clerkUser) {
-      const demoTenant: Tenant = {
-        id: 'demo-hotel-777',
-        business_name: 'Ocean View Demo Resort',
-        business_type: 'combined',
-        subdomain: 'demo-ocean-view',
-        template: 'luxury',
-        plan: 'enterprise',
-        custom_email: 'demo@hospitalityos.com',
-        logo_url: null,
-        is_active: true,
-      };
-      
-      setTenant(demoTenant);
-      setProperties([demoTenant]);
-      setUser({
-        id: 'demo-user-id',
-        name: 'Demo Admin',
-        email: 'demo@hospitalityos.com',
-        role: 'SUPER_ADMIN',
-        avatar: 'https://ui-avatars.com/api/?name=Demo+Admin&background=C9A646&color=fff',
-      });
-      setLoading(false);
+    // If in demo mode, prioritize it immediately regardless of Clerk state
+    if (isDemoMode) {
+      if (!user) {
+        console.log('[AuthContext] Initializing demo mode session');
+        const demoTenant: Tenant = {
+          id: 'demo-hotel-777',
+          business_name: 'Ocean View Demo Resort',
+          business_type: 'combined',
+          subdomain: 'demo-ocean-view',
+          template: 'luxury',
+          plan: 'enterprise',
+          custom_email: 'demo@hospitalityos.com',
+          logo_url: null,
+          is_active: true,
+        };
+        setTenant(demoTenant);
+        setUser({
+          id: 'demo-user-123',
+          email: 'demo@example.com',
+          full_name: 'Demo Manager',
+          role: 'SUPER_ADMIN'
+        });
+        setProperties([demoTenant]);
+        setLoading(false);
+      } else {
+        setLoading(false);
+      }
       return;
     }
+
+    if (!userLoaded) return;
 
     if (!clerkUser) {
       console.log('[AuthContext] No clerkUser, setting state to null');
       setUser(null); setTenant(null); setProperties([]); setLoading(false); return;
     }
+
     console.log('[AuthContext] clerkUser loaded, email:', clerkUser.primaryEmailAddress?.emailAddress);
     const email = clerkUser.primaryEmailAddress?.emailAddress || '';
     const name = clerkUser.fullName || email.split('@')[0];
     loadProperties(clerkUser.id, email, name, clerkUser.imageUrl).finally(() => setLoading(false));
-  }, [clerkUser?.id, userLoaded]);
+  }, [clerkUser?.id, userLoaded, isDemoMode]);
 
   const login = async (email: string, password: string): Promise<{ error: string | null }> => {
     try {

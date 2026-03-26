@@ -55,10 +55,11 @@ function Stars({ count }: { count: number }) {
 }
 
 // --- Booking Modal ---
-function BookingModal({ room, subdomain, onClose, onSuccess, adjustedPrice }: {
+function BookingModal({ room, subdomain, onClose, onSuccess, adjustedPrice, initialCheckIn, initialCheckOut }: {
     room: Room; subdomain: string; onClose: () => void; onSuccess: (data: any) => void; adjustedPrice: (base: number) => number;
+    initialCheckIn?: string; initialCheckOut?: string;
 }) {
-    const [form, setForm] = useState({ name: '', email: '', phone: '', checkIn: '', checkOut: '' });
+    const [form, setForm] = useState({ name: '', email: '', phone: '', checkIn: initialCheckIn || '', checkOut: initialCheckOut || '' });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -700,7 +701,10 @@ export default function TenantSite() {
                             <div className="bg-white/95 backdrop-blur-2xl rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.12)] border border-white/40 overflow-hidden">
                                 <div className="grid grid-cols-1 md:grid-cols-4 items-stretch">
                                     {/* Check-in */}
-                                    <div className="p-5 md:p-6 flex flex-col gap-1 relative border-b md:border-b-0 md:border-r border-gray-100 hover:bg-gray-50/50 transition-colors cursor-pointer group">
+                                    <div 
+                                        onClick={() => (heroCheckInRef.current as any)?.showPicker?.()}
+                                        className="p-5 md:p-6 flex flex-col gap-1 relative border-b md:border-b-0 md:border-r border-gray-100 hover:bg-gray-50/50 transition-colors cursor-pointer group"
+                                    >
                                         <label className="absolute inset-0 w-full h-full cursor-pointer z-10">
                                             <input ref={heroCheckInRef} type="date" min={new Date().toISOString().split('T')[0]}
                                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
@@ -720,7 +724,10 @@ export default function TenantSite() {
                                     </div>
 
                                     {/* Check-out */}
-                                    <div className="p-5 md:p-6 flex flex-col gap-1 relative border-b md:border-b-0 md:border-r border-gray-100 hover:bg-gray-50/50 transition-colors cursor-pointer group">
+                                    <div 
+                                        onClick={() => (heroCheckOutRef.current as any)?.showPicker?.()}
+                                        className="p-5 md:p-6 flex flex-col gap-1 relative border-b md:border-b-0 md:border-r border-gray-100 hover:bg-gray-50/50 transition-colors cursor-pointer group"
+                                    >
                                         <label className="absolute inset-0 w-full h-full cursor-pointer z-10">
                                             <input ref={heroCheckOutRef} type="date" min={heroCheckIn || new Date().toISOString().split('T')[0]}
                                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
@@ -1419,6 +1426,8 @@ export default function TenantSite() {
                         onClose={() => setBookingRoom(null)}
                         onSuccess={(data) => setBookingSuccess(data)}
                         adjustedPrice={adjustedPrice}
+                        initialCheckIn={heroCheckIn}
+                        initialCheckOut={heroCheckOut}
                     />
                 )}
                 {bookingSuccess && (
