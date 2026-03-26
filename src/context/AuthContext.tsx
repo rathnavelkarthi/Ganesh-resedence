@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useUser, useClerk } from '@clerk/react';
 import { supabase } from '../lib/supabaseClient';
-import { generateSubdomain, hasPermission as checkPermission } from '../lib/booking';
+import { generateSubdomain, hasPermission as checkPermission, DEMO_EMAIL } from '../lib/booking';
 
 export type Role = 'SUPER_ADMIN' | 'MANAGER' | 'RECEPTION' | 'HOUSEKEEPING' | 'ACCOUNTANT' | 'SERVER';
 
@@ -153,17 +153,12 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
           subdomain: 'demo-ocean-view',
           template: 'luxury',
           plan: 'enterprise',
-          custom_email: 'demo@hospitalityos.com',
+          custom_email: DEMO_EMAIL,
           logo_url: null,
           is_active: true,
         };
         setTenant(demoTenant);
-        setUser({
-          id: 'demo-user-123',
-          email: 'demo@example.com',
-          full_name: 'Demo Manager',
-          role: 'SUPER_ADMIN'
-        });
+        setUser(buildUser('demo-user-123', DEMO_EMAIL, 'Demo Manager', 'SUPER_ADMIN'));
         setProperties([demoTenant]);
         setLoading(false);
       } else {
