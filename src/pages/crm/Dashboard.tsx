@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
+  MessageCircle,
 } from 'lucide-react';
 import {
   BarChart,
@@ -65,6 +66,23 @@ function timeAgo(dateStr: string | undefined): string {
 export default function Dashboard() {
   const { tenant } = useAuth();
   const { reservations, rooms, foodOrders, restaurantTables, menuItems } = useCRM();
+  const [waStats, setWaStats] = useState<{ sent: number; total: number } | null>(null);
+
+  React.useEffect(() => {
+    if (!tenant?.id) return;
+    import('../../lib/supabaseClient').then(({ supabase }) => {
+      supabase
+        .from('whatsapp_scheduled_messages')
+        .select('sent')
+        .eq('tenant_id', tenant.id)
+        .then(({ data }) => {
+          if (data) {
+            const sentCount = data.filter(d => d.sent).length;
+            setWaStats({ sent: sentCount, total: data.length });
+          }
+        });
+    });
+  }, [tenant?.id]);
 
   const isHotel = !tenant?.business_type || tenant?.business_type === 'hotel' || tenant?.business_type === 'combined';
   const isRestaurant = tenant?.business_type === 'restaurant' || tenant?.business_type === 'combined';
@@ -260,7 +278,7 @@ export default function Dashboard() {
 
           {/* Hotel KPI Row */}
           {isHotel && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <motion.div variants={itemVariants}>
                 <KpiCard label="Total Bookings" value={hotelStats.totalBookings.toLocaleString('en-IN')} sublabel="All reservations" />
               </motion.div>
@@ -270,6 +288,16 @@ export default function Dashboard() {
               <motion.div variants={itemVariants}>
                 <KpiCard label="Check Out" value={hotelStats.checkOuts.toLocaleString('en-IN')} sublabel="Checked Out" arrow="up-right" />
               </motion.div>
+              {waStats !== null && (
+                <motion.div variants={itemVariants}>
+                  <KpiCard 
+                    label="WhatsApp MSGs" 
+                    value={waStats.sent.toLocaleString('en-IN')} 
+                    sublabel={`${waStats.total} Setup / Pending / Sent`} 
+                    icon={<MessageCircle size={16} className="text-green-500" />}
+                  />
+                </motion.div>
+              )}
             </div>
           )}
 
@@ -453,11 +481,12 @@ function EmptyChart({ message }: { message: string }) {
 }
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
-function KpiCard({ label, value, sublabel, arrow }: {
+function KpiCard({ label, value, sublabel, arrow, icon }: {
   label: string;
   value: string;
   sublabel?: string;
   arrow?: 'down-left' | 'up-right';
+  icon?: React.ReactNode;
 }) {
   return (
     <Card className="p-5 hover:shadow-md transition-shadow">
@@ -466,6 +495,7 @@ function KpiCard({ label, value, sublabel, arrow }: {
         <div>
           <div className="flex items-center gap-2">
             <span className="text-2xl font-bold text-[#0E2A38] tracking-tight">{value}</span>
+            {icon && icon}
             {arrow === 'down-left' && (
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-[#4caf50]">
                 <path d="M17 7L7 17M7 17H17M7 17V7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
