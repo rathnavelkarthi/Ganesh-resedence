@@ -52,18 +52,12 @@ export async function initiatePayment(
     if (!loaded) return { success: false, error: 'Failed to load Razorpay SDK' };
 
     // 1. Create order via edge function
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData?.session?.access_token;
-
-    if (!token) {
-        return { success: false, error: 'Not logged in. Please sign in first.' };
-    }
+    // Edge functions are configured with verify_jwt: false so we don't need a Supabase session
 
     const orderRes = await fetch(`${SUPABASE_URL}/functions/v1/create-razorpay-order`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
             'apikey': SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({ plan, billing_cycle: billingCycle, tenant_id: tenantId, discount }),
@@ -104,7 +98,6 @@ export async function initiatePayment(
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`,
                         'apikey': SUPABASE_ANON_KEY,
                     },
                     body: JSON.stringify({
@@ -145,13 +138,9 @@ export async function initiateAddonPayment(
     const loaded = await loadRazorpayScript();
     if (!loaded) return { success: false, error: 'Failed to load Razorpay SDK' };
 
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData?.session?.access_token;
-    if (!token) return { success: false, error: 'Not logged in. Please sign in first.' };
-
     const orderRes = await fetch(`${SUPABASE_URL}/functions/v1/create-razorpay-order`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'apikey': SUPABASE_ANON_KEY },
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
         body: JSON.stringify({ plan: `addon_${addonId}`, billing_cycle: 'monthly', tenant_id: tenantId }),
     });
 
@@ -176,7 +165,7 @@ export async function initiateAddonPayment(
             handler: async function (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) {
                 const verifyRes = await fetch(`${SUPABASE_URL}/functions/v1/verify-razorpay-payment`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'apikey': SUPABASE_ANON_KEY },
+                    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
                     body: JSON.stringify({
                         razorpay_order_id: response.razorpay_order_id,
                         razorpay_payment_id: response.razorpay_payment_id,
