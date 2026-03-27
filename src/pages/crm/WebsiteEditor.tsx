@@ -361,7 +361,7 @@ export default function WebsiteEditor() {
     // Environment-aware live URL
     const liveUrl = window.location.hostname.includes('localhost') || window.location.hostname.includes('vercel.app')
         ? `${window.location.origin}/site/${subdomain}`
-        : `https://${subdomain}.easystay.com`;
+        : `https://${subdomain}.esaystay.com`;
 
     const previewWidths = { desktop: '100%', tablet: '768px', mobile: '375px' };
 
