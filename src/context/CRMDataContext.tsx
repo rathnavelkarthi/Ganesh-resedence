@@ -437,7 +437,8 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         const { data, error } = await supabase.from('rooms').insert([{
             ...roomData, tenant_id: tid(),
         }]).select();
-        if (!error && data) setRooms([{ ...roomData, id: data[0].id }, ...rooms]);
+        if (error) throw error;
+        if (data) setRooms(prev => [{ ...roomData, id: data[0].id }, ...prev]);
     };
 
     const updateRoom = async (id: number, updatedData: Partial<Room>) => {

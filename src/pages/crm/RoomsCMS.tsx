@@ -120,16 +120,26 @@ export default function RoomsCMS() {
         }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (editingRoomId) {
-            updateRoom(editingRoomId, formData);
-            toast.success('Room updated successfully');
-        } else {
-            addRoom(formData);
-            toast.success('Room added successfully');
+        setIsSubmitting(true);
+        try {
+            if (editingRoomId) {
+                await updateRoom(editingRoomId, formData);
+                toast.success('Room updated successfully');
+            } else {
+                await addRoom(formData);
+                toast.success('Room added successfully');
+            }
+            setIsModalOpen(false);
+        } catch (err: any) {
+            console.error('Room save error:', err);
+            toast.error(err?.message || 'Failed to save room. Please try again.');
+        } finally {
+            setIsSubmitting(false);
         }
-        setIsModalOpen(false);
     };
 
     const handleDeleteRoom = async (room: Room) => {
@@ -446,11 +456,11 @@ export default function RoomsCMS() {
                                 <button
                                     type="submit"
                                     form="roomForm"
-                                    disabled={isUploading}
+                                    disabled={isUploading || isSubmitting}
                                     className="px-6 py-2.5 rounded-xl font-semibold bg-[#0E2A38] hover:bg-[#091b24] text-[#C9A646] shadow-sm transition-all flex items-center gap-2 disabled:opacity-50 text-sm"
                                 >
                                     <Check size={16} />
-                                    {editingRoomId ? 'Save Changes' : 'Create Room'}
+                                    {isSubmitting ? 'Saving...' : editingRoomId ? 'Save Changes' : 'Create Room'}
                                 </button>
                             </div>
                         </motion.div>
