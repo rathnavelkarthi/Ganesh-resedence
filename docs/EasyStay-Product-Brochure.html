@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EasyStay - All-in-One Hospitality Management Platform</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --primary: #0c4a6e;
+    --primary-light: #0369a1;
+    --accent: #d4a574;
+    --accent-light: #e8c9a0;
+    --dark: #1e293b;
+    --text: #334155;
+    --text-light: #64748b;
+    --bg: #ffffff;
+    --bg-warm: #faf8f5;
+    --bg-blue: #f0f9ff;
+    --border: #e2e8f0;
+  }
+
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    color: var(--text);
+    line-height: 1.6;
+    background: var(--bg);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    padding: 0;
+    page-break-after: always;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .page:last-child { page-break-after: avoid; }
+
+  /* ===== COVER PAGE ===== */
+  .cover {
+    background: linear-gradient(135deg, var(--primary) 0%, #064e3b 50%, var(--primary) 100%);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 60px 50px;
+  }
+
+  .cover-logo {
+    width: 90px;
+    height: 90px;
+    border: 3px solid var(--accent);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 40px;
+    font-size: 40px;
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .cover h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 52px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    letter-spacing: -0.5px;
+  }
+
+  .cover .tagline {
+    font-size: 20px;
+    font-weight: 300;
+    color: var(--accent-light);
+    margin-bottom: 50px;
+    letter-spacing: 1px;
+  }
+
+  .cover .divider {
+    width: 80px;
+    height: 2px;
+    background: var(--accent);
+    margin: 0 auto 50px;
+  }
+
+  .cover .subtitle {
+    font-size: 16px;
+    line-height: 1.8;
+    max-width: 500px;
+    color: rgba(255,255,255,0.85);
+    margin-bottom: 60px;
+  }
+
+  .cover .stats-row {
+    display: flex;
+    gap: 50px;
+    margin-top: 30px;
+  }
+
+  .cover .stat {
+    text-align: center;
+  }
+
+  .cover .stat-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .cover .stat-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: rgba(255,255,255,0.7);
+    margin-top: 4px;
+  }
+
+  .cover-footer {
+    position: absolute;
+    bottom: 40px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 1px;
+  }
+
+  /* ===== CONTENT PAGES ===== */
+  .content-page {
+    padding: 45px 50px;
+    background: var(--bg);
+  }
+
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 35px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid var(--accent);
+  }
+
+  .page-header .brand {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--primary);
+  }
+
+  .page-header .page-num {
+    font-size: 11px;
+    color: var(--text-light);
+    letter-spacing: 1px;
+  }
+
+  h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    color: var(--primary);
+    margin-bottom: 20px;
+    font-weight: 700;
+  }
+
+  h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 10px;
+    margin-top: 22px;
+  }
+
+  h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary-light);
+    margin-bottom: 6px;
+    margin-top: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  p {
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+
+  .intro-text {
+    font-size: 14px;
+    color: var(--text-light);
+    line-height: 1.8;
+    margin-bottom: 25px;
+  }
+
+  /* Feature Cards */
+  .features-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 15px;
+  }
+
+  .feature-card {
+    background: var(--bg-warm);
+    border-radius: 10px;
+    padding: 18px 20px;
+    border-left: 3px solid var(--accent);
+  }
+
+  .feature-card.blue {
+    background: var(--bg-blue);
+    border-left-color: var(--primary-light);
+  }
+
+  .feature-card h4 {
+    margin-top: 0;
+    font-size: 12.5px;
+    color: var(--primary);
+  }
+
+  .feature-card p {
+    font-size: 11.5px;
+    margin-bottom: 0;
+    color: var(--text-light);
+  }
+
+  .feature-card ul {
+    font-size: 11.5px;
+    color: var(--text-light);
+    padding-left: 16px;
+    margin: 4px 0 0;
+  }
+
+  .feature-card ul li {
+    margin-bottom: 2px;
+  }
+
+  /* Wide card */
+  .feature-card.wide {
+    grid-column: 1 / -1;
+  }
+
+  /* Icon bullets */
+  .icon-list {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0;
+  }
+
+  .icon-list li {
+    font-size: 12px;
+    color: var(--text);
+    padding: 5px 0 5px 28px;
+    position: relative;
+    line-height: 1.5;
+  }
+
+  .icon-list li::before {
+    content: attr(data-icon);
+    position: absolute;
+    left: 0;
+    font-size: 14px;
+  }
+
+  /* Highlight box */
+  .highlight-box {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+    color: white;
+    border-radius: 12px;
+    padding: 25px 30px;
+    margin: 20px 0;
+  }
+
+  .highlight-box h3 {
+    color: var(--accent-light);
+    margin-top: 0;
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+  }
+
+  .highlight-box p {
+    color: rgba(255,255,255,0.9);
+    margin-bottom: 0;
+  }
+
+  /* Pricing table */
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 15px;
+  }
+
+  .plan-card {
+    background: var(--bg-warm);
+    border-radius: 10px;
+    padding: 18px 14px;
+    text-align: center;
+    border: 1px solid var(--border);
+  }
+
+  .plan-card.popular {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+  }
+
+  .plan-card .plan-name {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+
+  .plan-card.popular .plan-name {
+    color: var(--accent-light);
+  }
+
+  .plan-card .plan-price {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+
+  .plan-card .plan-feature {
+    font-size: 10.5px;
+    color: var(--text-light);
+    margin-bottom: 3px;
+  }
+
+  .plan-card.popular .plan-feature {
+    color: rgba(255,255,255,0.8);
+  }
+
+  /* Section divider */
+  .section-divider {
+    width: 50px;
+    height: 2px;
+    background: var(--accent);
+    margin: 25px 0;
+  }
+
+  /* Two-column layout */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+  }
+
+  /* Checklist */
+  .checklist {
+    list-style: none;
+    padding: 0;
+  }
+
+  .checklist li {
+    font-size: 12px;
+    padding: 6px 0 6px 24px;
+    position: relative;
+    color: var(--text);
+  }
+
+  .checklist li::before {
+    content: "\2713";
+    position: absolute;
+    left: 0;
+    color: #16a34a;
+    font-weight: 700;
+    font-size: 13px;
+  }
+
+  /* Tech stack */
+  .tech-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .tech-item {
+    background: var(--bg-blue);
+    border-radius: 8px;
+    padding: 12px 14px;
+    text-align: center;
+  }
+
+  .tech-item .tech-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--primary);
+  }
+
+  .tech-item .tech-desc {
+    font-size: 10px;
+    color: var(--text-light);
+    margin-top: 2px;
+  }
+
+  /* CTA page */
+  .cta-page {
+    background: linear-gradient(135deg, var(--primary) 0%, #064e3b 100%);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 60px 50px;
+  }
+
+  .cta-page h2 {
+    color: white;
+    font-size: 36px;
+    margin-bottom: 20px;
+  }
+
+  .cta-page p {
+    color: rgba(255,255,255,0.85);
+    font-size: 16px;
+    max-width: 480px;
+    margin-bottom: 40px;
+  }
+
+  .cta-button {
+    display: inline-block;
+    background: var(--accent);
+    color: var(--primary);
+    padding: 16px 48px;
+    border-radius: 50px;
+    font-size: 16px;
+    font-weight: 600;
+    text-decoration: none;
+    letter-spacing: 0.5px;
+  }
+
+  .contact-info {
+    margin-top: 50px;
+    font-size: 13px;
+    color: rgba(255,255,255,0.7);
+  }
+
+  .contact-info strong {
+    color: var(--accent-light);
+  }
+
+  @media print {
+    body { background: white; }
+    .page { margin: 0; box-shadow: none; }
+  }
+
+  @media screen {
+    .page {
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      margin: 20px auto;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== PAGE 1: COVER ===== -->
+<div class="page cover">
+  <div class="cover-logo">E</div>
+  <h1>EasyStay</h1>
+  <div class="tagline">ALL-IN-ONE HOSPITALITY MANAGEMENT</div>
+  <div class="divider"></div>
+  <p class="subtitle">
+    A unified cloud platform that brings together direct bookings, hotel operations,
+    restaurant POS, financial management, and a customizable guest website &mdash;
+    everything your hospitality business needs in one place.
+  </p>
+  <div class="stats-row">
+    <div class="stat">
+      <div class="stat-num">50+</div>
+      <div class="stat-label">Features</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">6</div>
+      <div class="stat-label">Staff Roles</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">4</div>
+      <div class="stat-label">Flexible Plans</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">1</div>
+      <div class="stat-label">Unified Platform</div>
+    </div>
+  </div>
+  <div class="cover-footer">Product Overview &bull; 2026</div>
+</div>
+
+<!-- ===== PAGE 2: WHY EASYSTAY ===== -->
+<div class="page content-page">
+  <div class="page-header">
+    <div class="brand">EasyStay</div>
+    <div class="page-num">02</div>
+  </div>
+
+  <h2>Why We Built EasyStay</h2>
+  <p class="intro-text">
+    Hospitality businesses today are forced to juggle multiple disconnected tools &mdash; one for bookings,
+    another for billing, a separate POS for the restaurant, spreadsheets for expenses, and yet another
+    platform for their website. This fragmentation leads to inefficiency, data silos, and a poor experience
+    for both staff and guests.
+  </p>
+
+  <div class="highlight-box">
+    <h3>Our Mission</h3>
+    <p>
+      EasyStay was born from the real-world operations of Ganesh Residency, a premium beachfront resort
+      in Pondicherry. We experienced firsthand the pain of managing a hospitality business across
+      disconnected systems. So we built the solution we wished existed &mdash; a single, elegant platform
+      that handles everything from the moment a guest discovers your property to the final financial report.
+    </p>
+  </div>
+
+  <h3>The Problems We Solve</h3>
+  <div class="features-grid">
+    <div class="feature-card">
+      <h4>Fragmented Operations</h4>
+      <p>No more switching between 5+ tools. One platform for bookings, rooms, restaurant, invoices, and your website.</p>
+    </div>
+    <div class="feature-card blue">
+      <h4>High OTA Commissions</h4>
+      <p>Take back control with direct bookings through your own branded website &mdash; save 15-25% on every reservation.</p>
+    </div>
+    <div class="feature-card blue">
+      <h4>Manual Financial Tracking</h4>
+      <p>Automated GST-compliant invoicing, expense tracking, and real-time profit &amp; loss reporting.</p>
+    </div>
+    <div class="feature-card">
+      <h4>No Tech Expertise Needed</h4>
+      <p>A beautiful, customizable website for your property with zero coding. Edit content, galleries, and rooms in minutes.</p>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <h3>Who Is EasyStay For?</h3>
+  <div class="two-col">
+    <ul class="checklist">
+      <li>Hotels, resorts, and guesthouses</li>
+      <li>Restaurants and cafes</li>
+      <li>Combined hotel + restaurant properties</li>
+      <li>Boutique and heritage stays</li>
+    </ul>
+    <ul class="checklist">
+      <li>Property managers with multiple locations</li>
+      <li>Hospitality startups and new ventures</li>
+      <li>Owners looking to reduce OTA dependency</li>
+      <li>Businesses seeking GST-compliant billing</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===== PAGE 3: GUEST-FACING FEATURES ===== -->
+<div class="page content-page">
+  <div class="page-header">
+    <div class="brand">EasyStay</div>
+    <div class="page-num">03</div>
+  </div>
+
+  <h2>Guest-Facing Features</h2>
+  <p class="intro-text">
+    Give your guests a seamless, premium booking experience with a modern website that you fully control.
+  </p>
+
+  <div class="features-grid">
+    <div class="feature-card wide">
+      <h4>Your Own Branded Booking Website</h4>
+      <p>Every property gets a beautiful, mobile-responsive website with a custom subdomain. Showcase your rooms, gallery, testimonials, events, and destination info &mdash; all editable from the CMS with zero coding.</p>
+    </div>
+
+    <div class="feature-card">
+      <h4>4-Step Booking Flow</h4>
+      <ul>
+        <li><strong>Step 1:</strong> Select dates, guests &amp; room type</li>
+        <li><strong>Step 2:</strong> Enter guest details</li>
+        <li><strong>Step 3:</strong> Pay via UPI, Card, or QR Code</li>
+        <li><strong>Step 4:</strong> Instant confirmation + invoice</li>
+      </ul>
+    </div>
+
+    <div class="feature-card blue">
+      <h4>Real-Time Availability</h4>
+      <p>Guests see live room availability and dynamic pricing. No double-bookings, no manual calendar updates.</p>
+    </div>
+
+    <div class="feature-card blue">
+      <h4>Room Catalog</h4>
+      <ul>
+        <li>Beautiful room listings with multiple photos</li>
+        <li>Amenity icons and descriptions</li>
+        <li>Max occupancy and pricing display</li>
+        <li>Quick-book modal from any listing</li>
+      </ul>
+    </div>
+
+    <div class="feature-card">
+      <h4>Restaurant Menu &amp; Ordering</h4>
+      <ul>
+        <li>Digital menu with categories</li>
+        <li>Chef's specials and veg/non-veg tags</li>
+        <li>Meal images and preparation times</li>
+        <li>Table reservation capability</li>
+      </ul>
+    </div>
+
+    <div class="feature-card wide">
+      <h4>Guest Engagement Tools</h4>
+      <p>Floating WhatsApp support button for instant communication, mobile sticky booking bar for seamless navigation, and a testimonial carousel to build trust. Every touchpoint is designed to convert visitors into guests.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PAGE 4: HOTEL OPERATIONS ===== -->
+<div class="page content-page">
+  <div class="page-header">
+    <div class="brand">EasyStay</div>
+    <div class="page-num">04</div>
+  </div>
+
+  <h2>Hotel Operations &amp; CRM</h2>
+  <p class="intro-text">
+    Manage your entire hotel operation from a single, role-aware dashboard designed for speed and clarity.
+  </p>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <h4>Smart Dashboard</h4>
+      <ul>
+        <li>Total bookings, check-ins, check-outs at a glance</li>
+        <li>Revenue breakdown (offline vs. platform)</li>
+        <li>30-day occupancy chart</li>
+        <li>Recent bookings table</li>
+        <li>Role-aware views per staff member</li>
+      </ul>
+    </div>
+
+    <div class="feature-card blue">
+      <h4>Reservation Management</h4>
+      <ul>
+        <li>Full lifecycle: Pending &rarr; Confirmed &rarr; Checked In &rarr; Checked Out</li>
+        <li>Filter by status, date, payment, source</li>
+        <li>Source tracking (Direct, Booking.com, Agoda...)</li>
+        <li>Quick check-in/check-out actions</li>
+      </ul>
+    </div>
+
+    <div class="feature-card blue">
+      <h4>Visual Calendar</h4>
+      <ul>
+        <li>Week/month view of all rooms</li>
+        <li>Color-coded booking blocks</li>
+        <li>Room status: Available, Occupied, Maintenance</li>
+        <li>Cleaning status indicators</li>
+        <li>Click-to-view booking details</li>
+      </ul>
+    </div>
+
+    <div class="feature-card">
+      <h4>Room Management</h4>
+      <ul>
+        <li>Real-time room status tracking</li>
+        <li>Cleaning status (Clean / Dirty)</li>
+        <li>Maintenance notes and scheduling</li>
+        <li>Edit room type, price, amenities</li>
+        <li>Active reservation lookup per room</li>
+      </ul>
+    </div>
+
+    <div class="feature-card">
+      <h4>Guest Directory</h4>
+      <ul>
+        <li>Searchable guest history database</li>
+        <li>Contact info (email, phone)</li>
+        <li>Full booking history per guest</li>
+        <li>Location tracking</li>
+      </ul>
+    </div>
+
+    <div class="feature-card blue">
+      <h4>Staff Management</h4>
+      <ul>
+        <li>6 roles: Super Admin, Manager, Reception, Housekeeping, Accountant, Server</li>
+        <li>Granular permissions per role</li>
+        <li>Active/Inactive status management</li>
+        <li>Plan-based staff limits</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PAGE 5: RESTAURANT & POS ===== -->
+<div class="page content-page">
+  <div class="page-header">
+    <div class="brand">EasyStay</div>
+    <div class="page-num">05</div>
+  </div>
+
+  <h2>Restaurant &amp; POS System</h2>
+  <p class="intro-text">
+    A complete restaurant management solution built right into your hospitality platform &mdash;
+    from menu creation to order fulfillment and table tracking.
+  </p>
+
+  <div class="features-grid">
+    <div class="feature-card wide">
+      <h4>Point of Sale (POS)</h4>
+      <p>Lightning-fast order entry with live search, category browsing, and a smart shopping cart.
+      Supports Dine-in, Takeaway, and Delivery order types. Automatic table assignment, occupancy
+      tracking, and payment processing via Cash, Card, or UPI.</p>
+    </div>
+
+    <div class="feature-card">
+      <h4>Menu Management</h4>
+      <ul>
+        <li>Create categories with custom ordering</li>
+        <li>Full item management (name, price, image)</li>
+        <li>Veg / Non-veg indicators</li>
+        <li>Chef's Special marking</li>
+        <li>Preparation time tracking</li>
+        <li>Availability toggle per item</li>
+      </ul>
+    </div>
+
+    <div class="feature-card blue">
+      <h4>Order Management</h4>
+      <ul>
+        <li>Status workflow: Pending &rarr; Cooking &rarr; Ready &rarr; Served &rarr; Billed</li>
+        <li>Item-level preparation tracking</li>
+        <li>Order filtering by status &amp; date</li>
+        <li>Order cancellation with tracking</li>
+        <li>Server-specific order assignment</li>
+      </ul>
+    </div>
+
+    <div class="feature-card blue">
+      <h4>Table Management</h4>
+      <ul>
+        <li>Create tables with capacity</li>
+        <li>Real-time occupancy tracking</li>
+        <li>Table-order association</li>
+        <li>QR code generation for table ordering</li>
+        <li>Availability toggle per table</li>
+      </ul>
+    </div>
+
+    <div class="feature-card">
+      <h4>Kitchen &amp; Server Views</h4>
+      <p>Dedicated views for kitchen staff and servers to track order status, preparation progress,
+      and table assignments in real-time.</p>
+    </div>
+  </div>
+
+  <div class="highlight-box" style="margin-top: 20px;">
+    <h3>Hotel + Restaurant = One Platform</h3>
+    <p>
+      Unlike competitors that treat hotel and restaurant as separate products, EasyStay unifies both
+      into a single dashboard. Your room revenue and food revenue flow into the same P&amp;L report.
+      Your staff manages both from one login. Your guests enjoy a seamless experience.
+    </p>
+  </div>
+</div>
+
+<!-- ===== PAGE 6: FINANCIAL MANAGEMENT ===== -->
+<div class="page content-page">
+  <div class="page-header">
+    <div class="brand">EasyStay</div>
+    <div class="page-num">06</div>
+  </div>
+
+  <h2>Financial Management</h2>
+  <p class="intro-text">
+    From GST-compliant invoicing to real-time profit &amp; loss analysis &mdash; take complete control of your finances.
+  </p>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <h4>GST-Compliant Invoicing</h4>
+      <ul>
+        <li>Auto-generated invoices from reservations</li>
+        <li>GST breakdown (12% configurable)</li>
+        <li>PDF download and print</li>
+        <li>Search by booking ID or guest name</li>
+        <li>Status tracking: Generated / Pending</li>
+      </ul>
+    </div>
+
+    <div class="feature-card blue">
+      <h4>Payment Tracking</h4>
+      <ul>
+        <li>Track all payments: UPI, Card, Cash, Cheque, Bank Transfer</li>
+        <li>Payment status management</li>
+        <li>Date-based filtering</li>
+        <li>Razorpay integration for online payments</li>
+        <li>INR currency optimized</li>
+      </ul>
+    </div>
+
+    <div class="feature-card blue">
+      <h4>Expense Management</h4>
+      <ul>
+        <li>10 expense categories: Salaries, Utilities, Maintenance, Supplies, F&amp;B, Marketing, Rent, Insurance, Equipment, Other</li>
+        <li>Vendor and receipt tracking</li>
+        <li>Filter, sort, search by any field</li>
+        <li>Full CRUD operations</li>
+      </ul>
+    </div>
+
+    <div class="feature-card">
+      <h4>Profit &amp; Loss Reports</h4>
+      <ul>
+        <li>Combined room + restaurant revenue</li>
+        <li>Category-wise expense breakdown</li>
+        <li>Net profit/loss calculation</li>
+        <li>Date presets: This Month, Last Month, Last 3 Months, Custom</li>
+        <li>Trend visualization and comparison</li>
+      </ul>
+    </div>
+
+    <div class="feature-card wide">
+      <h4>Reports &amp; Analytics</h4>
+      <p>Revenue charts by day of the week, booking source distribution (pie charts), room performance metrics
+      (occupancy %, revenue per room), and customizable date ranges &mdash; everything you need to make data-driven decisions.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PAGE 7: WEBSITE CMS & SETTINGS ===== -->
+<div class="page content-page">
+  <div class="page-header">
+    <div class="brand">EasyStay</div>
+    <div class="page-num">07</div>
+  </div>
+
+  <h2>Website CMS &amp; Settings</h2>
+  <p class="intro-text">
+    Full control over your public website, pricing rules, booking policies, and integrations &mdash; no developer needed.
+  </p>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <h4>Website Editor (CMS)</h4>
+      <ul>
+        <li>Hero section: title, subtitle, image</li>
+        <li>About section text editing</li>
+        <li>Contact info management</li>
+        <li>Testimonial management with star ratings</li>
+        <li>Drag-and-drop gallery management</li>
+        <li>Section visibility toggles</li>
+        <li>Live preview link</li>
+      </ul>
+    </div>
+
+    <div class="feature-card blue">
+      <h4>Room CMS</h4>
+      <ul>
+        <li>Edit name, type, description, price</li>
+        <li>Amenity search and management</li>
+        <li>Image upload, reorder, delete</li>
+        <li>Toggle website display per room</li>
+        <li>Max occupancy configuration</li>
+      </ul>
+    </div>
+
+    <div class="feature-card blue">
+      <h4>Dynamic Pricing Rules</h4>
+      <ul>
+        <li>Occupancy-based pricing</li>
+        <li>Seasonal adjustments</li>
+        <li>Date-range specific pricing</li>
+        <li>Discount rules</li>
+        <li>Enable/disable per rule</li>
+      </ul>
+    </div>
+
+    <div class="feature-card">
+      <h4>Booking Settings</h4>
+      <ul>
+        <li>Minimum night requirements</li>
+        <li>Check-in / check-out times</li>
+        <li>Advance booking window</li>
+        <li>Cancellation policy setup</li>
+        <li>Date blackout management</li>
+      </ul>
+    </div>
+
+    <div class="feature-card">
+      <h4>WhatsApp Integration</h4>
+      <ul>
+        <li>WhatsApp Business connection</li>
+        <li>Message templates</li>
+        <li>Auto-message on booking</li>
+        <li>Notification rules</li>
+      </ul>
+    </div>
+
+    <div class="feature-card blue">
+      <h4>Multi-Property Support</h4>
+      <ul>
+        <li>Add unlimited properties</li>
+        <li>Quick property switcher</li>
+        <li>Per-property data isolation</li>
+        <li>Hotel, Restaurant, or Combined types</li>
+        <li>Auto-generated subdomains</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PAGE 8: SECURITY, TECH & PLANS ===== -->
+<div class="page content-page">
+  <div class="page-header">
+    <div class="brand">EasyStay</div>
+    <div class="page-num">08</div>
+  </div>
+
+  <h2>Security, Technology &amp; Plans</h2>
+
+  <h3>Built with Modern Technology</h3>
+  <div class="tech-grid">
+    <div class="tech-item">
+      <div class="tech-name">React 19</div>
+      <div class="tech-desc">Latest UI framework</div>
+    </div>
+    <div class="tech-item">
+      <div class="tech-name">TypeScript</div>
+      <div class="tech-desc">Type-safe codebase</div>
+    </div>
+    <div class="tech-item">
+      <div class="tech-name">Tailwind CSS</div>
+      <div class="tech-desc">Mobile-first design</div>
+    </div>
+    <div class="tech-item">
+      <div class="tech-name">Supabase</div>
+      <div class="tech-desc">PostgreSQL + RLS</div>
+    </div>
+    <div class="tech-item">
+      <div class="tech-name">Clerk Auth</div>
+      <div class="tech-desc">Secure SSO + OAuth</div>
+    </div>
+    <div class="tech-item">
+      <div class="tech-name">Razorpay</div>
+      <div class="tech-desc">INR payment processing</div>
+    </div>
+    <div class="tech-item">
+      <div class="tech-name">Vite</div>
+      <div class="tech-desc">Lightning-fast builds</div>
+    </div>
+    <div class="tech-item">
+      <div class="tech-name">Framer Motion</div>
+      <div class="tech-desc">Smooth animations</div>
+    </div>
+    <div class="tech-item">
+      <div class="tech-name">Vercel</div>
+      <div class="tech-desc">Global CDN hosting</div>
+    </div>
+  </div>
+
+  <h3>Security &amp; Authentication</h3>
+  <div class="two-col" style="margin-top: 10px;">
+    <ul class="checklist">
+      <li>Email/password + Google OAuth login</li>
+      <li>Email verification workflow</li>
+      <li>Session management via Clerk</li>
+    </ul>
+    <ul class="checklist">
+      <li>Row-Level Security (RLS) on all data</li>
+      <li>Role-based access control (6 roles)</li>
+      <li>Per-property data isolation</li>
+    </ul>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <h3>Flexible Plans for Every Size</h3>
+  <div class="pricing-grid">
+    <div class="plan-card">
+      <div class="plan-name">Starter</div>
+      <div class="plan-price">Free</div>
+      <div class="plan-feature">Up to 5 rooms</div>
+      <div class="plan-feature">Basic CRM</div>
+      <div class="plan-feature">Booking website</div>
+      <div class="plan-feature">Invoicing</div>
+    </div>
+    <div class="plan-card">
+      <div class="plan-name">Growth</div>
+      <div class="plan-price">Paid</div>
+      <div class="plan-feature">Up to 15 rooms</div>
+      <div class="plan-feature">Full CRM</div>
+      <div class="plan-feature">Reports &amp; Analytics</div>
+      <div class="plan-feature">Priority support</div>
+    </div>
+    <div class="plan-card popular">
+      <div class="plan-name">Pro</div>
+      <div class="plan-price">Popular</div>
+      <div class="plan-feature">Unlimited rooms</div>
+      <div class="plan-feature">Restaurant &amp; POS</div>
+      <div class="plan-feature">Dynamic pricing</div>
+      <div class="plan-feature">All features</div>
+    </div>
+    <div class="plan-card">
+      <div class="plan-name">Enterprise</div>
+      <div class="plan-price">Custom</div>
+      <div class="plan-feature">Multi-property</div>
+      <div class="plan-feature">Dedicated support</div>
+      <div class="plan-feature">Custom integrations</div>
+      <div class="plan-feature">SLA guarantee</div>
+    </div>
+  </div>
+
+  <h3 style="margin-top: 20px;">Available Add-ons</h3>
+  <div class="two-col" style="margin-top: 8px;">
+    <ul class="checklist">
+      <li>Extra Rooms &mdash; &#8377;499/mo</li>
+      <li>WhatsApp Pack &mdash; &#8377;799/mo</li>
+      <li>Custom Domain &mdash; &#8377;299/mo</li>
+    </ul>
+    <ul class="checklist">
+      <li>OTA Channel Sync &mdash; &#8377;1,499/mo</li>
+      <li>Priority Support &mdash; &#8377;999/mo</li>
+      <li>Advanced Analytics &mdash; &#8377;699/mo</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===== PAGE 9: CTA ===== -->
+<div class="page cta-page">
+  <div class="cover-logo" style="border-color: var(--accent); color: var(--accent);">E</div>
+  <h2>Ready to Transform Your Hospitality Business?</h2>
+  <p>
+    Join the growing community of hotels, resorts, and restaurants that have simplified their operations
+    with EasyStay. Start for free and upgrade as you grow.
+  </p>
+  <div class="cta-button">Get Started Free</div>
+
+  <div class="contact-info" style="margin-top: 60px;">
+    <p style="color: rgba(255,255,255,0.7); margin-bottom: 20px;">
+      <strong>EasyStay</strong> &mdash; Built by hoteliers, for hoteliers.
+    </p>
+    <p style="color: rgba(255,255,255,0.5); font-size: 12px;">
+      Originally developed for Ganesh Residency, Pondicherry<br>
+      Now available as a SaaS platform for all hospitality businesses
+    </p>
+  </div>
+
+  <div class="cover-footer">
+    &copy; 2026 EasyStay &bull; All Rights Reserved
+  </div>
+</div>
+
+</body>
+</html>

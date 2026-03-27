@@ -147,7 +147,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       if (!user) {
         console.log('[AuthContext] Initializing demo mode session');
         const demoTenant: Tenant = {
-          id: 'demo-hotel-777',
+          id: '00000000-0000-0000-0000-000000000777',
           business_name: 'Ocean View Demo Resort',
           business_type: 'combined',
           subdomain: 'demo-ocean-view',
