@@ -1,7 +1,17 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
+import { useCRM } from '../context/CRMDataContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Footer() {
+  const { cmsSettings } = useCRM();
+  const { tenant } = useAuth();
+  
+  const hotelName = cmsSettings.hotelName || tenant?.business_name || 'Our Resort';
+  const nameParts = hotelName.split(' ');
+  const mainName = nameParts[0];
+  const restOfName = nameParts.slice(1).join(' ');
+
   return (
     <footer className="bg-foreground text-background py-24 md:py-32 relative overflow-hidden">
       {/* Heavy noise specifically for footer to ground the page */}
@@ -17,8 +27,8 @@ export default function Footer() {
           className="mb-16"
         >
           <h2 className="font-serif text-3xl md:text-5xl tracking-[0.1em] uppercase font-normal text-background drop-shadow-sm mb-4">
-            Ganesh
-            <span className="block text-xl md:text-2xl tracking-[0.4em] mt-4 opacity-70 font-light">Residency</span>
+            {mainName}
+            {restOfName && <span className="block text-xl md:text-2xl tracking-[0.4em] mt-4 opacity-70 font-light">{restOfName}</span>}
           </h2>
         </motion.div>
 
@@ -51,7 +61,7 @@ export default function Footer() {
           transition={{ duration: 1, delay: 0.6 }}
           className="w-full flex flex-col md:flex-row justify-between items-center text-[10px] tracking-widest text-background/30 uppercase mt-auto pt-8 border-t border-background/10"
         >
-          <p className="mb-4 md:mb-0">&copy; {new Date().getFullYear()} Ganesh Residency. All rights reserved.</p>
+          <p className="mb-4 md:mb-0">&copy; {new Date().getFullYear()} {hotelName}. All rights reserved.</p>
           <Link to="/admin/login" className="hover:text-accent transition-colors duration-300">Staff Portal</Link>
         </motion.div>
 

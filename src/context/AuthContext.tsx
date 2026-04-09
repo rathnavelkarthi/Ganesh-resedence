@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { useUser, useClerk } from '@clerk/react';
 import { supabase } from '../lib/supabaseClient';
 import { generateSubdomain, hasPermission as checkPermission, DEMO_EMAIL } from '../lib/booking';
+import { Session } from '@supabase/supabase-js';
 
 export type Role = 'SUPER_ADMIN' | 'MANAGER' | 'RECEPTION' | 'HOUSEKEEPING' | 'ACCOUNTANT' | 'SERVER';
 
@@ -23,6 +24,7 @@ export interface User {
   email: string;
   role: Role;
   avatar?: string;
+  type: 'CLERK' | 'SUPABASE';
 }
 
 interface AuthContextType {
@@ -54,54 +56,121 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [properties, setProperties] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [supabaseSession, setSupabaseSession] = useState<Session | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(() => localStorage.getItem('is_demo_mode') === 'true');
 
-  const buildUser = (clerkId: string, email: string, name: string, role: Role, avatarUrl?: string): User => ({
-    id: clerkId,
+  const buildUser = (id: string, email: string, name: string, role: Role, type: 'CLERK' | 'SUPABASE', avatarUrl?: string): User => ({
+    id,
     name,
     email,
     role,
+    type,
     avatar: avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0E2A38&color=fff`,
   });
 
-  const loadProperties = async (clerkId: string, email: string, name: string, avatarUrl?: string) => {
-    const { data: links } = await supabase
-      .from('user_properties')
-      .select('tenant_id, role, is_owner, tenants(*)')
-      .eq('user_id', clerkId);
+  const loadProperties = async (userId: string, email: string, name: string, type: 'CLERK' | 'SUPABASE', avatarUrl?: string) => {
+    console.log(`[AuthContext] Loading properties for ${type} user: ${userId}`);
+    
+    try {
+      // 1. Try to find the tenant link in user_properties
+      const { data: links, error: linkError } = await supabase
+        .from('user_properties')
+        .select('tenant_id, role, is_owner')
+        .eq('user_id', userId);
 
-    if (links && links.length > 0) {
-      const tenantList: Tenant[] = links
-        .filter(l => l.tenants)
-        .map(l => l.tenants as unknown as Tenant);
+      if (linkError) console.error('[AuthContext] Error fetching user_properties:', linkError);
 
-      setProperties(tenantList);
-      const savedId = localStorage.getItem(ACTIVE_PROPERTY_KEY);
-      const active = (savedId && tenantList.find(t => t.id === savedId)) || tenantList[0];
+      if (links && links.length > 0) {
+        const tenantIds = links.map(l => l.tenant_id);
+        const { data: tenantData, error: tError } = await supabase
+          .from('tenants')
+          .select('*')
+          .in('id', tenantIds);
 
-      if (active) {
-        console.log('[AuthContext] Found active tenant', active.id);
-        setTenant(active);
-        localStorage.setItem(ACTIVE_PROPERTY_KEY, active.id);
-        const link = links.find(l => l.tenant_id === active.id);
-        const role = (link?.role as Role) || 'SUPER_ADMIN';
-        setUser(buildUser(clerkId, email, name, role, avatarUrl));
+        if (tError) {
+          console.error('[AuthContext] Error fetching tenants sequentially:', tError);
+          // If sequence fails too, we might have a broader schema issue
+        }
+
+        if (tenantData && tenantData.length > 0) {
+          setProperties(tenantData as Tenant[]);
+          const savedId = localStorage.getItem(ACTIVE_PROPERTY_KEY);
+          const active = (savedId && tenantData.find(t => t.id === savedId)) || tenantData[0];
+
+          if (active) {
+            setTenant(active as Tenant);
+            localStorage.setItem(ACTIVE_PROPERTY_KEY, active.id);
+            const link = links.find(l => l.tenant_id === active.id);
+            const role = (link?.role as Role) || 'RECEPTION';
+            setUser(buildUser(userId, email, name, role, type, avatarUrl));
+            setLoading(false);
+            return;
+          }
+        }
       }
-      return;
+
+      // 2. Fallback for Owners (mostly Clerk users)
+      if (type === 'CLERK') {
+        const { data: fallback, error: fbError } = await supabase
+          .from('tenants').select('*').eq('owner_id', userId).limit(1).single();
+
+        if (fbError && fbError.code !== 'PGRST116') {
+          console.error('[AuthContext] Clerk fallback error:', fbError);
+        }
+
+        if (fallback) {
+          setProperties([fallback as Tenant]);
+          setTenant(fallback as Tenant);
+          setUser(buildUser(userId, email, name, 'SUPER_ADMIN', 'CLERK', avatarUrl));
+          setLoading(false);
+          return;
+        }
+      }
+
+      // 3. Fallback for Staff (Supabase users)
+      if (type === 'SUPABASE') {
+        const { data: staffData, error: sError } = await supabase
+          .from('staff')
+          .select('*')
+          .eq('id', userId)
+          .single();
+        
+        if (sError) {
+          console.error('[AuthContext] Staff lookup error:', sError);
+          throw sError;
+        }
+
+        if (staffData) {
+          const { data: tenantData, error: stError } = await supabase
+            .from('tenants')
+            .select('*')
+            .eq('id', staffData.tenant_id)
+            .single();
+
+          if (stError) {
+             console.error('[AuthContext] Staff tenant lookup error:', stError);
+             throw stError;
+          }
+
+          if (tenantData) {
+            const staffTenant = tenantData as Tenant;
+            setProperties([staffTenant]);
+            setTenant(staffTenant);
+            setUser(buildUser(userId, email, name, (staffData.role as Role) || 'RECEPTION', 'SUPABASE', avatarUrl));
+            setLoading(false);
+            return;
+          }
+        }
+      }
+    } catch (err: any) {
+      console.error('[AuthContext] Critical failure in loadProperties:', err);
+      if (err.message && err.message.includes('schema')) {
+        console.error('[AuthContext] Possible schema mismatch or PostgREST cache issue detected.');
+      }
     }
 
-    console.log('[AuthContext] No properties found via user_properties, checking fallback...');
-    const { data: fallback } = await supabase
-      .from('tenants').select('*').eq('owner_id', clerkId).limit(1).single();
-
-    if (fallback) {
-      console.log('[AuthContext] Found fallback tenant directly connected to owner', fallback.id);
-      setProperties([fallback as Tenant]);
-      setTenant(fallback as Tenant);
-      setUser(buildUser(clerkId, email, name, 'SUPER_ADMIN', avatarUrl));
-    } else {
-      console.log('[AuthContext] No tenant found at all for user', clerkId);
-      // New Google signup — check if business info was saved before the OAuth redirect
+    // 4. Handle Pending Signups (only for owners)
+    if (type === 'CLERK') {
       const pendingName = localStorage.getItem('pending_business_name');
       const pendingType = localStorage.getItem('pending_business_type') as Tenant['business_type'] | null;
 
@@ -110,90 +179,140 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
         localStorage.removeItem('pending_business_type');
         const subdomain = generateSubdomain(pendingName);
         const { error } = await supabase.rpc('create_tenant', {
-          p_owner_id: clerkId,
+          p_owner_id: userId,
           p_business_name: pendingName,
           p_business_type: pendingType,
           p_subdomain: subdomain,
         });
         if (!error) {
-          console.log('[AuthContext] Successfully created pending tenant from Google signup', subdomain);
-          // Reload now that the tenant exists
-          await loadProperties(clerkId, email, name, avatarUrl);
+          await loadProperties(userId, email, name, 'CLERK', avatarUrl);
           return;
-        } else {
-          console.error('[AuthContext] Error creating tenant from pending info', error);
         }
       }
-
-      console.log('[AuthContext] Providing isolated user session to avoid redirect loop');
-      setProperties([]);
+      
+      setUser(buildUser(userId, email, name, 'SUPER_ADMIN', 'CLERK', avatarUrl));
+    } else {
+      setUser(null);
       setTenant(null);
-      // We must set the user even if there is no tenant, otherwise Login.tsx 
-      // redirects to /admin/dashboard -> CRMApp -> redirects to /admin/login -> loop
-      setUser(buildUser(clerkId, email, name, 'SUPER_ADMIN', avatarUrl));
+      setProperties([]);
     }
+    
+    setLoading(false);
   };
 
   const refreshTenant = async () => {
-    if (!clerkUser) return;
-    const email = clerkUser.primaryEmailAddress?.emailAddress || '';
-    const name = clerkUser.fullName || email.split('@')[0];
-    await loadProperties(clerkUser.id, email, name, clerkUser.imageUrl);
+    if (clerkUser) {
+      const email = clerkUser.primaryEmailAddress?.emailAddress || '';
+      const name = clerkUser.fullName || email.split('@')[0];
+      await loadProperties(clerkUser.id, email, name, 'CLERK', clerkUser.imageUrl);
+    } else if (supabaseSession?.user) {
+      const sUser = supabaseSession.user;
+      const name = sUser.user_metadata?.full_name || sUser.email?.split('@')[0] || 'Staff';
+      await loadProperties(sUser.id, sUser.email || '', name, 'SUPABASE');
+    }
   };
 
   useEffect(() => {
-    // If in demo mode, prioritize it immediately regardless of Clerk state
+    // 1. Supabase Auth Listener
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSupabaseSession(session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSupabaseSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    // 2. Main Auth Resolution Logic
     if (isDemoMode) {
-      if (!user) {
-        console.log('[AuthContext] Initializing demo mode session');
-        const demoTenant: Tenant = {
-          id: '00000000-0000-0000-0000-000000000777',
-          business_name: 'Ocean View Demo Resort',
-          business_type: 'combined',
-          subdomain: 'demo-ocean-view',
-          template: 'luxury',
-          plan: 'enterprise',
-          custom_email: DEMO_EMAIL,
-          logo_url: null,
-          is_active: true,
-        };
-        setTenant(demoTenant);
-        setUser(buildUser('demo-user-123', DEMO_EMAIL, 'Demo Manager', 'SUPER_ADMIN'));
-        setProperties([demoTenant]);
-        setLoading(false);
-      } else {
-        setLoading(false);
-      }
+      const demoTenant: Tenant = {
+        id: '00000000-0000-0000-0000-000000000777',
+        business_name: 'Ocean View Demo Resort',
+        business_type: 'combined',
+        subdomain: 'demo-ocean-view',
+        template: 'luxury',
+        plan: 'enterprise',
+        custom_email: DEMO_EMAIL,
+        logo_url: null,
+        is_active: true,
+      };
+      setTenant(demoTenant);
+      setUser(buildUser('demo-user-123', DEMO_EMAIL, 'Demo Manager', 'SUPER_ADMIN', 'SUPABASE'));
+      setProperties([demoTenant]);
+      setLoading(false);
       return;
     }
 
     if (!userLoaded) return;
 
-    if (!clerkUser) {
-      console.log('[AuthContext] No clerkUser, setting state to null');
-      setUser(null); setTenant(null); setProperties([]); setLoading(false); return;
+    // Handle Clerk User
+    if (clerkUser) {
+      const email = clerkUser.primaryEmailAddress?.emailAddress || '';
+      const name = clerkUser.fullName || email.split('@')[0];
+      loadProperties(clerkUser.id, email, name, 'CLERK', clerkUser.imageUrl);
+      return;
     }
 
-    console.log('[AuthContext] clerkUser loaded, email:', clerkUser.primaryEmailAddress?.emailAddress);
-    const email = clerkUser.primaryEmailAddress?.emailAddress || '';
-    const name = clerkUser.fullName || email.split('@')[0];
-    loadProperties(clerkUser.id, email, name, clerkUser.imageUrl).finally(() => setLoading(false));
-  }, [clerkUser?.id, userLoaded, isDemoMode]);
+    // Handle Supabase User
+    if (supabaseSession?.user) {
+      const sUser = supabaseSession.user;
+      const name = sUser.user_metadata?.full_name || sUser.email?.split('@')[0] || 'Staff';
+      loadProperties(sUser.id, sUser.email || '', name, 'SUPABASE');
+      return;
+    }
+
+    // No user found
+    setUser(null);
+    setTenant(null);
+    setProperties([]);
+    setLoading(false);
+  }, [clerkUser?.id, userLoaded, supabaseSession?.user?.id, isDemoMode]);
 
   const login = async (email: string, password: string): Promise<{ error: string | null }> => {
     try {
+      setLoading(true);
+      // Try Clerk first (for owners/managers)
       const clerkInstance = clerk as any;
       const client = clerkInstance?.client;
-      if (!client) return { error: 'Auth not ready. Try again.' };
+      
+      if (client) {
+        try {
+          console.log('[AuthContext] Attempting Clerk login for:', email);
+          const signIn = await client.signIn.create({ identifier: email, password });
+          if (signIn.status === 'complete') {
+            console.log('[AuthContext] Clerk login successful');
+            await clerkInstance.setActive({ session: signIn.createdSessionId });
+            return { error: null };
+          }
+          console.log('[AuthContext] Clerk login status:', signIn.status);
+        } catch (clerkErr: any) {
+          console.error('[AuthContext] Clerk login error detail:', {
+            status: clerkErr.status,
+            errors: clerkErr.errors,
+            message: clerkErr.message,
+            clerkError: clerkErr
+          });
+          console.log('[AuthContext] Clerk login failed, trying Supabase fallback...');
+        }
+      }
 
-      const signIn = await client.signIn.create({ identifier: email, password });
-      if (signIn.status === 'complete') {
-        await clerkInstance.setActive({ session: signIn.createdSessionId });
+      // Fallback to Supabase (for staff)
+      const { data, error: sError } = await supabase.auth.signInWithPassword({ email, password });
+      if (sError) return { error: sError.message };
+      
+      if (data.session) {
+        setSupabaseSession(data.session);
         return { error: null };
       }
-      return { error: 'Sign in did not complete. Please try again.' };
+
+      return { error: 'Unknown authentication error.' };
     } catch (err: any) {
-      return { error: err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || err?.message || 'Sign in failed.' };
+      return { error: err.message || 'Login failed.' };
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -225,7 +344,6 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
         return { error: null };
       }
 
-      // Email verification required (missing_requirements)
       if (result?.status === 'missing_requirements') {
         await result.prepareEmailAddressVerification({ strategy: 'email_code' });
         return { error: null, needsVerification: true };
@@ -263,17 +381,8 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       return { error: 'Verification did not complete. Please check the code and try again.' };
     } catch (err: any) {
       const msg: string = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || err?.message || '';
-      // If already verified, the first attempt worked — treat as success
       if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('redeemed')) {
-        try {
-          const clerkInstance = clerk as any;
-          const sessions = clerkInstance?.client?.sessions;
-          if (sessions && sessions.length > 0) {
-            await clerkInstance.setActive({ session: sessions[0].id });
-            return { error: null };
-          }
-        } catch (_) { /* fall through */ }
-        return { error: null }; // verified, just navigate
+        return { error: null };
       }
       return { error: msg || 'Verification failed.' };
     }
@@ -281,9 +390,14 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      await clerk.signOut();
+      if (user?.type === 'CLERK') {
+        await clerk.signOut();
+      } else {
+        await supabase.auth.signOut();
+        setSupabaseSession(null);
+      }
     } catch (e) {
-      console.error('Error during Clerk sign out', e);
+      console.error('Error during sign out', e);
     }
     setIsDemoMode(false);
     localStorage.removeItem('is_demo_mode');
@@ -294,42 +408,47 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
 
   const switchProperty = (tenantId: string) => {
     const target = properties.find(p => p.id === tenantId);
-    if (!target || !clerkUser) return;
+    if (!target) return;
+    
     setTenant(target);
     localStorage.setItem(ACTIVE_PROPERTY_KEY, tenantId);
-    supabase.from('user_properties').select('role')
-      .eq('user_id', clerkUser.id).eq('tenant_id', tenantId).single()
-      .then(({ data }) => {
-        if (data) setUser(prev => prev ? { ...prev, role: (data.role as Role) || 'SUPER_ADMIN' } : prev);
-      });
+    
+    const currentUserId = user?.id;
+    if (currentUserId) {
+      supabase.from('user_properties').select('role')
+        .eq('user_id', currentUserId).eq('tenant_id', tenantId).single()
+        .then(({ data }) => {
+          if (data) setUser(prev => prev ? { ...prev, role: (data.role as Role) || 'RECEPTION' } : prev);
+        });
+    }
   };
 
   const addProperty = async (name: string, type: 'hotel' | 'restaurant' | 'combined'): Promise<{ error: string | null }> => {
-    if (!user || !clerkUser) return { error: 'Not authenticated' };
+    if (!user || user.type !== 'CLERK') return { error: 'Only property owners can add new properties.' };
+    
     const subdomain = generateSubdomain(name);
     const { data: newTenantId, error } = await supabase.rpc('create_tenant', {
-      p_owner_id: clerkUser.id, p_business_name: name, p_business_type: type, p_subdomain: subdomain,
+      p_owner_id: user.id, p_business_name: name, p_business_type: type, p_subdomain: subdomain,
     });
+    
     if (error) {
       if (error.message?.includes('tenants_subdomain_key')) {
         return { error: 'This property name is already taken. Please try a different name.' };
       }
       return { error: error.message };
     }
-    const email = clerkUser.primaryEmailAddress?.emailAddress || '';
-    const clerkName = clerkUser.fullName || email.split('@')[0];
-    await loadProperties(clerkUser.id, email, clerkName, clerkUser.imageUrl);
+    
+    await refreshTenant();
     if (newTenantId) switchProperty(newTenantId);
     return { error: null };
   };
 
   const hasPermission = (allowedRoles: Role[]) => checkPermission(user?.role ?? null, allowedRoles);
-  const session = clerkUser || isDemoMode ? { access_token: isDemoMode ? 'demo-token' : 'clerk-managed' } : null;
+  const session = user ? { access_token: isDemoMode ? 'demo-token' : 'active-session' } : null;
 
   const loginAsDemo = () => {
     setIsDemoMode(true);
     localStorage.setItem('is_demo_mode', 'true');
-    // State will be set by the useEffect
   };
 
   return (

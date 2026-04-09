@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '../context/AuthContext';
+import { sendWelcomeEmail } from '../lib/email';
 import { useClerk } from '@clerk/react';
 import { motion } from 'motion/react';
 import { Building, UtensilsCrossed, Layers, ArrowRight, Check, Mail } from 'lucide-react';
@@ -70,6 +71,7 @@ export default function Signup() {
             setNeedsVerification(true);
             setIsLoading(false);
         } else {
+            sendWelcomeEmail({ email, businessName, businessType });
             setSignupComplete(true);
             setIsLoading(false);
         }
@@ -92,6 +94,7 @@ export default function Signup() {
             setError(result.error);
             setIsLoading(false);
         } else {
+            sendWelcomeEmail({ email, businessName, businessType });
             // Hard redirect so the page reloads and picks up the new Clerk session
             window.location.href = '/admin/dashboard';
         }

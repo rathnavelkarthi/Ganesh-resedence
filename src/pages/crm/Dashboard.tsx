@@ -1,17 +1,19 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useCRM } from '../../context/CRMDataContext';
-import { UtensilsCrossed as UtensilsIcon, ClipboardList, Armchair } from 'lucide-react';
 import { motion } from 'motion/react';
 import {
-  IndianRupee,
   BarChart3,
-  Search,
   MoreHorizontal,
   ChevronLeft,
   ChevronRight,
-  Filter,
   MessageCircle,
+  TrendingUp,
+  TrendingDown,
+  BedDouble,
+  LogIn,
+  LogOut,
+  DollarSign,
 } from 'lucide-react';
 import {
   BarChart,
@@ -21,6 +23,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  AreaChart,
+  Area,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -210,21 +214,21 @@ export default function Dashboard() {
   const hasData = reservations.length > 0 || rooms.length > 0;
 
   return (
-    <div className="max-w-[1600px] mx-auto pb-10 px-1">
+    <div className="max-w-[1600px] mx-auto pb-6">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-4">
         <h1 className="font-serif text-2xl font-bold text-[#0E2A38]">Dashboard</h1>
       </div>
 
       {!hasData ? (
         <EmptyState isRestaurant={isRestaurant && !isHotel} />
       ) : (
-        <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-5">
+        <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-3">
 
           {/* Restaurant KPIs */}
           {isRestaurant && restaurantData && (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                 <motion.div variants={itemVariants}><KpiCard label="Today's Orders" value={String(restaurantData.todayOrders)} sublabel="today" /></motion.div>
                 <motion.div variants={itemVariants}><KpiCard label="Today's Revenue" value={formatINR(restaurantData.todayRevenue)} sublabel="today" /></motion.div>
                 <motion.div variants={itemVariants}><KpiCard label="Avg Order Value" value={formatINR(restaurantData.avgOrder)} sublabel="today" /></motion.div>
@@ -239,7 +243,7 @@ export default function Dashboard() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
+                    <div className="flex gap-3 overflow-x-auto pb-3 snap-x">
                       {foodOrders.filter(o => ['pending', 'preparing'].includes(o.status)).length > 0 ? (
                         foodOrders
                           .filter(o => ['pending', 'preparing'].includes(o.status))
@@ -278,23 +282,24 @@ export default function Dashboard() {
 
           {/* Hotel KPI Row */}
           {isHotel && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <motion.div variants={itemVariants}>
-                <KpiCard label="Total Bookings" value={hotelStats.totalBookings.toLocaleString('en-IN')} sublabel="All reservations" />
+                <KpiCard label="Total Bookings" value={hotelStats.totalBookings.toLocaleString('en-IN')} sublabel="All reservations" icon={<BedDouble size={18} />} accentColor="var(--color-ocean-500)" />
               </motion.div>
               <motion.div variants={itemVariants}>
-                <KpiCard label="Check In" value={hotelStats.checkIns.toLocaleString('en-IN')} sublabel="Confirmed / Checked In" arrow="down-left" />
+                <KpiCard label="Check In" value={hotelStats.checkIns.toLocaleString('en-IN')} sublabel="Confirmed / Checked In" arrow="down-left" icon={<LogIn size={18} />} accentColor="#2E7D5B" />
               </motion.div>
               <motion.div variants={itemVariants}>
-                <KpiCard label="Check Out" value={hotelStats.checkOuts.toLocaleString('en-IN')} sublabel="Checked Out" arrow="up-right" />
+                <KpiCard label="Check Out" value={hotelStats.checkOuts.toLocaleString('en-IN')} sublabel="Checked Out" arrow="up-right" icon={<LogOut size={18} />} accentColor="#ef4444" />
               </motion.div>
               {waStats !== null && (
                 <motion.div variants={itemVariants}>
-                  <KpiCard 
-                    label="WhatsApp MSGs" 
-                    value={waStats.sent.toLocaleString('en-IN')} 
-                    sublabel={`${waStats.total} Setup / Pending / Sent`} 
-                    icon={<MessageCircle size={16} className="text-green-500" />}
+                  <KpiCard
+                    label="WhatsApp MSGs"
+                    value={waStats.sent.toLocaleString('en-IN')}
+                    sublabel={`${waStats.total} Setup / Pending / Sent`}
+                    icon={<MessageCircle size={18} />}
+                    accentColor="#25D366"
                   />
                 </motion.div>
               )}
@@ -302,17 +307,14 @@ export default function Dashboard() {
           )}
 
           {/* Occupancy Chart + Calendar */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
             <motion.div variants={itemVariants} className="lg:col-span-3">
               <Card>
                 <CardHeader className="pb-2">
                   <div className="flex justify-between items-center">
                     <CardTitle className="font-serif text-lg text-[#0E2A38]">Occupancy</CardTitle>
-                    <button className="w-7 h-7 border border-gray-200 rounded-md flex items-center justify-center hover:bg-gray-50">
-                      <Filter size={13} className="text-gray-500" />
-                    </button>
                   </div>
-                  <div className="flex items-center gap-4 mt-2">
+                  <div className="flex items-center gap-4 mt-1">
                     {[
                       { label: 'Available', color: OCC_COLORS.available },
                       { label: 'Occupied', color: OCC_COLORS.occupied },
@@ -327,7 +329,7 @@ export default function Dashboard() {
                 </CardHeader>
                 <CardContent className="pt-2">
                   {rooms.length > 0 ? (
-                    <div className="h-56">
+                    <div className="h-48">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={occupancyBarData} barSize={8} barCategoryGap="30%">
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
@@ -353,7 +355,7 @@ export default function Dashboard() {
           </div>
 
           {/* Revenue Overview + Recent Arrivals */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
             <motion.div variants={itemVariants} className="lg:col-span-2">
               <Card>
                 <CardHeader className="pb-2">
@@ -363,24 +365,43 @@ export default function Dashboard() {
                 </CardHeader>
                 <CardContent className="pt-0">
                   {/* Revenue split */}
-                  <div className="grid grid-cols-2 gap-3 mb-5">
-                    <div className="flex flex-col items-center justify-center bg-gray-50 rounded-xl py-4 border border-gray-100">
-                      <svg width="20" height="20" fill="none" viewBox="0 0 24 24" className="mb-1 text-gray-400"><rect x="3" y="11" width="18" height="10" rx="2" stroke="currentColor" strokeWidth="1.5" /><path d="M7 11V7a5 5 0 0110 0v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    <div className="flex flex-col items-center justify-center bg-gradient-to-br from-[var(--color-ocean-50)] to-white rounded-lg py-3 border border-[var(--color-ocean-100)]">
+                      <DollarSign size={18} className="mb-1 text-[var(--color-ocean-500)]" />
                       <p className="text-[10px] text-gray-400 mt-1">Offline Revenue</p>
                       <p className="text-base font-bold text-[#0E2A38]">{formatINR(hotelStats.offlineRevenue)}</p>
                     </div>
-                    <div className="flex flex-col items-center justify-center bg-gray-50 rounded-xl py-4 border border-gray-100">
-                      <svg width="20" height="20" fill="none" viewBox="0 0 24 24" className="mb-1 text-gray-400"><rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.5" /><path d="M2 9h20" stroke="currentColor" strokeWidth="1.5" /></svg>
+                    <div className="flex flex-col items-center justify-center bg-gradient-to-br from-amber-50 to-white rounded-lg py-3 border border-amber-100">
+                      <TrendingUp size={18} className="mb-1 text-[var(--color-accent)]" />
                       <p className="text-[10px] text-gray-400 mt-1">Platform Revenue</p>
                       <p className="text-base font-bold text-[#0E2A38]">{formatINR(hotelStats.platformRevenue)}</p>
                     </div>
                   </div>
 
+                  {/* Monthly revenue trend */}
+                  {revenueByMonth.length > 0 && (
+                    <div className="h-24 mb-3">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={revenueByMonth}>
+                          <defs>
+                            <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="var(--color-accent)" stopOpacity={0.3} />
+                              <stop offset="100%" stopColor="var(--color-accent)" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 10 }} />
+                          <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: 12 }} formatter={(v: number) => [formatINR(v), 'Revenue']} />
+                          <Area type="monotone" dataKey="total" stroke="var(--color-accent)" strokeWidth={2} fill="url(#revGrad)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
                   {/* Booking source bars */}
                   {bookingSources.length > 0 ? (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {bookingSources.map(src => (
-                        <div key={src.name} className="flex items-center gap-3">
+                        <div key={src.name} className="flex items-center gap-2">
                           <span className="text-xs text-gray-500 w-24 shrink-0 truncate">{src.name}</span>
                           <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                             <div className="h-full rounded-full transition-all duration-700" style={{ width: `${src.pct}%`, backgroundColor: src.color }} />
@@ -457,11 +478,11 @@ export default function Dashboard() {
 // ─── Empty state ──────────────────────────────────────────────────────────────
 function EmptyState({ isRestaurant }: { isRestaurant: boolean }) {
   return (
-    <Card className="p-12 text-center">
-      <div className="w-20 h-20 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100 mx-auto mb-6">
-        <BarChart3 size={36} className="text-gray-300" />
+    <Card className="p-10 text-center">
+      <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100 mx-auto mb-4">
+        <BarChart3 size={28} className="text-gray-300" />
       </div>
-      <h3 className="font-serif text-2xl font-bold text-[#0E2A38] mb-3">Welcome to your Dashboard</h3>
+      <h3 className="font-serif text-xl font-bold text-[#0E2A38] mb-2">Welcome to your Dashboard</h3>
       <p className="text-gray-500 text-sm max-w-md mx-auto">
         {isRestaurant
           ? 'Set up your menu and start taking orders — your metrics will appear here.'
@@ -474,41 +495,40 @@ function EmptyState({ isRestaurant }: { isRestaurant: boolean }) {
 // ─── Empty chart placeholder ──────────────────────────────────────────────────
 function EmptyChart({ message }: { message: string }) {
   return (
-    <div className="h-56 flex items-center justify-center text-gray-400">
+    <div className="h-48 flex items-center justify-center text-gray-400">
       <p className="text-sm font-medium">{message}</p>
     </div>
   );
 }
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
-function KpiCard({ label, value, sublabel, arrow, icon }: {
+function KpiCard({ label, value, sublabel, arrow, icon, accentColor }: {
   label: string;
   value: string;
   sublabel?: string;
   arrow?: 'down-left' | 'up-right';
   icon?: React.ReactNode;
+  accentColor?: string;
 }) {
+  const color = accentColor || 'var(--color-ocean-500)';
   return (
-    <Card className="p-5 hover:shadow-md transition-shadow">
-      <p className="text-xs text-gray-500 mb-1">{label}</p>
-      <div className="flex items-end justify-between mt-1">
+    <Card className="p-4 hover:shadow-md transition-all duration-300 group relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-1 h-full rounded-r-full transition-all duration-300 group-hover:w-1.5" style={{ backgroundColor: color }} />
+      <div className="flex items-start justify-between">
         <div>
+          <p className="text-[11px] font-medium text-gray-500 mb-1">{label}</p>
           <div className="flex items-center gap-2">
-            <span className="text-2xl font-bold text-[#0E2A38] tracking-tight">{value}</span>
-            {icon && icon}
-            {arrow === 'down-left' && (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-[#4caf50]">
-                <path d="M17 7L7 17M7 17H17M7 17V7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            )}
-            {arrow === 'up-right' && (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-red-500">
-                <path d="M7 17L17 7M17 7H7M17 7v10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            )}
+            <span className="text-xl font-bold text-[#0E2A38] tracking-tight">{value}</span>
+            {arrow === 'down-left' && <TrendingDown size={16} className="text-[#2E7D5B]" />}
+            {arrow === 'up-right' && <TrendingUp size={16} className="text-red-500" />}
           </div>
-          {sublabel && <p className="text-xs text-gray-400 mt-1">{sublabel}</p>}
+          {sublabel && <p className="text-[11px] text-gray-400 mt-1.5">{sublabel}</p>}
         </div>
+        {icon && (
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}14`, color }}>
+            {icon}
+          </div>
+        )}
       </div>
     </Card>
   );
@@ -568,7 +588,7 @@ function CalendarPanel({ rooms, calendarRooms }: {
         </div>
       </CardHeader>
 
-      <CardContent className="pt-3 flex-1 overflow-y-auto space-y-3 px-4">
+      <CardContent className="pt-2 flex-1 overflow-y-auto space-y-2 px-3">
         {calendarRooms.length > 0 ? (
           calendarRooms.map((room, ri) => (
             <div key={ri} className="border border-gray-100 rounded-xl overflow-hidden">
@@ -599,8 +619,8 @@ function CalendarPanel({ rooms, calendarRooms }: {
         )}
       </CardContent>
 
-      <div className="border-t border-gray-100 p-3">
-        <button className="w-full py-2 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
+      <div className="border-t border-gray-100 p-2">
+        <button className="w-full py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
           Full View
         </button>
       </div>

@@ -63,11 +63,10 @@ function buildInvoiceHTML(data: InvoiceData): string {
     <body>
       <div class="header">
         <div>
-          <div class="hotel-name">Ganesh Residency</div>
-          <div class="hotel-detail">East Coast Road, Chennai</div>
-          <div class="hotel-detail">Tamil Nadu, 600119</div>
-          <div class="hotel-detail">billing@ganeshresidency.com</div>
-          <div class="hotel-detail">+91 44 2345 6789</div>
+          <div class="hotel-name">${data.hotelName || 'Hotel Dashboard'}</div>
+          <div class="hotel-detail" style="white-space: pre-wrap;">${data.hotelAddress || 'Hotel Address'}</div>
+          <div class="hotel-detail">${data.hotelEmail || 'contact@hotel.com'}</div>
+          <div class="hotel-detail">${data.hotelPhone || '+91 0000 0000'}</div>
         </div>
         <div>
           <div class="inv-title">INVOICE</div>

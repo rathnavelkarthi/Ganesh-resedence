@@ -18,6 +18,10 @@ export interface InvoiceData {
     totalAmount: number;
     paymentMethod?: string;
     paymentStatus?: string;
+    hotelName?: string;
+    hotelAddress?: string;
+    hotelEmail?: string;
+    hotelPhone?: string;
 }
 
 interface Props {
@@ -35,12 +39,11 @@ const InvoicePrintTemplate = forwardRef<HTMLDivElement, Props>(({ data }, ref) =
             <div className="flex justify-between items-start border-b border-gray-200 pb-8 mb-8">
                 <div>
                     <h1 className="font-serif text-3xl font-bold text-[#0c4a6e] leading-tight mb-2">
-                        Ganesh Residency
+                        {data.hotelName || 'Hotel Dashboard'}
                     </h1>
-                    <p className="text-gray-500 text-sm">East Coast Road, Chennai</p>
-                    <p className="text-gray-500 text-sm">Tamil Nadu, 600119</p>
-                    <p className="text-gray-500 text-sm">billing@ganeshresidency.com</p>
-                    <p className="text-gray-500 text-sm">+91 44 2345 6789</p>
+                    <p className="text-gray-500 text-sm whitespace-pre-wrap">{data.hotelAddress || 'Hotel Address'}</p>
+                    <p className="text-gray-500 text-sm">{data.hotelEmail || 'contact@hotel.com'}</p>
+                    <p className="text-gray-500 text-sm">{data.hotelPhone || '+91 0000 0000'}</p>
                 </div>
                 <div className="text-right">
                     <h2 className="text-2xl font-bold text-gray-900 tracking-wider mb-2">INVOICE</h2>

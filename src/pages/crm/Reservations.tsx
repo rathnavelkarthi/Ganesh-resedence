@@ -2,7 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Filter, Plus, ChevronDown, MoreVertical, X, LogOut, FileText, Printer } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useCRM, Reservation } from '../../context/CRMDataContext';
+import { useAuth } from '../../context/AuthContext';
 import InvoicePrintTemplate, { InvoiceData } from '../../components/crm/InvoicePrintTemplate';
+import BookingModal from '../../components/crm/BookingModal';
 import { printInvoice } from '../../components/crm/invoiceUtils';
 import { usePlanLimits } from '../../lib/planLimits';
 import UpgradeModal from '../../components/crm/UpgradeModal';
@@ -10,7 +12,8 @@ import UpgradeModal from '../../components/crm/UpgradeModal';
 type StatusFilter = 'All' | 'Confirmed' | 'Checked In' | 'Checked Out' | 'Pending' | 'Cancelled';
 
 export default function Reservations() {
-  const { reservations, rooms, addReservation, updateReservation, deleteReservation, checkInGuest, checkOutGuest } = useCRM();
+  const { reservations, rooms, deleteReservation, checkInGuest, checkOutGuest, cmsSettings } = useCRM();
+  const { tenant } = useAuth();
   const { canAdd, limitFor, currentCount, plan } = usePlanLimits();
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
@@ -22,22 +25,22 @@ export default function Reservations() {
   const [showUpgrade, setShowUpgrade] = useState(false);
 
   useEffect(() => {
-    if (searchParams.get('action') === 'new') {
+    const action = searchParams.get('action');
+    const id = searchParams.get('id');
+
+    if (action === 'new') {
       setIsModalOpen(true);
+      setEditingReservationId(null);
       searchParams.delete('action');
+      setSearchParams(searchParams, { replace: true });
+    } else if (id) {
+      setEditingReservationId(id);
+      setIsModalOpen(true);
+      searchParams.delete('id');
       setSearchParams(searchParams, { replace: true });
     }
   }, [searchParams, setSearchParams]);
 
-  const [formData, setFormData] = useState({
-    guest: '',
-    room: 'Executive Double AC',
-    checkIn: '',
-    checkOut: '',
-    source: 'Direct',
-    status: 'Pending' as 'Confirmed' | 'Checked In' | 'Pending' | 'Cancelled' | 'Checked Out',
-    payment: 'Unpaid' as 'Paid' | 'Unpaid' | 'Partial' | 'Refunded',
-  });
 
   const filteredReservations = useMemo(() => {
     return reservations
@@ -87,6 +90,10 @@ export default function Reservations() {
       totalAmount: total,
       paymentMethod: res.payment_method || 'UPI',
       paymentStatus: res.payment,
+      hotelName: cmsSettings?.hotelName || tenant?.business_name || 'Our Resort',
+      hotelAddress: cmsSettings?.contactAddress || 'Hotel Address',
+      hotelEmail: cmsSettings?.contactEmail || tenant?.custom_email || 'contact@hotel.com',
+      hotelPhone: cmsSettings?.contactPhone || tenant?.contact_phone || '+91 0000 0000'
     };
   };
 
@@ -127,33 +134,9 @@ export default function Reservations() {
     setBillRes(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.guest || !formData.checkIn || !formData.checkOut) {
-      alert("Please fill in all required fields (Guest Name, Check-in, Check-out).");
-      return;
-    }
-
-    if (editingReservationId) {
-      updateReservation(editingReservationId, formData);
-    } else {
-      addReservation(formData);
-    }
-
-    setIsModalOpen(false);
-    setEditingReservationId(null);
-    setFormData({
-      guest: '', room: 'Executive Double AC', checkIn: '', checkOut: '',
-      source: 'Direct', status: 'Pending', payment: 'Unpaid',
-    });
-  };
 
   const openEditModal = (res: Reservation) => {
     setEditingReservationId(res.id);
-    setFormData({
-      guest: res.guest, room: res.room, checkIn: res.checkIn, checkOut: res.checkOut,
-      source: res.source, status: res.status, payment: res.payment,
-    });
     setIsModalOpen(true);
     setActiveMenuId(null);
   };
@@ -445,152 +428,14 @@ export default function Reservations() {
         </div>
       )}
 
-      {/* Add/Edit Booking Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center p-6 border-b border-gray-100">
-              <h2 className="font-serif text-2xl font-bold text-gray-900">
-                {editingReservationId ? 'Edit Booking' : 'Add New Booking'}
-              </h2>
-              <button
-                onClick={() => {
-                  setIsModalOpen(false);
-                  setEditingReservationId(null);
-                  setFormData({
-                    guest: '', room: 'Executive Double AC', checkIn: '', checkOut: '',
-                    source: 'Direct', status: 'Pending', payment: 'Unpaid',
-                  });
-                }}
-                className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-100 rounded-full"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Guest Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.guest}
-                    onChange={(e) => setFormData({ ...formData, guest: e.target.value })}
-                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:border-[var(--color-ocean-500)] focus:ring-2 focus:ring-[var(--color-ocean-100)] outline-none transition-all"
-                    placeholder="e.g. John Doe"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Room</label>
-                  <select
-                    value={formData.room}
-                    onChange={(e) => setFormData({ ...formData, room: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium focus:border-[var(--color-ocean-500)] focus:ring-2 focus:ring-[var(--color-ocean-100)] outline-none transition-all"
-                  >
-                    {rooms.map(r => (
-                      <option key={r.id} value={r.room_number ? `Room ${r.room_number} - ${r.name}` : r.name}>
-                        {r.room_number ? `Room ${r.room_number} - ${r.name}` : r.name}
-                      </option>
-                    ))}
-                    {rooms.length === 0 && <option value="">No rooms added yet</option>}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Check-In Date</label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.checkIn}
-                    onChange={(e) => setFormData({ ...formData, checkIn: e.target.value })}
-                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:border-[var(--color-ocean-500)] focus:ring-2 focus:ring-[var(--color-ocean-100)] outline-none transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Check-Out Date</label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.checkOut}
-                    onChange={(e) => setFormData({ ...formData, checkOut: e.target.value })}
-                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:border-[var(--color-ocean-500)] focus:ring-2 focus:ring-[var(--color-ocean-100)] outline-none transition-all"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Booking Source</label>
-                  <select
-                    value={formData.source}
-                    onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium focus:border-[var(--color-ocean-500)] focus:ring-2 focus:ring-[var(--color-ocean-100)] outline-none transition-all"
-                  >
-                    <option value="Direct">Direct (Walk-in/Phone)</option>
-                    <option value="Website">Website</option>
-                    <option value="Booking.com">Booking.com</option>
-                    <option value="Agoda">Agoda</option>
-                    <option value="MakeMyTrip">MakeMyTrip</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Status</label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium focus:border-[var(--color-ocean-500)] focus:ring-2 focus:ring-[var(--color-ocean-100)] outline-none transition-all"
-                  >
-                    <option value="Pending">Pending</option>
-                    <option value="Confirmed">Confirmed</option>
-                    <option value="Checked In">Checked In</option>
-                    <option value="Checked Out">Checked Out</option>
-                    <option value="Cancelled">Cancelled</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Payment</label>
-                  <select
-                    value={formData.payment}
-                    onChange={(e) => setFormData({ ...formData, payment: e.target.value as any })}
-                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium focus:border-[var(--color-ocean-500)] focus:ring-2 focus:ring-[var(--color-ocean-100)] outline-none transition-all"
-                  >
-                    <option value="Unpaid">Unpaid</option>
-                    <option value="Partial">Partial</option>
-                    <option value="Paid">Paid</option>
-                    <option value="Refunded">Refunded</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="pt-6 border-t border-gray-100 flex justify-end gap-3 mt-8">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    setEditingReservationId(null);
-                    setFormData({
-                      guest: '', room: 'Executive Double AC', checkIn: '', checkOut: '',
-                      source: 'Direct', status: 'Pending', payment: 'Unpaid',
-                    });
-                  }}
-                  className="px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 text-sm font-semibold text-white bg-[var(--color-ocean-600)] hover:bg-[var(--color-ocean-800)] rounded-xl transition-colors shadow-sm"
-                >
-                  {editingReservationId ? 'Update Booking' : 'Confirm Booking'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <BookingModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingReservationId(null);
+        }}
+        reservationId={editingReservationId}
+      />
       <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} resource="reservations this month" plan={plan} currentCount={currentCount('reservations')} limit={limitFor('reservations')} />
     </div>
   );

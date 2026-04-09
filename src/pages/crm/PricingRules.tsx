@@ -163,16 +163,50 @@ export default function PricingRules() {
 
     const fetchData = async () => {
         setLoading(true);
+        console.log('[PricingRules] fetchData started');
         try {
+            // First fetch rules and coupons in parallel
             const [rulesRes, couponsRes] = await Promise.all([
-                supabase.from('room_pricing').select('*, rooms(name)').eq('tenant_id', tenant.id).order('created_at', { ascending: false }),
+                supabase.from('room_pricing').select('*').eq('tenant_id', tenant.id).order('created_at', { ascending: false }),
                 supabase.from('coupons').select('*').eq('tenant_id', tenant.id).order('created_at', { ascending: false })
             ]);
 
-            if (rulesRes.error) throw rulesRes.error;
-            if (couponsRes.error) throw couponsRes.error;
+            if (rulesRes.error) {
+                console.error('[PricingRules] rules fetch error:', rulesRes.error);
+                throw rulesRes.error;
+            }
+            if (couponsRes.error) {
+                console.error('[PricingRules] coupons fetch error:', couponsRes.error);
+                throw couponsRes.error;
+            }
 
-            const allRules = rulesRes.data || [];
+            let allRules = rulesRes.data || [];
+
+            // Next, if we have rules that reference rooms, fetch the room names separately
+            const roomIds = allRules
+                .filter(r => r.room_id)
+                .map(r => r.room_id);
+
+            if (roomIds.length > 0) {
+                const { data: roomsData, error: roomsError } = await supabase
+                    .from('rooms')
+                    .select('id, name, type')
+                    .in('id', roomIds);
+
+                if (roomsError) {
+                    console.error('[PricingRules] rooms fetch error:', roomsError);
+                } else if (roomsData) {
+                    // Manually join the room name/info to the rule
+                    allRules = allRules.map(rule => {
+                        const room = roomsData.find(rm => rm.id === rule.room_id);
+                        return {
+                            ...rule,
+                            rooms: room ? { name: room.name || room.type } : null
+                        };
+                    });
+                }
+            }
+
             setRules(allRules);
             setCoupons(couponsRes.data || []);
 
@@ -183,7 +217,9 @@ export default function PricingRules() {
             setUpsellPercentage(upsellRow ? upsellRow.price_override : 15);
             setDownsellEnabled(!!downsellRow);
             setDownsellPercentage(downsellRow ? downsellRow.price_override : 10);
+            console.log('[PricingRules] fetchData completed successfully');
         } catch (error: any) {
+            console.error('[PricingRules] fetchData caught error:', error);
             toast.error('Failed to fetch data: ' + error.message);
         } finally {
             setLoading(false);

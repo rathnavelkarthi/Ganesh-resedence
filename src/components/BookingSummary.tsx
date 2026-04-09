@@ -1,5 +1,7 @@
 import { Calendar, Users, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { calculateBookingPrice, formatBookingDate } from '../lib/booking';
+import { useCRM } from '../context/CRMDataContext';
+import { useAuth } from '../context/AuthContext';
 
 interface BookingSummaryProps {
   checkIn: string;
@@ -23,13 +25,15 @@ export default function BookingSummary({
   isMobileDrawer = false
 }: BookingSummaryProps) {
 
+  const { cmsSettings } = useCRM();
+  const { tenant } = useAuth();
   const { roomPrice, taxes, total } = calculateBookingPrice(room ? room.price : 0, nights);
 
   const content = (
     <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden flex flex-col h-full">
       <div className="bg-[var(--color-ocean-900)] p-6 text-white">
         <h3 className="font-serif text-2xl font-bold mb-1">Booking Summary</h3>
-        <p className="text-white/80 text-sm">Ganesh Residency, Pondicherry</p>
+        <p className="text-white/80 text-sm">{cmsSettings?.hotelName || tenant?.business_name || 'Ganesh Residency'}</p>
       </div>
 
       <div className="p-6 flex-grow flex flex-col">

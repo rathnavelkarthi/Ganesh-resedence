@@ -9,6 +9,7 @@ import {
   Wifi,
   Car
 } from 'lucide-react';
+import { useCRM } from '../context/CRMDataContext';
 
 const amenities = [
   { name: 'Outdoor Swimming Pool', icon: Waves },
@@ -22,6 +23,7 @@ const amenities = [
 ];
 
 export default function Amenities() {
+  const { cmsSettings } = useCRM();
   return (
     <section id="amenities" className="py-32 bg-background relative overflow-hidden">
       {/* Decorative Background Element */}
@@ -54,7 +56,7 @@ export default function Amenities() {
             transition={{ delay: 0.2 }}
             className="text-foreground/70 text-lg md:text-xl font-light leading-relaxed"
           >
-            Everything you need for a comfortable stay, thoughtfully designed to enhance your experience at Ganesh Residency.
+            Everything you need for a comfortable stay, thoughtfully designed to enhance your experience at {cmsSettings.hotelName || 'our resort'}.
           </motion.p>
         </div>
 

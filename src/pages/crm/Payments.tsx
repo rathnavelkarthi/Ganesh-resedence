@@ -1,9 +1,13 @@
 import { useState, useMemo } from 'react';
 import { Search, Filter, Download, CheckCircle, RotateCcw } from 'lucide-react';
 import { useCRM } from '../../context/CRMDataContext';
+import { useAuth } from '../../context/AuthContext';
+import { printInvoice } from '../../components/crm/invoiceUtils';
+import { InvoiceData } from '../../components/crm/InvoicePrintTemplate';
 
 export default function Payments() {
-  const { reservations } = useCRM();
+  const { reservations, cmsSettings } = useCRM();
+  const { tenant } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
 
   const derivedPayments = useMemo(() => {
@@ -28,6 +32,45 @@ export default function Payments() {
       pay.bookingId.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [reservations, searchTerm]);
+
+  const handleDownload = (payment: any) => {
+    const res = reservations.find(r => r.id === payment.bookingId);
+    if (!res) return;
+
+    const checkIn = new Date(res.checkIn);
+    const checkOut = new Date(res.checkOut);
+    const nights = Math.max(1, Math.floor((checkOut.getTime() - checkIn.getTime()) / 86400000));
+    const subtotal = res.amount || 0;
+    const gst = res.gst_amount || Math.round(subtotal * 0.12);
+    const total = subtotal + gst;
+    const ratePerNight = nights > 0 ? Math.round(subtotal / nights) : subtotal;
+
+    const data: InvoiceData = {
+      invoiceNumber: payment.id.replace('PAY-', 'INV-'),
+      date: payment.date?.split(',')[0] || res.checkIn,
+      guestName: res.guest,
+      guestPhone: res.guest_phone,
+      guestEmail: res.guest_email,
+      guestLocation: res.guest_location,
+      bookingId: res.id,
+      room: res.room,
+      checkIn: res.checkIn,
+      checkOut: res.checkOut,
+      nights,
+      ratePerNight,
+      subtotal,
+      gstAmount: gst,
+      totalAmount: total,
+      paymentMethod: res.payment_method || 'UPI',
+      paymentStatus: res.payment,
+      hotelName: cmsSettings?.hotelName || tenant?.business_name || 'Our Resort',
+      hotelAddress: cmsSettings?.contactAddress || 'Hotel Address',
+      hotelEmail: cmsSettings?.contactEmail || tenant?.custom_email || 'contact@hotel.com',
+      hotelPhone: cmsSettings?.contactPhone || tenant?.contact_phone || '+91 0000 0000',
+    };
+
+    printInvoice(data);
+  };
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -99,7 +142,11 @@ export default function Payments() {
                           <RotateCcw size={18} />
                         </button>
                       )}
-                      <button className="p-1.5 text-gray-400 hover:text-[var(--color-ocean-600)] hover:bg-[var(--color-ocean-50)] rounded-lg transition-colors" title="Download Invoice">
+                      <button
+                        onClick={() => handleDownload(payment)}
+                        className="p-1.5 text-gray-400 hover:text-[var(--color-ocean-600)] hover:bg-[var(--color-ocean-50)] rounded-lg transition-colors"
+                        title="Download Invoice"
+                      >
                         <Download size={18} />
                       </button>
                     </div>

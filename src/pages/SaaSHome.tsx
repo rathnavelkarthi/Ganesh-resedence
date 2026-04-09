@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { motion, useScroll, useMotionValueEvent } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
     ArrowRight, CheckCircle2, Building2, CalendarRange,
     BarChart3, Settings, Users, Star, Zap, ChevronRight,
     Wifi, ShieldCheck, CreditCard, Globe, MessageCircle,
-    TrendingUp, Clock, Smartphone, Menu, X
+    TrendingUp, Clock, Smartphone
 } from 'lucide-react';
 
 // ─── Design Tokens ──────────────────────────────────────────────
@@ -24,6 +24,8 @@ const C = {
     textLight: '#9CA3AF',
     border: '#E8E0D4',
 };
+
+const CHART_COLORS_LANDING = ['#1A3C34', '#C8A951', '#2E7D32', '#1565C0'];
 
 const fadeUp = {
     initial: { opacity: 0, y: 30 },
@@ -72,8 +74,8 @@ export default function SaaSHome() {
             </Helmet>
             {/* FONTS (loaded via index.html preconnect) */}
             <style>{`
-                .font-display { font-family: 'DM Serif Display', serif; }
-                .font-body { font-family: 'DM Sans', sans-serif; }
+                .font-display { font-family: 'Sora', sans-serif; }
+                .font-body { font-family: 'Inter', sans-serif; }
             `}</style>
 
 
@@ -112,7 +114,7 @@ export default function SaaSHome() {
                         <Link to="/signup" className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full text-base font-semibold transition-all hover:opacity-90 shadow-xl" style={{ background: C.forest, color: C.cream }}>
                             Start Free <ArrowRight size={18} />
                         </Link>
-                        <a href="https://wa.me/919345244727?text=Hi%2C%20I%20would%20like%20to%20book%20a%20demo%20for%20HospitalityOS" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full text-base font-semibold border-2 transition-all hover:bg-white/50" style={{ borderColor: C.border, color: C.forest }}>
+                        <a href="https://wa.me/919345244727?text=Hi%2C%20I%20would%20like%20to%20book%20a%20demo%20for%20EasyStay" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full text-base font-semibold border-2 transition-all hover:bg-white/50" style={{ borderColor: C.border, color: C.forest }}>
                             Book a Demo
                         </a>
                     </motion.div>
@@ -126,12 +128,46 @@ export default function SaaSHome() {
                         className="relative max-w-6xl mx-auto"
                     >
                         <div className="rounded-2xl md:rounded-3xl overflow-hidden border shadow-2xl shadow-[#1A3C34]/10" style={{ borderColor: C.border }}>
-                            <img
-                                src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=2070"
-                                alt="EasyStay Dashboard"
-                                className="w-full h-[250px] md:h-[550px] object-cover"
-                                fetchPriority="high"
-                            />
+                            {/* Dashboard mockup */}
+                            <div className="w-full h-[250px] md:h-[550px] relative" style={{ background: C.forest }}>
+                                <div className="p-3 md:p-5">
+                                    {/* Browser chrome */}
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="flex gap-1.5">
+                                            <div className="w-2.5 h-2.5 rounded-full bg-red-400/60" />
+                                            <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/60" />
+                                            <div className="w-2.5 h-2.5 rounded-full bg-green-400/60" />
+                                        </div>
+                                        <div className="flex-1 h-6 rounded-md mx-3 flex items-center px-3" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                                            <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.3)' }}>app.easystay.com/admin/dashboard</span>
+                                        </div>
+                                    </div>
+                                    {/* Dashboard content */}
+                                    <div className="grid grid-cols-4 gap-2 md:gap-3 mb-3">
+                                        {[
+                                            { label: 'Total Bookings', val: '284', color: '#4caf50' },
+                                            { label: 'Occupancy', val: '87%', color: C.gold },
+                                            { label: "Today's Revenue", val: '₹1.24L', color: '#2196F3' },
+                                            { label: 'Avg Rating', val: '4.8', color: '#FF9800' },
+                                        ].map((kpi, i) => (
+                                            <div key={i} className="rounded-lg p-2 md:p-3" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                                                <p className="text-[8px] md:text-[10px] font-medium" style={{ color: 'rgba(255,255,255,0.4)' }}>{kpi.label}</p>
+                                                <p className="text-sm md:text-xl font-bold mt-0.5" style={{ color: kpi.color }}>{kpi.val}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {/* Chart placeholder bars */}
+                                    <div className="rounded-lg p-3 md:p-4 hidden md:block" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                                        <p className="text-[10px] font-semibold mb-3" style={{ color: 'rgba(255,255,255,0.3)' }}>Revenue — Last 30 Days</p>
+                                        <div className="flex items-end gap-1 h-40">
+                                            {Array.from({ length: 30 }, (_, i) => {
+                                                const h = 20 + Math.sin(i * 0.4) * 30 + Math.random() * 40;
+                                                return <div key={i} className="flex-1 rounded-t transition-all" style={{ height: `${h}%`, background: `linear-gradient(to top, ${C.gold}60, ${C.gold}20)` }} />;
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             {/* Overlay bottom bar */}
                             <div className="absolute bottom-0 inset-x-0 p-4 md:p-8" style={{ background: 'linear-gradient(to top, rgba(26,60,52,0.95), transparent)' }}>
                                 <div className="flex flex-wrap gap-3 md:gap-6 items-end justify-between max-w-5xl mx-auto">
@@ -190,14 +226,9 @@ export default function SaaSHome() {
             {/* ═══════ 2. TRUST LOGOS + STATS ═══════ */}
             <section className="py-12 md:py-16 px-6 border-y" style={{ background: C.white, borderColor: C.border }}>
                 <div className="max-w-7xl mx-auto">
-                    <p className="text-center text-xs font-semibold uppercase tracking-[0.2em] mb-8" style={{ color: C.textLight }}>
-                        Trusted by modern hotels and restaurants across India
+                    <p className="text-center text-xs font-semibold uppercase tracking-[0.2em] mb-10" style={{ color: C.textLight }}>
+                        Powering modern hotels and restaurants across India
                     </p>
-                    <div className="flex flex-wrap justify-center items-center gap-10 md:gap-16 mb-10 opacity-40">
-                        {['StayBuddy', 'CoastHotels', 'PrimeStay', 'LuxeChain', 'TrivagoPlus'].map(name => (
-                            <span key={name} className="font-bold text-lg md:text-xl tracking-tight" style={{ color: C.forest }}>{name}</span>
-                        ))}
-                    </div>
                     <div className="grid grid-cols-3 gap-4 md:gap-8 max-w-3xl mx-auto text-center">
                         {[
                             { val: '50+', label: 'Properties' },
@@ -333,12 +364,37 @@ export default function SaaSHome() {
                                     </div>
                                     <div className="flex-1 h-7 rounded-lg mx-4" style={{ background: 'rgba(255,255,255,0.08)' }} />
                                 </div>
-                                {/* Screenshot */}
-                                <img
-                                    src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=2426"
-                                    alt="Dashboard Preview"
-                                    className="rounded-xl w-full h-[250px] md:h-[550px] object-cover"
-                                />
+                                {/* Dashboard mockup */}
+                                <div className="rounded-xl w-full h-[250px] md:h-[550px] p-4 md:p-6 overflow-hidden" style={{ background: C.cream }}>
+                                    <div className="grid grid-cols-3 gap-3 mb-4">
+                                        {['Rooms', 'Reservations', 'Revenue'].map((t, i) => (
+                                            <div key={t} className="rounded-xl p-3 md:p-4 border" style={{ background: C.white, borderColor: C.border }}>
+                                                <p className="text-[9px] md:text-xs font-medium" style={{ color: C.textMuted }}>{t}</p>
+                                                <p className="text-base md:text-2xl font-bold mt-1" style={{ color: C.forest }}>{['24/28', '156', '₹8.4L'][i]}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="grid grid-cols-5 gap-3 h-[calc(100%-80px)]">
+                                        <div className="col-span-3 rounded-xl border p-3 md:p-4" style={{ background: C.white, borderColor: C.border }}>
+                                            <p className="text-[9px] md:text-xs font-semibold mb-3" style={{ color: C.forest }}>Occupancy Overview</p>
+                                            <div className="flex items-end gap-1 h-[70%]">
+                                                {Array.from({ length: 14 }, (_, i) => {
+                                                    const h = 30 + Math.sin(i * 0.5) * 25 + (i > 8 ? 20 : 0);
+                                                    return <div key={i} className="flex-1 rounded-t" style={{ height: `${h}%`, background: i > 10 ? C.gold : C.forest, opacity: 0.7 }} />;
+                                                })}
+                                            </div>
+                                        </div>
+                                        <div className="col-span-2 rounded-xl border p-3 md:p-4 flex flex-col gap-2" style={{ background: C.white, borderColor: C.border }}>
+                                            <p className="text-[9px] md:text-xs font-semibold" style={{ color: C.forest }}>Today's Check-ins</p>
+                                            {['Rajiv M.', 'Priya S.', 'Amit K.', 'Sarah L.'].map((name, i) => (
+                                                <div key={name} className="flex items-center gap-2 py-1 border-b" style={{ borderColor: `${C.border}80` }}>
+                                                    <div className="w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[8px] md:text-[10px] font-bold text-white" style={{ background: CHART_COLORS_LANDING[i % CHART_COLORS_LANDING.length] }}>{name[0]}</div>
+                                                    <span className="text-[9px] md:text-xs font-medium" style={{ color: C.textDark }}>{name}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -402,7 +458,7 @@ export default function SaaSHome() {
                         {/* Direct */}
                         <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }} className="rounded-3xl p-10 border relative overflow-hidden" style={{ background: C.forest, borderColor: C.forestLight }}>
                             <div className="absolute top-0 inset-x-0 h-1" style={{ background: C.gold }} />
-                            <p className="text-sm font-bold uppercase tracking-widest mb-3" style={{ color: C.gold }}>With HospitalityOS</p>
+                            <p className="text-sm font-bold uppercase tracking-widest mb-3" style={{ color: C.gold }}>With EasyStay</p>
                             <p className="text-6xl font-display font-bold text-white mb-4">0%</p>
                             <p className="text-sm mb-8" style={{ color: 'rgba(255,255,255,0.55)' }}>Zero commission. You own the guest relationship and revenue.</p>
                             <div className="pt-6 border-t" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
@@ -426,7 +482,7 @@ export default function SaaSHome() {
 
                     <div className="grid md:grid-cols-3 gap-6">
                         {[
-                            { name: 'Rajiv Sharma', role: 'Boutique Hotel, Jaipur', text: "We replaced 5 different tools with HospitalityOS. Our direct bookings jumped 40% in the first quarter and staff onboarding now takes days instead of weeks." },
+                            { name: 'Rajiv Sharma', role: 'Boutique Hotel, Jaipur', text: "We replaced 5 different tools with EasyStay. Our direct bookings jumped 40% in the first quarter and staff onboarding now takes days instead of weeks." },
                             { name: 'Anita Desai', role: 'Resort Manager, Goa', text: "The occupancy-based pricing engine paid for the software in its first month. During peak season, our ADR increased 25% compared to last year." },
                             { name: 'Vikram Patel', role: 'Homestay Host, Pondicherry', text: "My booking website looks like it cost ₹50,000 to build. Reality: I set it up in 20 minutes. Guests actually trust it more than my OTA listing." }
                         ].map((t, i) => (
@@ -536,9 +592,9 @@ export default function SaaSHome() {
                                 <span className="text-sm ml-1" style={{ color: C.textMuted }}>/ mo</span>
                             </div>
                             <p className="text-xs font-medium mb-6" style={{ color: '#2E7D32' }}>₹95,999/yr — save 20%</p>
-                            <button className="w-full text-center text-sm font-semibold py-3 rounded-full border mb-6 transition-all hover:bg-white" style={{ borderColor: C.border, color: C.forest }}>
+                            <a href="https://wa.me/919345244727?text=Hi%2C%20I%27m%20interested%20in%20the%20Enterprise%20plan%20for%20EasyStay" target="_blank" rel="noopener noreferrer" className="w-full text-center text-sm font-semibold py-3 rounded-full border mb-6 block transition-all hover:bg-white" style={{ borderColor: C.border, color: C.forest }}>
                                 Contact Sales
-                            </button>
+                            </a>
                             <ul className="space-y-3 text-sm flex-1" style={{ color: C.textMuted }}>
                                 {['Unlimited rooms', 'Multi-property dashboard', 'Custom branding', 'API access', 'Dedicated support'].map(f => (
                                     <li key={f} className="flex gap-2.5"><CheckCircle2 size={15} className="shrink-0 mt-0.5" style={{ color: '#2E7D32' }} />{f}</li>
@@ -563,7 +619,7 @@ export default function SaaSHome() {
                             <Link to="/signup" className="inline-flex items-center justify-center gap-2 px-10 py-5 rounded-full text-lg font-semibold shadow-xl transition-all hover:opacity-90" style={{ background: C.gold, color: C.white }}>
                                 Get started for free <ArrowRight size={20} />
                             </Link>
-                            <a href="https://wa.me/919345244727?text=Hi%2C%20I%20would%20like%20to%20book%20a%20demo%20for%20HospitalityOS" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 px-10 py-5 rounded-full text-lg font-semibold border-2 transition-all hover:bg-white/10" style={{ borderColor: 'rgba(255,255,255,0.2)', color: C.white }}>
+                            <a href="https://wa.me/919345244727?text=Hi%2C%20I%20would%20like%20to%20book%20a%20demo%20for%20EasyStay" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 px-10 py-5 rounded-full text-lg font-semibold border-2 transition-all hover:bg-white/10" style={{ borderColor: 'rgba(255,255,255,0.2)', color: C.white }}>
                                 Book a demo
                             </a>
                         </div>
@@ -578,14 +634,14 @@ export default function SaaSHome() {
                         <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${C.gold}30` }}>
                             <Zap size={14} style={{ color: C.gold }} />
                         </div>
-                        HospitalityOS
+                        EasyStay
                     </div>
                     <div className="flex gap-6 text-sm" style={{ color: 'rgba(255,255,255,0.3)' }}>
                         <a href="#" className="hover:text-white/60 transition-colors">Privacy</a>
                         <a href="#" className="hover:text-white/60 transition-colors">Terms</a>
                         <a href="#" className="hover:text-white/60 transition-colors">Contact</a>
                     </div>
-                    <p className="text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>© 2026 HospitalityOS. All rights reserved.</p>
+                    <p className="text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>&copy; {new Date().getFullYear()} EasyStay. All rights reserved.</p>
                 </div>
             </footer>
 

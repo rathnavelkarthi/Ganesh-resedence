@@ -1,11 +1,14 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Filter, Plus, LogIn, LogOut, CheckCircle, Wrench, X, Phone, Mail, Home, CreditCard, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Filter, Plus, LogIn, LogOut, CheckCircle, Wrench, X, Phone, Mail, Home, CreditCard, CheckCircle2, Download } from 'lucide-react';
 import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useCRM } from '../../context/CRMDataContext';
-import type { Reservation, Room } from '../../context/CRMDataContext';
+import { useCRM, Reservation, Room } from '../../context/CRMDataContext';
+import { useAuth } from '../../context/AuthContext';
+import { printInvoice } from '../../components/crm/invoiceUtils';
+import { InvoiceData } from '../../components/crm/InvoicePrintTemplate';
+import BookingModal from '../../components/crm/BookingModal';
 
 type CalendarBooking = {
   id: string;
@@ -29,8 +32,10 @@ type FilterState = {
 };
 
 export default function Calendar() {
-  const { reservations: rawReservations, rooms: crmRooms, checkInGuest, checkOutGuest } = useCRM();
+  const { reservations: rawReservations, rooms: crmRooms, checkInGuest, checkOutGuest, cmsSettings } = useCRM();
+  const { tenant } = useAuth();
   const navigate = useNavigate();
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedBooking, setSelectedBooking] = useState<CalendarBooking | null>(null);
@@ -252,7 +257,10 @@ export default function Calendar() {
           </div>
 
           <motion.button
-            onClick={() => navigate('/admin/reservations?action=new')}
+            onClick={() => {
+              setSelectedBooking(null);
+              setIsEditModalOpen(true);
+            }}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="flex items-center gap-2 bg-[#0E2A38] hover:bg-[#091b24] text-[#C9A646] px-5 py-2.5 rounded-xl text-sm uppercase tracking-widest font-bold transition-all shadow-md hover:shadow-lg border border-[#0E2A38]"
@@ -544,16 +552,59 @@ export default function Calendar() {
               </div>
 
               {/* Footer Actions */}
-              <div className="p-6 border-t border-gray-100 bg-gray-50/50 flex gap-3">
-                <button
-                  onClick={() => {
-                    navigate(`/admin/reservations?id=${selectedBooking.id}`);
-                    setSelectedBooking(null);
-                  }}
-                  className="flex-1 px-4 py-3 bg-white border border-gray-200 text-gray-700 font-bold text-sm rounded-xl shadow-sm hover:bg-gray-50 transition-colors"
-                >
-                  Edit
-                </button>
+              <div className="p-6 border-t border-gray-100 bg-gray-50/50 flex flex-col gap-3">
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setIsEditModalOpen(true)}
+                    className="flex-1 px-4 py-3 bg-white border border-gray-200 text-gray-700 font-bold text-sm rounded-xl shadow-sm hover:bg-gray-50 transition-colors"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!selectedBooking) return;
+                      const res = rawReservations.find(r => r.id === selectedBooking.id);
+                      if (!res) return;
+
+                      const checkIn = new Date(res.checkIn);
+                      const checkOut = new Date(res.checkOut);
+                      const nights = Math.max(1, Math.floor((checkOut.getTime() - checkIn.getTime()) / 86400000));
+                      const subtotal = res.amount || 0;
+                      const gst = res.gst_amount || Math.round(subtotal * 0.12);
+                      const total = subtotal + gst;
+                      const ratePerNight = nights > 0 ? Math.round(subtotal / nights) : subtotal;
+
+                      const data: InvoiceData = {
+                        invoiceNumber: `INV-${res.id.replace('RES-', '')}`,
+                        date: new Date().toLocaleDateString('en-GB'),
+                        guestName: res.guest,
+                        guestPhone: res.guest_phone,
+                        guestEmail: res.guest_email,
+                        guestLocation: res.guest_location,
+                        bookingId: res.id,
+                        room: res.room,
+                        checkIn: res.checkIn,
+                        checkOut: res.checkOut,
+                        nights,
+                        ratePerNight,
+                        subtotal,
+                        gstAmount: gst,
+                        totalAmount: total,
+                        paymentMethod: res.payment_method || 'UPI',
+                        paymentStatus: res.payment,
+                        hotelName: cmsSettings?.hotelName || tenant?.business_name || 'Our Resort',
+                        hotelAddress: cmsSettings?.contactAddress || 'Hotel Address',
+                        hotelEmail: cmsSettings?.contactEmail || tenant?.custom_email || 'contact@hotel.com',
+                        hotelPhone: cmsSettings?.contactPhone || tenant?.contact_phone || '+91 0000 0000'
+                      };
+                      printInvoice(data);
+                    }}
+                    className="flex-1 px-4 py-3 bg-white border border-gray-200 text-gray-700 font-bold text-sm rounded-xl shadow-sm hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Download size={16} className="text-gray-400" />
+                    Invoice
+                  </button>
+                </div>
 
                 {selectedBooking.status !== 'Checked In' && selectedBooking.status !== 'Checked Out' && (
                   <button
@@ -592,6 +643,11 @@ export default function Calendar() {
         )}
       </AnimatePresence>
 
+      <BookingModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        reservationId={selectedBooking?.id}
+      />
     </div>
   );
 }

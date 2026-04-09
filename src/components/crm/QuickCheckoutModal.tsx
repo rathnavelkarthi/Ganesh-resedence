@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { X, Search, LogOut, Printer, User, Calendar, CreditCard, MapPin } from 'lucide-react';
 import { useCRM, Reservation } from '../../context/CRMDataContext';
+import { useAuth } from '../../context/AuthContext';
 import { InvoiceData } from './InvoicePrintTemplate';
 import { printInvoice } from './invoiceUtils';
 
@@ -10,7 +11,8 @@ interface Props {
 }
 
 export default function QuickCheckoutModal({ isOpen, onClose }: Props) {
-    const { reservations, updateReservation, rooms } = useCRM();
+    const { reservations, updateReservation, rooms, cmsSettings } = useCRM();
+    const { tenant } = useAuth();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedRes, setSelectedRes] = useState<Reservation | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -53,6 +55,10 @@ export default function QuickCheckoutModal({ isOpen, onClose }: Props) {
             totalAmount: total,
             paymentMethod: res.payment_method || 'UPI',
             paymentStatus: res.payment,
+            hotelName: cmsSettings.hotelName || tenant?.business_name || 'Your Hotel',
+            hotelAddress: cmsSettings.contactAddress || 'Hotel Address',
+            hotelEmail: cmsSettings.contactEmail || tenant?.custom_email || 'contact@hotel.com',
+            hotelPhone: cmsSettings.contactPhone || '+91 0000000000',
         };
     };
 

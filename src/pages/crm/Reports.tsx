@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { Download, Calendar as CalendarIcon, Filter } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { Download, Calendar as CalendarIcon } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -18,11 +18,48 @@ import { isDemoAccount } from '../../lib/booking';
 
 const COLORS = ['#2b7a9b', '#10b981', '#f59e0b', '#8b5cf6'];
 
+function getDateRangeBounds(range: string): { start: Date; end: Date } {
+  const now = new Date();
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  let start: Date;
+
+  switch (range) {
+    case 'Today':
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      break;
+    case 'This Week': {
+      const dayOfWeek = now.getDay();
+      const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Monday start
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diff);
+      break;
+    }
+    case 'This Month':
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      break;
+    case 'This Year':
+      start = new Date(now.getFullYear(), 0, 1);
+      break;
+    default:
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+  }
+  return { start, end };
+}
+
 export default function Reports() {
   const [dateRange, setDateRange] = useState('This Week');
   const { reservations, rooms } = useCRM();
   const { user } = useAuth();
   const isDemo = isDemoAccount(user?.email);
+
+  const filteredReservations = useMemo(() => {
+    if (isDemo) return reservations;
+    const { start, end } = getDateRangeBounds(dateRange);
+    return reservations.filter(r => {
+      if (!r.checkIn) return false;
+      const checkInDate = new Date(r.checkIn);
+      return checkInDate >= start && checkInDate <= end;
+    });
+  }, [reservations, dateRange, isDemo]);
 
   const reportData = useMemo(() => {
     if (isDemo) {
@@ -55,7 +92,7 @@ export default function Reports() {
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const revenueByDay: Record<string, number> = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 };
 
-    reservations.forEach(r => {
+    filteredReservations.forEach(r => {
       if (r.checkIn && r.amount) {
         const day = dayNames[new Date(r.checkIn).getDay()];
         if (revenueByDay[day] !== undefined) {
@@ -71,7 +108,7 @@ export default function Reports() {
 
     // Compute source distribution
     const sourceCounts: Record<string, number> = {};
-    reservations.forEach(r => {
+    filteredReservations.forEach(r => {
       const src = r.source || 'Direct';
       sourceCounts[src] = (sourceCounts[src] || 0) + 1;
     });
@@ -86,7 +123,7 @@ export default function Reports() {
       roomPerformanceMap[r.type].activeRooms += 1;
     });
 
-    reservations.forEach(r => {
+    filteredReservations.forEach(r => {
       if (r.room) {
         if (!roomPerformanceMap[r.room]) {
           roomPerformanceMap[r.room] = { bookings: 0, revenue: 0, activeRooms: 0 };
@@ -96,9 +133,12 @@ export default function Reports() {
       }
     });
 
+    const { start, end } = getDateRangeBounds(dateRange);
+    const daysInRange = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+
     const roomPerformance = Object.entries(roomPerformanceMap)
       .map(([name, data]) => {
-        const occ = data.activeRooms > 0 ? Math.round((data.bookings / (data.activeRooms * 30)) * 100) : 0; // rough 30 day occ logic
+        const occ = data.activeRooms > 0 ? Math.round((data.bookings / (data.activeRooms * daysInRange)) * 100) : 0;
         return {
           name,
           bookings: data.bookings,
@@ -109,9 +149,34 @@ export default function Reports() {
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 5);
 
-
     return { revenueData, sourceData, roomPerformance };
-  }, [reservations, rooms, isDemo]);
+  }, [filteredReservations, rooms, isDemo, dateRange]);
+
+  const handleExportCSV = useCallback(() => {
+    const rows: string[][] = [['Room Type', 'Total Bookings', 'Occupancy Rate', 'Total Revenue']];
+    reportData.roomPerformance.forEach(r => {
+      rows.push([r.name, String(r.bookings), r.occ, String(r.revenue)]);
+    });
+    rows.push([]);
+    rows.push(['Day', 'Revenue']);
+    reportData.revenueData.forEach(r => {
+      rows.push([r.name, String(r.revenue)]);
+    });
+    rows.push([]);
+    rows.push(['Source', 'Count']);
+    reportData.sourceData.forEach(r => {
+      rows.push([r.name, String(r.value)]);
+    });
+
+    const csvContent = rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `easystay-report-${dateRange.toLowerCase().replace(/\s/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [reportData, dateRange]);
 
 
   return (
@@ -135,7 +200,10 @@ export default function Reports() {
             </select>
             <CalendarIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
-          <button className="flex items-center gap-2 bg-[var(--color-ocean-600)] hover:bg-[var(--color-ocean-800)] text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm">
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 bg-[var(--color-ocean-600)] hover:bg-[var(--color-ocean-800)] text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm"
+          >
             <Download size={16} />
             Export CSV
           </button>
@@ -148,9 +216,6 @@ export default function Reports() {
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="flex justify-between items-center mb-6">
             <h3 className="font-serif text-xl font-bold text-gray-900">Revenue by Date</h3>
-            <button className="p-1.5 text-gray-400 hover:text-[var(--color-ocean-600)] hover:bg-[var(--color-ocean-50)] rounded-lg transition-colors">
-              <Filter size={18} />
-            </button>
           </div>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
@@ -169,9 +234,6 @@ export default function Reports() {
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="flex justify-between items-center mb-6">
             <h3 className="font-serif text-xl font-bold text-gray-900">Booking Source Breakdown</h3>
-            <button className="p-1.5 text-gray-400 hover:text-[var(--color-ocean-600)] hover:bg-[var(--color-ocean-50)] rounded-lg transition-colors">
-              <Filter size={18} />
-            </button>
           </div>
           <div className="h-80 flex items-center justify-center">
             {reportData.sourceData.length > 0 ? (

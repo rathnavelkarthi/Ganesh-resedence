@@ -3,6 +3,7 @@ import { Search, Filter, MoreVertical, Mail, Phone, MapPin, FileText, X, Downloa
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { useCRM, Reservation } from '../../context/CRMDataContext';
+import { useAuth } from '../../context/AuthContext';
 
 // Define the Guest type based on reservations
 type GuestRecord = {
@@ -18,7 +19,8 @@ type GuestRecord = {
 };
 
 export default function Guests() {
-  const { reservations } = useCRM();
+  const { reservations, cmsSettings } = useCRM();
+  const { tenant } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGuest, setSelectedGuest] = useState<GuestRecord | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -73,8 +75,9 @@ export default function Guests() {
     if (!invoiceRef.current || !selectedGuest) return;
 
     const formattedPhone = selectedGuest.phone.replace(/[^0-9+]/g, '');
+    const hotelName = cmsSettings?.hotelName || tenant?.business_name || 'Our Resort';
     const waMessage = encodeURIComponent(
-      `Hello ${selectedGuest.name},\n\nThank you for choosing Ganesh Residency! We hope you enjoyed your stay.\n\nPlease find your latest billing invoice attached to this chat.\n\nBest Regards,\nGanesh Residency Team`
+      `Hello ${selectedGuest.name},\n\nThank you for choosing ${hotelName}! We hope you enjoyed your stay.\n\nPlease find your latest billing invoice attached to this chat.\n\nBest Regards,\n${hotelName} Team`
     );
     const waUrl = `https://wa.me/${formattedPhone}?text=${waMessage}`;
 
@@ -262,11 +265,12 @@ export default function Guests() {
                   {/* Header Section */}
                   <div className="flex justify-between items-start border-b border-[#f3f4f6] pb-8 mb-8">
                     <div>
-                      <h1 className="font-serif text-3xl font-bold text-[#0c4a6e] leading-tight mb-2">Ganesh Residency</h1>
-                      <p className="text-[#6b7280] text-sm">East Coast Road, Chennai</p>
-                      <p className="text-[#6b7280] text-sm">Tamil Nadu, 600119</p>
-                      <p className="text-[#6b7280] text-sm">billing@ganeshresidency.com</p>
-                      <p className="text-[#6b7280] text-sm">+91 44 2345 6789</p>
+                      <h1 className="font-serif text-3xl font-bold text-[#0c4a6e] leading-tight mb-2">
+                        {cmsSettings?.hotelName || tenant?.business_name || 'Our Resort'}
+                      </h1>
+                      <p className="text-[#6b7280] text-sm">{cmsSettings?.contactAddress || 'Hotel Address'}</p>
+                      <p className="text-[#6b7280] text-sm">{cmsSettings?.contactEmail || tenant?.custom_email || 'contact@hotel.com'}</p>
+                      <p className="text-[#6b7280] text-sm">{cmsSettings?.contactPhone || tenant?.contact_phone || '+91 0000 0000'}</p>
                     </div>
                     <div className="text-right">
                       <h2 className="text-2xl font-bold text-[#1f2937] tracking-wider mb-2">INVOICE</h2>
@@ -297,14 +301,14 @@ export default function Guests() {
                     <tbody className="text-sm">
                       <tr className="border-b border-[#f3f4f6]">
                         <td className="py-4 text-[#1f2937]">
-                          <p className="font-semibold">Premium Ocean View Suite</p>
-                          <p className="text-xs text-[#6b7280] mt-1">Accommodation charges for latest visit.</p>
+                          <p className="font-semibold">Accommodation Services</p>
+                          <p className="text-xs text-[#6b7280] mt-1">Room charges for stay history (Total {selectedGuest.stays} visits).</p>
                         </td>
                         <td className="py-4 text-center text-[#4b5563]">{selectedGuest.stays}</td>
                         <td className="py-4 text-right text-[#4b5563]">
-                          ₹{(parseInt(selectedGuest.spent.replace(/[^0-9]/g, '')) / selectedGuest.stays).toLocaleString('en-IN')}
+                          ₹{(selectedGuest.spent / selectedGuest.stays).toLocaleString('en-IN')}
                         </td>
-                        <td className="py-4 text-right font-medium text-[#1f2937]">{selectedGuest.spent}</td>
+                        <td className="py-4 text-right font-medium text-[#1f2937]">₹{selectedGuest.spent.toLocaleString('en-IN')}</td>
                       </tr>
                       <tr className="border-b border-[#f3f4f6]">
                         <td className="py-4 text-[#1f2937]">
@@ -333,19 +337,19 @@ export default function Guests() {
                       <div className="flex justify-between py-2 text-sm text-[#4b5563]">
                         <span>Subtotal</span>
                         <span>
-                          ₹{(parseInt(selectedGuest.spent.replace(/[^0-9]/g, '')) + 4500 + 3200).toLocaleString('en-IN')}
+                          ₹{(selectedGuest.spent + 4500 + 3200).toLocaleString('en-IN')}
                         </span>
                       </div>
                       <div className="flex justify-between py-2 text-sm text-[#4b5563] border-b border-[#e5e7eb]">
                         <span>GST (18%)</span>
                         <span>
-                          ₹{((parseInt(selectedGuest.spent.replace(/[^0-9]/g, '')) + 4500 + 3200) * 0.18).toLocaleString('en-IN')}
+                          ₹{((selectedGuest.spent + 4500 + 3200) * 0.18).toLocaleString('en-IN')}
                         </span>
                       </div>
                       <div className="flex justify-between py-3 text-lg font-bold text-[#111827] border-b-2 border-[#1f2937]">
                         <span>Total</span>
                         <span>
-                          ₹{((parseInt(selectedGuest.spent.replace(/[^0-9]/g, '')) + 4500 + 3200) * 1.18).toLocaleString('en-IN')}
+                          ₹{((selectedGuest.spent + 4500 + 3200) * 1.18).toLocaleString('en-IN')}
                         </span>
                       </div>
                     </div>

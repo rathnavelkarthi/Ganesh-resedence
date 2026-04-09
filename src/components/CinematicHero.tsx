@@ -5,7 +5,7 @@ import { useCRM } from '../context/CRMDataContext';
 import fallbackHeroImage from '../../herobanner.jpg';
 
 export default function CinematicHero() {
-    const { pageContent } = useCRM();
+    const { pageContent, cmsSettings } = useCRM();
     const containerRef = useRef<HTMLDivElement>(null);
 
     const getContent = (key: string, field: 'content_text' | 'image_url' = 'content_text') => {
@@ -34,7 +34,7 @@ export default function CinematicHero() {
             >
                 <img
                     src={heroImage}
-                    alt="Ganesh Residency Sanctuary"
+                    alt={`${cmsSettings?.hotelName || 'Hotel'} Sanctuary`}
                     className="object-cover w-full h-full opacity-60"
                     fetchPriority="high"
                 />

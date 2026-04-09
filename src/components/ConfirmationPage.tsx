@@ -3,14 +3,23 @@ import { CheckCircle, Calendar, Users, MapPin, Download, MessageCircle, Phone } 
 import { Link } from 'react-router-dom';
 import { jsPDF } from "jspdf";
 import { toPng } from 'html-to-image';
+import { useCRM } from '../context/CRMDataContext';
+import { useAuth } from '../context/AuthContext';
 
 interface ConfirmationPageProps {
   bookingData: any;
 }
 
 export default function ConfirmationPage({ bookingData }: ConfirmationPageProps) {
+  const { cmsSettings } = useCRM();
+  const { tenant } = useAuth();
   const { room, checkIn, checkOut, guests, guestDetails } = bookingData;
-  const bookingId = `GR-${Math.floor(100000 + Math.random() * 900000)}`;
+  const bookingId = `BK-${Math.floor(100000 + Math.random() * 900000)}`;
+
+  const hotelName = cmsSettings.hotelName || tenant?.business_name || 'Our Resort';
+  const hotelAddress = cmsSettings.contactAddress || 'No. 2, Sai Baba Koil Street, Chinna Kalapet, Puducherry 605014';
+  const hotelPhone = cmsSettings.contactPhone || '+91 8248981269';
+  const hotelWhatsap = hotelPhone.replace(/\D/g, ''); // Clean number for WhatsApp link
 
   if (!room || !guestDetails?.fullName) {
     return (
@@ -81,7 +90,7 @@ export default function ConfirmationPage({ bookingData }: ConfirmationPageProps)
       const pdfHeight = (element.offsetHeight * pdfWidth) / element.offsetWidth;
 
       pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Ganesh_Residency_Invoice_${bookingId}.pdf`);
+      pdf.save(`${hotelName.replace(/\s+/g, '_')}_Invoice_${bookingId}.pdf`);
     } catch (error) {
       console.error("Failed to generate PDF", error);
       if (error instanceof Error) {
@@ -92,7 +101,7 @@ export default function ConfirmationPage({ bookingData }: ConfirmationPageProps)
     }
   };
 
-  const whatsappMessage = encodeURIComponent(`Hello Ganesh Residency, I have just completed a booking (ID: ${bookingId}) for ${room?.name} from ${checkIn} to ${checkOut}.`);
+  const whatsappMessage = encodeURIComponent(`Hello ${hotelName}, I have just completed a booking (ID: ${bookingId}) for ${room?.name} from ${checkIn} to ${checkOut}.`);
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -116,7 +125,7 @@ export default function ConfirmationPage({ bookingData }: ConfirmationPageProps)
           </motion.div>
 
           <h1 className="font-serif text-4xl font-bold mb-2 relative z-10">Your Stay is Confirmed! 🎉</h1>
-          <p className="text-white/80 text-lg relative z-10">Thank you for choosing Ganesh Residency, {guestDetails?.fullName?.split(' ')[0] || 'Guest'}.</p>
+          <p className="text-white/80 text-lg relative z-10">Thank you for choosing {hotelName}, {guestDetails?.fullName?.split(' ')[0] || 'Guest'}.</p>
         </div>
 
         {/* Booking Details */}
@@ -175,8 +184,8 @@ export default function ConfirmationPage({ bookingData }: ConfirmationPageProps)
           <div className="flex items-start gap-3 p-4 bg-[var(--color-sand-100)] rounded-xl mb-10">
             <MapPin size={20} className="text-[var(--color-ocean-600)] shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-gray-900">Ganesh Residency</p>
-              <p className="text-sm text-gray-600">No. 2, Sai Baba Koil Street, Chinna Kalapet, Puducherry 605014</p>
+              <p className="font-semibold text-gray-900">{hotelName}</p>
+              <p className="text-sm text-gray-600">{hotelAddress}</p>
             </div>
           </div>
 
@@ -190,7 +199,7 @@ export default function ConfirmationPage({ bookingData }: ConfirmationPageProps)
               Download Invoice
             </button>
             <a
-              href={`https://wa.me/918248981269?text=${whatsappMessage}`}
+              href={`https://wa.me/${hotelWhatsap}?text=${whatsappMessage}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-green-500 hover:bg-green-600 text-white font-semibold transition-colors shadow-sm"
@@ -199,7 +208,7 @@ export default function ConfirmationPage({ bookingData }: ConfirmationPageProps)
               WhatsApp Confirmation
             </a>
             <a
-              href="tel:+914132656555"
+              href={`tel:${hotelPhone}`}
               className="flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl border-2 border-gray-200 hover:border-gray-300 font-semibold text-gray-700 transition-colors sm:col-span-2"
             >
               <Phone size={18} />

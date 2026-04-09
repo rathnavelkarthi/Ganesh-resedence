@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import { Search, Plus, MoreVertical, Shield, Mail, Phone, X } from 'lucide-react';
 import { useCRM, StaffMember } from '../../context/CRMDataContext';
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabaseClient';
 import { usePlanLimits } from '../../lib/planLimits';
 import UpgradeModal from '../../components/crm/UpgradeModal';
+import { sendStaffCredentials } from '../../lib/email';
 import { toast } from 'sonner';
 
 export default function Staff() {
   const { staff, addStaff, updateStaff, deleteStaff } = useCRM();
+  const { tenant } = useAuth();
   const { canAdd, limitFor, currentCount, plan } = usePlanLimits();
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -29,6 +33,50 @@ export default function Staff() {
     member.role.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const sendStaffWhatsAppNotification = async (staffData: {
+    name: string; email: string; phone: string; password: string; role: string;
+  }) => {
+    try {
+      if (!tenant?.id || !staffData.phone) return;
+
+      const { data: config } = await supabase
+        .from('tenants')
+        .select('whatsapp_enabled, subdomain, business_name')
+        .eq('id', tenant.id)
+        .single();
+
+      if (!config?.whatsapp_enabled) return;
+
+      const loginUrl = config.subdomain
+        ? `https://${config.subdomain}.esaystay.com/admin/login`
+        : 'your hotel management portal';
+
+      const roleName = staffData.role.replace(/_/g, ' ');
+
+      const message =
+        `Hello ${staffData.name}!\n\n` +
+        `You have been added as a staff member at *${config.business_name || 'our hotel'}*.\n\n` +
+        `*Your Login Details:*\n` +
+        `Role: ${roleName}\n` +
+        `Email: ${staffData.email}\n` +
+        `Password: ${staffData.password}\n\n` +
+        `Login here: ${loginUrl}\n\n` +
+        `Please change your password after your first login.`;
+
+      const { data, error } = await supabase.functions.invoke('send-whatsapp', {
+        body: { tenant_id: tenant.id, phone: staffData.phone, message },
+      });
+
+      if (error || !data?.success) {
+        toast.error('Staff created, but WhatsApp notification failed to send.');
+        return;
+      }
+      toast.success('Login credentials sent via WhatsApp!');
+    } catch (err) {
+      console.warn('WhatsApp notification error:', err);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.phone || (!editingStaffId && !formData.password)) {
@@ -48,6 +96,24 @@ export default function Staff() {
           loading: 'Creating staff member...',
           success: 'Staff created successfully',
           error: (err) => err.message || 'Failed to create staff'
+        });
+        // Send WhatsApp notification with login credentials (non-blocking)
+        sendStaffWhatsAppNotification({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          password: formData.password,
+          role: formData.role,
+        });
+        // Send email with login credentials (non-blocking)
+        sendStaffCredentials({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          role: formData.role,
+          password: formData.password,
+          subdomain: tenant?.subdomain || '',
+          businessName: tenant?.business_name || 'Our Hotel',
         });
       }
 

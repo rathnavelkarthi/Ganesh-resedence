@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 const navLinks = [
-    { name: 'Product', href: '/#features' },
-    { name: 'Solutions', href: '/#about' },
-    { name: 'Pricing', href: '/pricing' },
-    { name: 'Customers', href: '/#customers' },
-    { name: 'Resources', href: '/#resources' },
+    { name: 'Features', href: '/#features' },
+    { name: 'How it Works', href: '/#how-it-works' },
+    { name: 'Testimonials', href: '/#testimonials' },
+    { name: 'Pricing', href: '/#pricing' },
 ];
 
 export default function SaaSNavbar() {
@@ -41,10 +40,10 @@ export default function SaaSNavbar() {
                     {/* Wordmark */}
                     <Link to="/" className="flex items-center gap-2 z-50 relative">
                         <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                            <span className="text-white font-bold text-sm">H</span>
+                            <Zap size={16} className="text-white fill-current" />
                         </div>
                         <span className="text-lg font-bold text-foreground tracking-tight">
-                            Hospitality<span className="text-accent">OS</span>
+                            EasyStay
                         </span>
                     </Link>
 
@@ -62,7 +61,7 @@ export default function SaaSNavbar() {
                         ))}
                         <div className="flex items-center gap-3 ml-4">
                             <a
-                                href="https://wa.me/919345244727?text=Hi%2C%20I%20would%20like%20to%20book%20a%20demo%20for%20HospitalityOS"
+                                href="https://wa.me/919345244727?text=Hi%2C%20I%20would%20like%20to%20book%20a%20demo%20for%20EasyStay"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-sm font-semibold text-foreground border border-foreground/15 px-4 py-2 rounded-lg hover:border-foreground/30 transition-all duration-200"
@@ -117,7 +116,7 @@ export default function SaaSNavbar() {
                         ))}
                         <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-foreground/5">
                             <a
-                                href="https://wa.me/919345244727?text=Hi%2C%20I%20would%20like%20to%20book%20a%20demo%20for%20HospitalityOS"
+                                href="https://wa.me/919345244727?text=Hi%2C%20I%20would%20like%20to%20book%20a%20demo%20for%20EasyStay"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={() => setIsMobileMenuOpen(false)}

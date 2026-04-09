@@ -1,11 +1,13 @@
 import { useState, useMemo } from 'react';
 import { Search, Filter, Download, FileText, Eye, X, CheckCircle, Printer } from 'lucide-react';
 import { useCRM } from '../../context/CRMDataContext';
+import { useAuth } from '../../context/AuthContext';
 import { InvoiceData } from '../../components/crm/InvoicePrintTemplate';
 import { printInvoice } from '../../components/crm/invoiceUtils';
 
 export default function Invoices() {
-  const { reservations } = useCRM();
+  const { reservations, cmsSettings } = useCRM();
+  const { tenant } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [isDownloading, setIsDownloading] = useState<string | null>(null);
@@ -61,6 +63,10 @@ export default function Invoices() {
       totalAmount: total,
       paymentMethod: invoice.paymentMethod,
       paymentStatus: invoice.paymentStatus,
+      hotelName: cmsSettings.hotelName || tenant?.business_name || 'Your Hotel',
+      hotelAddress: cmsSettings.contactAddress || 'Hotel Address',
+      hotelEmail: cmsSettings.contactEmail || tenant?.custom_email || 'contact@hotel.com',
+      hotelPhone: cmsSettings.contactPhone || '+91 0000000000',
     };
   };
 

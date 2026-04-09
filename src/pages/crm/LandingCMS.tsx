@@ -19,12 +19,12 @@ export default function LandingCMS() {
     };
 
     // Local state for editing fields
-    const [heroTitle, setHeroTitle] = useState(getContent('hero', 'title') || 'Welcome to Ganesh Residency');
+    const [heroTitle, setHeroTitle] = useState(getContent('hero', 'title') || `Welcome to ${tenant?.business_name || 'Our Resort'}`);
     const [heroSubtitle, setHeroSubtitle] = useState(getContent('hero', 'subtitle') || 'Experience Tranquility & Comfort');
     const [heroBtn, setHeroBtn] = useState(getContent('hero', 'button_text') || 'Book Your Stay');
 
     const [aboutHeading, setAboutHeading] = useState(getContent('about', 'heading') || 'Your Home by the Sea');
-    const [aboutBody, setAboutBody] = useState(getContent('about', 'body') || 'Ganesh Residency is a peaceful retreat...');
+    const [aboutBody, setAboutBody] = useState(getContent('about', 'body') || `${tenant?.business_name || 'Our Resort'} is a peaceful retreat...`);
 
     const [contactEmail, setContactEmail] = useState(getContent('contact', 'email') || '');
     const [contactPhone, setContactPhone] = useState(getContent('contact', 'phone') || '');
@@ -261,7 +261,7 @@ export default function LandingCMS() {
                                     value={contactEmail}
                                     onChange={(e) => setContactEmail(e.target.value)}
                                     className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C9A646] outline-none transition-all"
-                                    placeholder="e.g. hello@ganeshresidency.com"
+                                    placeholder={`e.g. hello@${tenant?.business_name?.toLowerCase().replace(/\s+/g, '') || 'hotel'}.com`}
                                 />
                             </div>
                             <div>

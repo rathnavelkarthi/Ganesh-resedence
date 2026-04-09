@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from './AuthContext';
 import { mapReservationStatus, mapPaymentStatus, mapUIToDBStatus } from '../lib/booking';
+import { sendBookingConfirmation, sendBookingCancelled, sendBookingStatusChange, sendCheckInEmail, sendCheckOutEmail } from '../lib/email';
 
 // --- Hotel Types ---
 
@@ -241,7 +242,9 @@ export function CRMProvider({ children }: { children: ReactNode }) {
             setFoodOrders([]); setInventoryItems([]);
 
             // Always load: settings, staff, page content
-            const { data: settingsData } = await supabase.from('settings').select('*').eq('tenant_id', tenantId);
+            const { data: settingsData, error: settingsError } = await supabase.from('settings').select('*').eq('tenant_id', tenantId);
+            if (settingsError) console.error('[CRMDataContext] Settings fetch error:', settingsError);
+            
             if (settingsData && settingsData.length > 0) {
                 const settingsObj = { ...initialCMS };
                 settingsData.forEach(item => {
@@ -255,7 +258,9 @@ export function CRMProvider({ children }: { children: ReactNode }) {
                 setCmsSettings(initialCMS);
             }
 
-            const { data: staffData } = await supabase.from('staff').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false });
+            const { data: staffData, error: staffError } = await supabase.from('staff').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false });
+            if (staffError) console.error('[CRMDataContext] Staff fetch error:', staffError);
+            
             if (staffData && staffData.length > 0) {
                 setStaff(staffData.map(s => ({
                     ...s,
@@ -263,12 +268,15 @@ export function CRMProvider({ children }: { children: ReactNode }) {
                 })));
             } else { setStaff([]); }
 
-            const { data: contentData } = await supabase.from('page_content').select('*').eq('tenant_id', tenantId).order('order_index', { ascending: true });
+            const { data: contentData, error: contentError } = await supabase.from('page_content').select('*').eq('tenant_id', tenantId).order('order_index', { ascending: true });
+            if (contentError) console.error('[CRMDataContext] Page content fetch error:', contentError);
             setPageContent(contentData?.length ? contentData as any : []);
 
             // Hotel-specific data
             if (isHotel) {
-                const { data: resData } = await supabase.from('reservations').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false });
+                const { data: resData, error: resError } = await supabase.from('reservations').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false });
+                if (resError) console.error('[CRMDataContext] Reservations fetch error:', resError);
+                
                 if (resData && resData.length > 0) {
                     setReservations(resData.map(r => ({
                         id: r.id,
@@ -288,10 +296,10 @@ export function CRMProvider({ children }: { children: ReactNode }) {
                         gst_amount: r.gst_amount,
                         payment_date: r.payment_date,
                     })));
-                    console.log('CRMDataContext: Loaded reservations from DB:', resData.length);
                 } else { setReservations([]); }
 
-                const { data: roomsData } = await supabase.from('rooms').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false });
+                const { data: roomsData, error: roomsError } = await supabase.from('rooms').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false });
+                if (roomsError) console.error('[CRMDataContext] Rooms fetch error:', roomsError);
                 setRooms(roomsData?.length ? roomsData as any : []);
             }
 
@@ -306,16 +314,27 @@ export function CRMProvider({ children }: { children: ReactNode }) {
                 const { data: tableData } = await supabase.from('restaurant_tables').select('*').eq('tenant_id', tenantId).order('table_number');
                 setRestaurantTables(tableData?.length ? tableData as any : []);
 
-                const { data: orderData } = await supabase
+                const { data: orderData, error: orderError } = await supabase
                     .from('food_orders')
-                    .select('*, food_order_items(*)')
+                    .select('*')
                     .eq('tenant_id', tenantId)
                     .order('created_at', { ascending: false })
                     .limit(100);
-                if (orderData?.length) {
+                
+                if (orderError) console.error('[CRMDataContext] Food orders error:', orderError);
+
+                if (orderData && orderData.length > 0) {
+                    const orderIds = orderData.map(o => o.id);
+                    const { data: itemData, error: itemsError } = await supabase
+                        .from('food_order_items')
+                        .select('*')
+                        .in('order_id', orderIds);
+
+                    if (itemsError) console.error('[CRMDataContext] Food items error:', itemsError);
+
                     setFoodOrders(orderData.map((o: any) => ({
                         ...o,
-                        items: o.food_order_items || [],
+                        items: itemData?.filter(i => i.order_id === o.id) || [],
                     })));
                 } else { setFoodOrders([]); }
 
@@ -391,7 +410,25 @@ export function CRMProvider({ children }: { children: ReactNode }) {
             amount: reservation.amount || 0, gst_amount: reservation.gst_amount || 0,
             tenant_id: tid(),
         }]);
-        if (!error) setReservations([newReservation, ...reservations]);
+        if (!error) {
+            setReservations([newReservation, ...reservations]);
+            if (reservation.guest_email) {
+                sendBookingConfirmation({
+                    guestName: reservation.guest,
+                    guestEmail: reservation.guest_email,
+                    roomType: reservation.room,
+                    roomNumber: reservation.room_id || '',
+                    checkIn: reservation.checkIn,
+                    checkOut: reservation.checkOut,
+                    amount: reservation.amount || 0,
+                    gstAmount: reservation.gst_amount || 0,
+                    paymentStatus: reservation.payment,
+                    source: reservation.source,
+                    reservationId: newId,
+                    businessName: tenant?.business_name || 'Our Hotel',
+                });
+            }
+        }
     };
 
     const deleteReservation = async (id: string) => {
@@ -421,8 +458,41 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         if (updatedData.payment_method) updatePayload.payment_method = updatedData.payment_method;
         if (updatedData.amount !== undefined) updatePayload.amount = updatedData.amount;
         if (updatedData.gst_amount !== undefined) updatePayload.gst_amount = updatedData.gst_amount;
+        const oldReservation = reservations.find(r => r.id === id);
         const { error } = await supabase.from('reservations').update(updatePayload).eq('id', id);
-        if (!error) setReservations(prev => prev.map(r => r.id === id ? { ...r, ...updatedData } : r));
+        if (!error) {
+            setReservations(prev => prev.map(r => r.id === id ? { ...r, ...updatedData } : r));
+            // Send email on status change
+            if (oldReservation && updatedData.status && oldReservation.status !== updatedData.status) {
+                const merged = { ...oldReservation, ...updatedData };
+                if (merged.guest_email) {
+                    if (updatedData.status === 'Cancelled') {
+                        sendBookingCancelled({
+                            guestName: merged.guest,
+                            guestEmail: merged.guest_email,
+                            roomType: merged.room,
+                            checkIn: merged.checkIn,
+                            checkOut: merged.checkOut,
+                            amount: merged.amount || 0,
+                            gstAmount: merged.gst_amount || 0,
+                            reservationId: id,
+                            businessName: tenant?.business_name || 'Our Hotel',
+                        });
+                    } else {
+                        sendBookingStatusChange({
+                            guestName: merged.guest,
+                            guestEmail: merged.guest_email,
+                            roomType: merged.room,
+                            checkIn: merged.checkIn,
+                            checkOut: merged.checkOut,
+                            newStatus: updatedData.status,
+                            reservationId: id,
+                            businessName: tenant?.business_name || 'Our Hotel',
+                        });
+                    }
+                }
+            }
+        }
     };
 
     const updateCMSSetting = async (key: keyof CMSSettings, value: string) => {
@@ -484,7 +554,18 @@ export function CRMProvider({ children }: { children: ReactNode }) {
             setRooms(prev => prev.map(r => r.id === roomId ? { ...r, status: 'Occupied' } : r));
         }
 
+        const checkedInRes = reservations.find(r => r.id === reservationId);
         setReservations(prev => prev.map(r => r.id === reservationId ? { ...r, status: 'Checked In' } : r));
+        if (checkedInRes?.guest_email) {
+            sendCheckInEmail({
+                guestName: checkedInRes.guest,
+                guestEmail: checkedInRes.guest_email,
+                roomNumber: checkedInRes.room,
+                roomType: checkedInRes.room,
+                checkOutDate: checkedInRes.checkOut,
+                businessName: tenant?.business_name || 'Our Hotel',
+            });
+        }
         console.log('CRMDataContext: Successfully checked in guest');
     };
 
@@ -505,7 +586,22 @@ export function CRMProvider({ children }: { children: ReactNode }) {
             setRooms(prev => prev.map(r => r.id === roomId ? { ...r, status: 'Available', cleaning_status: 'Dirty' } : r));
         }
 
+        const checkedOutRes = reservations.find(r => r.id === reservationId);
         setReservations(prev => prev.map(r => r.id === reservationId ? { ...r, status: 'Checked Out', payment: 'Paid' } : r));
+        if (checkedOutRes?.guest_email) {
+            sendCheckOutEmail({
+                guestName: checkedOutRes.guest,
+                guestEmail: checkedOutRes.guest_email,
+                roomNumber: checkedOutRes.room,
+                roomType: checkedOutRes.room,
+                checkInDate: checkedOutRes.checkIn,
+                checkOutDate: checkedOutRes.checkOut,
+                totalAmount: checkedOutRes.amount || 0,
+                gstAmount: checkedOutRes.gst_amount || 0,
+                paymentMethod: checkedOutRes.payment_method || 'N/A',
+                businessName: tenant?.business_name || 'Our Hotel',
+            });
+        }
         console.log('CRMDataContext: Successfully checked out guest');
     };
 
@@ -628,14 +724,28 @@ export function CRMProvider({ children }: { children: ReactNode }) {
 
     const refreshFoodOrders = async () => {
         if (!tenant) return;
-        const { data } = await supabase
+        const { data: orderData, error: orderError } = await supabase
             .from('food_orders')
-            .select('*, food_order_items(*)')
+            .select('*')
             .eq('tenant_id', tenant.id)
             .order('created_at', { ascending: false })
             .limit(100);
-        if (data?.length) {
-            setFoodOrders(data.map((o: any) => ({ ...o, items: o.food_order_items || [] })));
+            
+        if (orderError) console.error('[CRMDataContext] Refresh food orders error:', orderError);
+
+        if (orderData && orderData.length > 0) {
+            const orderIds = orderData.map(o => o.id);
+            const { data: itemsData, error: itemsError } = await supabase
+                .from('food_order_items')
+                .select('*')
+                .in('order_id', orderIds);
+
+            if (itemsError) console.error('[CRMDataContext] Refresh food items error:', itemsError);
+
+            setFoodOrders(orderData.map((o: any) => ({
+                ...o,
+                items: itemsData?.filter(i => i.order_id === o.id) || []
+            })));
         } else { setFoodOrders([]); }
     };
 
